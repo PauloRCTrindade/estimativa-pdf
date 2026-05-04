@@ -634,6 +634,41 @@ export default function GeradorEstimativaPDF() {
         scale: 2,
         backgroundColor: "#ffffff",
         useCORS: true,
+        onclone: (doc) => {
+          // remove dark mode
+          doc.documentElement.classList.remove("dark");
+
+          // remove CSS global (onde está o oklch)
+          doc.querySelectorAll('style, link[rel="stylesheet"]').forEach((node) => {
+            node.remove();
+          });
+
+          // adiciona CSS seguro
+          const safeStyle = doc.createElement("style");
+          safeStyle.innerHTML = `
+          html, body {
+            margin: 0;
+            background: #ffffff !important;
+            color: #111111 !important;
+            font-family: Arial, Helvetica, sans-serif !important;
+          }
+
+          table {
+            border-collapse: collapse;
+          }
+
+          *, *::before, *::after {
+            box-sizing: border-box;
+          }
+        `;
+          doc.head.appendChild(safeStyle);
+
+          const cloned = doc.getElementById("calendar-area");
+          if (!cloned) return;
+
+          cloned.style.backgroundColor = "#ffffff";
+          cloned.style.color = "#111111";
+        },
       });
 
       const imgData = canvas.toDataURL("image/png");
@@ -927,7 +962,7 @@ function PdfPreview({ form, totalDias, calculo, timelineRows }) {
         <Legend color={COLORS.weekend} label="Fim de semana" />
         <Legend color={COLORS.postRelease} label="Tombamento" />
         <Legend color={COLORS.holiday} label="Feriado" />
-        <Legend color={COLORS.blocked} label="Projeto parado" />
+        <Legend color={COLORS.blocked} label="Projeto Impactado" />
       </div>
     </div>
 
