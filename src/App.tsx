@@ -508,7 +508,7 @@ export default function GeradorEstimativaPDF() {
 
   function salvarTemplate() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ form, atividades }));
-    setStatus("Template salvo no navegador!");
+    setStatus("Template salvo no navegador.");
   }
 
   function restaurarPadrao() {
