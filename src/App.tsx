@@ -25,6 +25,7 @@ const COLORS = {
   mediumGray: "#d4d4d4",
   orange: "#f97316",
   text: "#111111",
+  blocked: "#000000",
 };
 
 const RELEASES_2026 = [
@@ -251,15 +252,27 @@ function isHoliday(date, holidays) {
     return isValidDate(holidayDate) && sameDateBR(date, holidayDate);
   });
 }
+function isBlockedDay(date, blockedDays = []) {
+  return blockedDays.some((blockedDay) => {
+    const blockedDate = parseDateBR(blockedDay);
+    return isValidDate(blockedDate) && sameDateBR(date, blockedDate);
+  });
+}
 
-function getWorkingDays(startDate, totalDays, releases, holidays) {
+function getWorkingDays(startDate, totalDays, releases, holidays, blockedDays = []) {
   const days = [];
   let current = new Date(startDate);
   let guard = 0;
 
   while (days.length < totalDays && guard < 500) {
-    const blocked = isWeekend(current) || isPostRelease(current, releases) || isHoliday(current, holidays);
+    const blocked =
+      isWeekend(current) ||
+      isPostRelease(current, releases) ||
+      isHoliday(current, holidays) ||
+      isBlockedDay(current, blockedDays);
+
     if (!blocked) days.push(new Date(current));
+
     current = addDays(current, 1);
     guard += 1;
   }
@@ -285,6 +298,7 @@ function defaultForm() {
     arquiteto: "Paulo Roberto Celestino Trindade",
     inicio: "05/05/2026",
     releaseAlvo: "",
+    diasParados: "",
     releases: RELEASES_2026,
     feriados: FERIADOS_2026,
     pontos: "Necessário massa para testes internos e desenvolvimento\nNecessário UX definido",
@@ -409,6 +423,9 @@ export default function GeradorEstimativaPDF() {
 
   const releases = useMemo(() => normalizeDateList(form.releases), [form.releases]);
   const feriados = useMemo(() => normalizeDateList(form.feriados), [form.feriados]);
+  const diasParados = useMemo(
+    () => normalizeDateList(form.diasParados || ""),
+    [form.diasParados]);
 
   const totalDias = useMemo(() => {
     const etapas = new Map();
@@ -422,7 +439,7 @@ export default function GeradorEstimativaPDF() {
 
   const calculo = useMemo(() => {
     const startDate = parseDateBR(form.inicio);
-    const validDays = getWorkingDays(startDate, totalDias, releases, feriados);
+    const validDays = getWorkingDays(startDate, totalDias, releases, feriados, diasParados);
     const etapasOrdenadas = Array.from(new Set(atividades.map((atividade) => String(atividade.etapa || "1")))).sort((a, b) => Number(a) - Number(b));
 
     let cursor = 0;
@@ -454,10 +471,14 @@ export default function GeradorEstimativaPDF() {
       let tipo = "";
       let color = COLORS.white;
 
-      if (isWeekend(current)) {
+      if (isBlockedDay(current, diasParados)) {
+        tipo = "Projeto parado";
+        color = COLORS.blocked;
+      } else if (isWeekend(current)) {
         tipo = "Fim de semana";
         color = COLORS.weekend;
-      } else if (isHoliday(current, feriados)) {
+      }
+      else if (isHoliday(current, feriados)) {
         tipo = "Feriado";
         color = COLORS.holiday;
       } else if (isPostRelease(current, releases)) {
@@ -476,7 +497,7 @@ export default function GeradorEstimativaPDF() {
     }
 
     return { validDays, atividadesCalculadas, timeline, endDate };
-  }, [form.inicio, totalDias, releases, feriados, atividades]);
+  }, [form.inicio, totalDias, releases, feriados, diasParados, atividades]);
 
   function updateForm(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -528,11 +549,23 @@ export default function GeradorEstimativaPDF() {
       backgroundColor: COLORS.white,
       useCORS: true,
       onclone: (clonedDocument) => {
+        clonedDocument.documentElement.classList.remove("dark");
+
+        const body = clonedDocument.body;
+        body.style.backgroundColor = "#ffffff";
+        body.style.color = "#000000";
+
         const clonedElement = clonedDocument.getElementById("pdf-area");
         if (!clonedElement) return;
+
+        clonedElement.style.backgroundColor = "#ffffff";
+        clonedElement.style.color = "#111111";
+
         clonedElement.querySelectorAll("*").forEach((node) => {
           if (node instanceof HTMLElement) {
-            node.className = "";
+            node.removeAttribute("class");
+            node.style.backgroundColor = node.style.backgroundColor || "#ffffff";
+            node.style.color = node.style.color || "#111111";
           }
         });
       },
@@ -573,6 +606,40 @@ export default function GeradorEstimativaPDF() {
     }
   }
 
+  async function gerarPDFCalendario() {
+    try {
+      setStatus("Gerando PDF do calendário...");
+
+      const element = document.getElementById("calendar-area");
+
+      if (!element) {
+        setStatus("Área do calendário não encontrada.");
+        return;
+      }
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("l", "mm", "a4");
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+      pdf.save(`${sanitizeFileName(form.titulo)}_calendario.pdf`);
+
+      setStatus("PDF do calendário gerado com sucesso.");
+    } catch (error) {
+      console.error(error);
+      setStatus("Não foi possível gerar o PDF do calendário.");
+    }
+  }
+
   async function abrirPDF() {
     try {
       setStatus("Abrindo PDF...");
@@ -609,7 +676,7 @@ export default function GeradorEstimativaPDF() {
             <Textarea value={form.pontos} onChange={(event) => updateForm("pontos", event.target.value)} placeholder="Pontos de atenção" />
             <Textarea value={form.premissas} onChange={(event) => updateForm("premissas", event.target.value)} placeholder="Premissas" />
             <Textarea value={form.restricoes} onChange={(event) => updateForm("restricoes", event.target.value)} placeholder="Restrições" />
-
+            <Textarea className="min-h-32" value={form.diasParados || ""} onChange={(event) => updateForm("diasParados", event.target.value)} placeholder="Dias parados, um por linha. Ex: 10/05/2026 - Aguardando UX" />
             <div className="space-y-3">
               <h2 className="font-semibold">Atividades</h2>
               {atividades.map((atividade, index) => (
@@ -681,6 +748,10 @@ export default function GeradorEstimativaPDF() {
             <div className="grid grid-cols-2 gap-2">
               <Button className="w-full" onClick={abrirPDF}>Abrir PDF</Button>
               <Button className="w-full" onClick={gerarPDF}>Baixar PDF</Button>
+              <Button className="w-full col-span-2" onClick={gerarPDFCalendario}>
+                Baixar PDF Calendário
+              </Button>
+
             </div>
           </CardContent>
         </Card>
@@ -691,10 +762,75 @@ export default function GeradorEstimativaPDF() {
           calculo={calculo}
           timelineRows={timelineRows}
         />
+        <div
+          id="calendar-area"
+          style={{
+            position: "absolute",
+            left: "-9999px",
+            top: 0,
+            width: "1123px",
+            backgroundColor: COLORS.white,
+            padding: "32px",
+            fontFamily: "Arial, Helvetica, sans-serif",
+          }}
+        >
+          <div style={pdfStyles.header}>
+            <div style={{ fontSize: "13px", fontWeight: 700 }}>
+              LINHA DO TEMPO
+            </div>
+            <div style={pdfStyles.title}>{form.titulo}</div>
+          </div>
+
+          <div style={{ marginTop: "20px" }}>
+            {timelineRows.map((row, rowIndex) => (
+              <table key={`calendar-${rowIndex}`} style={pdfStyles.timelineTable}>
+                <tbody>
+                  <tr>
+                    {row.map((day, index) => (
+                      <td key={`cal-week-${rowIndex}-${index}`} style={pdfStyles.timelineCell}>
+                        {weekLabels[day.date.getDay()]}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    {row.map((day, index) => (
+                      <td key={`cal-day-${rowIndex}-${index}`} style={pdfStyles.timelineWeekCell}>
+                        {String(day.date.getDate()).padStart(2, "0")}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    {row.map((day, index) => (
+                      <td
+                        key={`cal-color-${rowIndex}-${index}`}
+                        title={day.tipo}
+                        style={{
+                          ...pdfStyles.timelineColorCell,
+                          backgroundColor: day.color,
+                        }}
+                      />
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            ))}
+          </div>
+
+          <div style={pdfStyles.legendWrapper}>
+            <Legend color={COLORS.desenvolvimento} label="Desenvolvimento" />
+            <Legend color={COLORS.subida} label="Subida em Pre Prod" />
+            <Legend color={COLORS.testes} label="QA Compass" />
+            <Legend color={COLORS.weekend} label="Fim de semana" />
+            <Legend color={COLORS.postRelease} label="Tombamento" />
+            <Legend color={COLORS.holiday} label="Feriado" />
+            <Legend color={COLORS.blocked} label="Projeto parado" />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
 
 function PdfPreview({ form, totalDias, calculo, timelineRows }) {
   return (
@@ -778,10 +914,14 @@ function PdfPreview({ form, totalDias, calculo, timelineRows }) {
         <Legend color={COLORS.weekend} label="Fim de semana" />
         <Legend color={COLORS.postRelease} label="Tombamento" />
         <Legend color={COLORS.holiday} label="Feriado" />
+        <Legend color={COLORS.blocked} label="Projeto parado" />
       </div>
     </div>
+
   );
 }
+
+
 
 function Section({ title, text }) {
   return (
