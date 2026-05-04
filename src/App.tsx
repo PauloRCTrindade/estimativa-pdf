@@ -546,28 +546,41 @@ export default function GeradorEstimativaPDF() {
 
     const canvas = await html2canvas(element, {
       scale: 2,
-      backgroundColor: COLORS.white,
+      backgroundColor: "#ffffff",
       useCORS: true,
-      onclone: (clonedDocument) => {
-        clonedDocument.documentElement.classList.remove("dark");
+      onclone: (doc) => {
+        doc.documentElement.classList.remove("dark");
 
-        const body = clonedDocument.body;
-        body.style.backgroundColor = "#ffffff";
-        body.style.color = "#000000";
-
-        const clonedElement = clonedDocument.getElementById("pdf-area");
-        if (!clonedElement) return;
-
-        clonedElement.style.backgroundColor = "#ffffff";
-        clonedElement.style.color = "#111111";
-
-        clonedElement.querySelectorAll("*").forEach((node) => {
-          if (node instanceof HTMLElement) {
-            node.removeAttribute("class");
-            node.style.backgroundColor = node.style.backgroundColor || "#ffffff";
-            node.style.color = node.style.color || "#111111";
-          }
+        // Remove CSS global do Tailwind/shadcn no clone
+        doc.querySelectorAll('style, link[rel="stylesheet"]').forEach((node) => {
+          node.remove();
         });
+
+        // Reaplica somente uma base segura em HEX
+        const safeStyle = doc.createElement("style");
+        safeStyle.innerHTML = `
+      html, body {
+        margin: 0;
+        background: #ffffff !important;
+        color: #111111 !important;
+        font-family: Arial, Helvetica, sans-serif !important;
+      }
+
+      table {
+        border-collapse: collapse;
+      }
+
+      *, *::before, *::after {
+        box-sizing: border-box;
+      }
+    `;
+        doc.head.appendChild(safeStyle);
+
+        const cloned = doc.getElementById("pdf-area");
+        if (!cloned) return;
+
+        cloned.style.backgroundColor = "#ffffff";
+        cloned.style.color = "#111111";
       },
     });
 
