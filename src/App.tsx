@@ -527,7 +527,7 @@ export default function GeradorEstimativaPDF() {
         isEsteiraPreProd: isEsteiraPreProdDay(current, esteiraPreProdRanges),
       });
 
-      
+
       current = addDays(current, 1);
     }
 
@@ -748,24 +748,29 @@ export default function GeradorEstimativaPDF() {
         <Card className="print:hidden">
           <CardContent className="space-y-4 p-5">
             <h1 className="text-xl font-bold">Gerador de estimativa</h1>
-
+            <span className="text-xs font-medium text-zinc-600">Título da estimativa</span>
             <Input value={form.titulo} onChange={(event) => updateForm("titulo", event.target.value)} />
+            <span className="text-xs font-medium text-zinc-600">Arquiteto</span>
             <Input value={form.arquiteto} onChange={(event) => updateForm("arquiteto", event.target.value)} />
+            <span className="text-xs font-medium text-zinc-600">Início</span>
             <Input value={form.inicio} onChange={(event) => updateForm("inicio", event.target.value)} placeholder="Data de início (dd/mm/aaaa)" />
+            <span className="text-xs font-medium text-zinc-600">Release Alvo</span>
             <Input value={form.releaseAlvo || ""} onChange={(event) => updateForm("releaseAlvo", event.target.value)} placeholder="Release alvo (dd/mm/aaaa)" />
 
+            <span className="text-xs font-medium text-zinc-600">Releases do Ano</span>
             <Textarea className="min-h-40" value={form.releases} onChange={(event) => updateForm("releases", event.target.value)} placeholder="Releases, uma por linha" />
+            <span className="text-xs font-medium text-zinc-600">Feriados</span>
             <Textarea className="min-h-56" value={form.feriados} onChange={(event) => updateForm("feriados", event.target.value)} placeholder="Feriados, um por linha. Ex: 01/01/2026 - Nome do feriado" />
+            <span className="text-xs font-medium text-zinc-600">Pontos de atenção</span>
             <Textarea value={form.pontos} onChange={(event) => updateForm("pontos", event.target.value)} placeholder="Pontos de atenção" />
+            <span className="text-xs font-medium text-zinc-600">Premissas</span>
             <Textarea value={form.premissas} onChange={(event) => updateForm("premissas", event.target.value)} placeholder="Premissas" />
+            <span className="text-xs font-medium text-zinc-600">Restrições</span>
             <Textarea value={form.restricoes} onChange={(event) => updateForm("restricoes", event.target.value)} placeholder="Restrições" />
+            <span className="text-xs font-medium text-zinc-600">Dias impactados</span>
             <Textarea className="min-h-32" value={form.diasParados || ""} onChange={(event) => updateForm("diasParados", event.target.value)} placeholder="Dias parados, um por linha. Ex: 10/05/2026 - Aguardando UX" />
-            <Textarea
-              className="min-h-32"
-              value={form.esteiraPreProd || ""}
-              onChange={(event) => updateForm("esteiraPreProd", event.target.value)}
-              placeholder="Esteira Pre Prod, um período por linha. Ex: 10/05/2026 - 15/05/2026"
-            />
+            <span className="text-xs font-medium text-zinc-600">Preriodo de esteria preprod</span>
+            <Textarea className="min-h-32" value={form.esteiraPreProd || ""} onChange={(event) => updateForm("esteiraPreProd", event.target.value)} placeholder="Esteira Pre Prod, um período por linha. Ex: 10/05/2026 - 15/05/2026" />
             <div className="space-y-3">
               <h2 className="font-semibold">Atividades</h2>
               {atividades.map((atividade, index) => (
