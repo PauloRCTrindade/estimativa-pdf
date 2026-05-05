@@ -27,6 +27,8 @@ const COLORS = {
   text: "#111111",
   blocked: "#000000",
   esteiraPreProd: "#f59e0b",
+  chg: "#d400b8",
+  releaseTarget: "#00bcd4",
 };
 
 const RELEASES_2026 = [
@@ -301,6 +303,17 @@ function getWorkingDays(startDate, totalDays, releases, holidays, blockedDays = 
 
   return days;
 }
+function getTimelineBorder(day) {
+  if (day.isChg) {
+    return `3px solid ${COLORS.chg}`;
+  }
+
+  if (day.isEsteiraPreProd) {
+    return `3px solid ${COLORS.esteiraPreProd}`;
+  }
+
+  return pdfStyles.timelineColorCell.border;
+}
 
 function getTimelineColor(activityType) {
   if (activityType === "desenvolvimento") return COLORS.desenvolvimento;
@@ -313,6 +326,28 @@ function getTimelineLabel(activityType, activityName) {
   if (activityType === "desenvolvimento") return "Desenvolvimento";
   return activityName || "";
 }
+function getChgDates(releaseDate, chgDias, holidays) {
+  const total = Number(chgDias || 0);
+  if (!isValidDate(releaseDate) || total <= 0) return [];
+
+  const result = [];
+  let current = addDays(releaseDate, -1);
+  let guard = 0;
+
+  while (result.length < total && guard < 365) {
+    const blocked = isWeekend(current) || isHoliday(current, holidays);
+
+    if (!blocked) {
+      result.push(new Date(current));
+    }
+
+    current = addDays(current, -1);
+    guard += 1;
+  }
+
+  return result;
+}
+
 
 function defaultForm() {
   return {
@@ -322,6 +357,7 @@ function defaultForm() {
     releaseAlvo: "",
     diasParados: "",
     esteiraPreProd: "",
+    chgDias: "",
     releases: RELEASES_2026,
     feriados: FERIADOS_2026,
     pontos: "Necessário massa para testes internos e desenvolvimento\nNecessário UX definido",
@@ -360,6 +396,13 @@ function sanitizeFileName(value) {
 
 function assertHexColor(value, label) {
   console.assert(/^#[0-9a-fA-F]{6}$/.test(value), `${label} deve estar em HEX para evitar erro de oklch no html2canvas`);
+}
+function isSameDay(dateA, dateB) {
+  return (
+    dateA.getDate() === dateB.getDate() &&
+    dateA.getMonth() === dateB.getMonth() &&
+    dateA.getFullYear() === dateB.getFullYear()
+  );
 }
 
 function runSelfTests() {
@@ -492,13 +535,23 @@ export default function GeradorEstimativaPDF() {
 
     const timeline = [];
     let current = startDate;
-    const endDate = validDays[validDays.length - 1];
+    const calculatedEndDate = validDays[validDays.length - 1];
+    const releaseTargetDate = parseDateBR(form.releaseAlvo);
+    const chgDates = getChgDates(releaseTargetDate, form.chgDias, feriados);
+
+    const endDate =
+      isValidDate(releaseTargetDate) && releaseTargetDate > calculatedEndDate
+        ? releaseTargetDate
+        : calculatedEndDate;
 
     while (isValidDate(current) && isValidDate(endDate) && current <= endDate) {
       let tipo = "";
       let color = COLORS.white;
 
-      if (isBlockedDay(current, diasParados)) {
+      if (sameDateBR(current, releaseTargetDate)) {
+        tipo = "Release alvo";
+        color = COLORS.releaseTarget;
+      } else if (isBlockedDay(current, diasParados)) {
         tipo = "Projeto parado";
         color = COLORS.blocked;
       } else if (isWeekend(current)) {
@@ -525,6 +578,7 @@ export default function GeradorEstimativaPDF() {
         tipo,
         color,
         isEsteiraPreProd: isEsteiraPreProdDay(current, esteiraPreProdRanges),
+        isChg: chgDates.some((d) => isSameDay(d, current)),
       });
 
 
@@ -532,7 +586,7 @@ export default function GeradorEstimativaPDF() {
     }
 
     return { validDays, atividadesCalculadas, timeline, endDate };
-  }, [form.inicio, totalDias, releases, feriados, diasParados, esteiraPreProdRanges, atividades]);;
+  }, [form.inicio, form.releaseAlvo, form.chgDias, totalDias, releases, feriados, diasParados, atividades, esteiraPreProdRanges]);
 
   function updateForm(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -754,9 +808,10 @@ export default function GeradorEstimativaPDF() {
             <Input value={form.arquiteto} onChange={(event) => updateForm("arquiteto", event.target.value)} />
             <span className="text-xs font-medium text-zinc-600">Início</span>
             <Input value={form.inicio} onChange={(event) => updateForm("inicio", event.target.value)} placeholder="Data de início (dd/mm/aaaa)" />
-            <span className="text-xs font-medium text-zinc-600">Release Alvo</span>
+            <span className="text-xs font-medium text-zinc-600">Subida em Produção</span>
             <Input value={form.releaseAlvo || ""} onChange={(event) => updateForm("releaseAlvo", event.target.value)} placeholder="Release alvo (dd/mm/aaaa)" />
-
+            <span className="text-xs font-medium text-zinc-600">Dias de trâmite CHG</span>
+            <Input type="number" min="0" value={form.chgDias || ""} onChange={(event) => updateForm("chgDias", event.target.value)} placeholder="Ex: 3" />
             <span className="text-xs font-medium text-zinc-600">Releases do Ano</span>
             <Textarea className="min-h-40" value={form.releases} onChange={(event) => updateForm("releases", event.target.value)} placeholder="Releases, uma por linha" />
             <span className="text-xs font-medium text-zinc-600">Feriados</span>
@@ -901,9 +956,11 @@ export default function GeradorEstimativaPDF() {
                         style={{
                           ...pdfStyles.timelineColorCell,
                           backgroundColor: day.color,
-                          border: day.isEsteiraPreProd
-                            ? `3px solid ${COLORS.esteiraPreProd}`
-                            : pdfStyles.timelineColorCell.border,
+                          border: day.isChg
+                            ? `3px solid ${COLORS.chg}`
+                            : day.isEsteiraPreProd
+                              ? `3px solid ${COLORS.esteiraPreProd}`
+                              : pdfStyles.timelineColorCell.border,
                         }}
                       />
                     ))}
@@ -922,6 +979,8 @@ export default function GeradorEstimativaPDF() {
             <Legend color={COLORS.holiday} label="Feriado" />
             <Legend color={COLORS.blocked} label="Projeto parado" />
             <Legend color={COLORS.esteiraPreProd} label="Esteira Pre Prod" />
+            <Legend color={COLORS.chg} label="Trâmites da CHG" />
+            <Legend color={COLORS.releaseTarget} label="Subida em Produção" />
           </div>
         </div>
       </div>
@@ -947,7 +1006,7 @@ function PdfPreview({ form, totalDias, calculo, timelineRows }) {
           </tr>
           <tr>
             <td style={pdfStyles.infoCell}><b>ESFORCO:</b> {totalDias} dias úteis</td>
-            <td style={pdfStyles.infoCell} colSpan={2}><b>RELEASE ALVO:</b> {form.releaseAlvo || "-"}</td>
+            <td style={pdfStyles.infoCell} colSpan={2}><b>SUBIDA EM PRODUÇÂO:</b> {form.releaseAlvo || "-"}</td>
           </tr>
         </tbody>
       </table>
@@ -999,13 +1058,11 @@ function PdfPreview({ form, totalDias, calculo, timelineRows }) {
                 {row.map((day, index) => (
                   <td
                     key={`color-${rowIndex}-${index}`}
-                    title={day.isEsteiraPreProd ? `${day.tipo} + Esteira Pre Prod` : day.tipo}
+                    title={day.tipo}
                     style={{
                       ...pdfStyles.timelineColorCell,
                       backgroundColor: day.color,
-                      border: day.isEsteiraPreProd
-                        ? `3px solid ${COLORS.esteiraPreProd}`
-                        : pdfStyles.timelineColorCell.border,
+                      border: getTimelineBorder(day),
                     }}
                   />
                 ))}
@@ -1024,6 +1081,8 @@ function PdfPreview({ form, totalDias, calculo, timelineRows }) {
         <Legend color={COLORS.holiday} label="Feriado" />
         <Legend color={COLORS.blocked} label="Projeto Impactado" />
         <Legend color={COLORS.esteiraPreProd} label="Esteira Pre Prod" />
+        <Legend color={COLORS.chg} label="Trâmites da CHG" />
+        <Legend color={COLORS.releaseTarget} label="Subida em Produção" />
       </div>
     </div>
 
