@@ -26,6 +26,7 @@ const COLORS = {
   orange: "#f97316",
   text: "#111111",
   blocked: "#000000",
+  esteiraPreProd: "#f59e0b",
 };
 
 const RELEASES_2026 = [
@@ -258,6 +259,27 @@ function isBlockedDay(date, blockedDays = []) {
     return isValidDate(blockedDate) && sameDateBR(date, blockedDate);
   });
 }
+function parseDateRangeList(value) {
+  return String(value || "")
+    .split("\n")
+    .map((line) => {
+      const matches = line.match(/\d{2}\/\d{2}\/\d{4}/g);
+
+      if (!matches || matches.length === 0) return null;
+
+      const start = parseDateBR(matches[0]);
+      const end = parseDateBR(matches[1] || matches[0]);
+
+      return { start, end };
+    })
+    .filter((range) => range && isValidDate(range.start) && isValidDate(range.end));
+}
+
+function isEsteiraPreProdDay(date, ranges = []) {
+  return ranges.some(({ start, end }) => {
+    return date >= start && date <= end;
+  });
+}
 
 function getWorkingDays(startDate, totalDays, releases, holidays, blockedDays = []) {
   const days = [];
@@ -299,6 +321,7 @@ function defaultForm() {
     inicio: "05/05/2026",
     releaseAlvo: "",
     diasParados: "",
+    esteiraPreProd: "",
     releases: RELEASES_2026,
     feriados: FERIADOS_2026,
     pontos: "Necessário massa para testes internos e desenvolvimento\nNecessário UX definido",
@@ -426,6 +449,10 @@ export default function GeradorEstimativaPDF() {
   const diasParados = useMemo(
     () => normalizeDateList(form.diasParados || ""),
     [form.diasParados]);
+  const esteiraPreProdRanges = useMemo(
+    () => parseDateRangeList(form.esteiraPreProd || ""),
+    [form.esteiraPreProd]
+  );
 
   const totalDias = useMemo(() => {
     const etapas = new Map();
@@ -488,16 +515,24 @@ export default function GeradorEstimativaPDF() {
         const activity = atividadesCalculadas.find((item) => {
           return isValidDate(item.inicio) && isValidDate(item.termino) && current >= item.inicio && current <= item.termino;
         });
+
         tipo = getTimelineLabel(activity?.tipo, activity?.nome);
         color = getTimelineColor(activity?.tipo);
       }
 
-      timeline.push({ date: new Date(current), tipo, color });
+      timeline.push({
+        date: new Date(current),
+        tipo,
+        color,
+        isEsteiraPreProd: isEsteiraPreProdDay(current, esteiraPreProdRanges),
+      });
+
+      
       current = addDays(current, 1);
     }
 
     return { validDays, atividadesCalculadas, timeline, endDate };
-  }, [form.inicio, totalDias, releases, feriados, diasParados, atividades]);
+  }, [form.inicio, totalDias, releases, feriados, diasParados, esteiraPreProdRanges, atividades]);;
 
   function updateForm(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -725,6 +760,12 @@ export default function GeradorEstimativaPDF() {
             <Textarea value={form.premissas} onChange={(event) => updateForm("premissas", event.target.value)} placeholder="Premissas" />
             <Textarea value={form.restricoes} onChange={(event) => updateForm("restricoes", event.target.value)} placeholder="Restrições" />
             <Textarea className="min-h-32" value={form.diasParados || ""} onChange={(event) => updateForm("diasParados", event.target.value)} placeholder="Dias parados, um por linha. Ex: 10/05/2026 - Aguardando UX" />
+            <Textarea
+              className="min-h-32"
+              value={form.esteiraPreProd || ""}
+              onChange={(event) => updateForm("esteiraPreProd", event.target.value)}
+              placeholder="Esteira Pre Prod, um período por linha. Ex: 10/05/2026 - 15/05/2026"
+            />
             <div className="space-y-3">
               <h2 className="font-semibold">Atividades</h2>
               {atividades.map((atividade, index) => (
@@ -851,10 +892,13 @@ export default function GeradorEstimativaPDF() {
                     {row.map((day, index) => (
                       <td
                         key={`cal-color-${rowIndex}-${index}`}
-                        title={day.tipo}
+                        title={day.isEsteiraPreProd ? `${day.tipo} + Esteira Pre Prod` : day.tipo}
                         style={{
                           ...pdfStyles.timelineColorCell,
                           backgroundColor: day.color,
+                          border: day.isEsteiraPreProd
+                            ? `3px solid ${COLORS.esteiraPreProd}`
+                            : pdfStyles.timelineColorCell.border,
                         }}
                       />
                     ))}
@@ -872,6 +916,7 @@ export default function GeradorEstimativaPDF() {
             <Legend color={COLORS.postRelease} label="Tombamento" />
             <Legend color={COLORS.holiday} label="Feriado" />
             <Legend color={COLORS.blocked} label="Projeto parado" />
+            <Legend color={COLORS.esteiraPreProd} label="Esteira Pre Prod" />
           </div>
         </div>
       </div>
@@ -947,7 +992,17 @@ function PdfPreview({ form, totalDias, calculo, timelineRows }) {
               </tr>
               <tr>
                 {row.map((day, index) => (
-                  <td key={`color-${rowIndex}-${index}`} title={day.tipo} style={{ ...pdfStyles.timelineColorCell, backgroundColor: day.color }} />
+                  <td
+                    key={`color-${rowIndex}-${index}`}
+                    title={day.isEsteiraPreProd ? `${day.tipo} + Esteira Pre Prod` : day.tipo}
+                    style={{
+                      ...pdfStyles.timelineColorCell,
+                      backgroundColor: day.color,
+                      border: day.isEsteiraPreProd
+                        ? `3px solid ${COLORS.esteiraPreProd}`
+                        : pdfStyles.timelineColorCell.border,
+                    }}
+                  />
                 ))}
               </tr>
             </tbody>
@@ -963,6 +1018,7 @@ function PdfPreview({ form, totalDias, calculo, timelineRows }) {
         <Legend color={COLORS.postRelease} label="Tombamento" />
         <Legend color={COLORS.holiday} label="Feriado" />
         <Legend color={COLORS.blocked} label="Projeto Impactado" />
+        <Legend color={COLORS.esteiraPreProd} label="Esteira Pre Prod" />
       </div>
     </div>
 
