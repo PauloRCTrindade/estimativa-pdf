@@ -230,5 +230,6 @@ export function defaultForm() {
     pontos: "",
     premissas: "Necessário massa para testes internos e desenvolvimento",
     restricoes: "",
+    observacoes: "",
   };
 }

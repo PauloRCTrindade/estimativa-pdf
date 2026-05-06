@@ -439,6 +439,9 @@ export default function GeradorEstimativaPDF() {
             <Textarea className="min-h-32" value={form.diasParados || ""} onChange={(event) => updateForm("diasParados", event.target.value)} placeholder="Dias parados, um por linha. Ex: 10/05/2026 - Aguardando UX" />
             <span className="text-xs font-medium text-zinc-600">Preriodo de esteria preprod</span>
             <Textarea className="min-h-32" value={form.esteiraPreProd || ""} onChange={(event) => updateForm("esteiraPreProd", event.target.value)} placeholder="Esteira Pre Prod, um período por linha. Ex: 10/05/2026 - 15/05/2026" />
+            <span className="text-xs font-medium text-zinc-600">Observações</span>
+            <Textarea value={form.observacoes} onChange={(event) => updateForm("observacoes", event.target.value)} placeholder="Observações" />
+
             <div className="space-y-3">
               <h2 className="font-semibold">Atividades</h2>
               {atividades.map((atividade, index) => (

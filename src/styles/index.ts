@@ -13,7 +13,7 @@ export const COLORS = {
   mediumGray: "#d4d4d4",
   orange: "#f97316",
   text: "#111111",
-  blocked: "#000000",
+  blocked: "#272525",
   esteiraPreProd: "#f59e0b",
   chg: "#00bcd4",
   releaseTarget: "#00bcd4",

@@ -29,6 +29,7 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
       <Section title="PONTOS DE ATENÇÃO" text={form.pontos} />
       <Section title="PREMISSAS" text={form.premissas} />
       <Section title="RESTRIÇÕES" text={form.restricoes} />
+      <Section title="OBSERVAÇÕES" text={form.observacoes} />
 
       <div style={{ ...pdfStyles.blackBar, marginTop: "16px" }}>ATIVIDADES</div>
       <table style={pdfStyles.table}>
