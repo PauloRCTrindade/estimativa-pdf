@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { COLORS } from './styles'
-import {  HISTORY_KEY, STORAGE_KEY,  } from './data'
+import { HISTORY_KEY, STORAGE_KEY, } from './data'
 import { PdfPreview } from "./components/pdf-preview";
 import {
   addDays,
@@ -32,7 +32,8 @@ import {
   normalizeAtividades,
   runSelfTests,
   sanitizeFileName,
-  defaultForm
+  defaultForm,
+  isReleaseDay
 } from './utils'
 import { TimeLine } from "./components/time-line";
 
@@ -188,6 +189,7 @@ export default function GeradorEstimativaPDF() {
         date: new Date(current),
         tipo,
         color,
+        isReleaseDay: isReleaseDay(current, releases),
         isEsteiraPreProd: isEsteiraPreProdDay(current, esteiraPreProdRanges),
         isChg: chgDates.some((d) => isSameDay(d, current)),
       });

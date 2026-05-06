@@ -1,9 +1,9 @@
 import { Section } from '../section'
 import { Legend } from '../legend'
 import { pdfStyles } from '../../styles'
-import { formatBR,getTimelineBorder, } from '../../utils'
+import { formatBR, getTimelineBorder, } from '../../utils'
 import { weekLabels } from '../../data'
-import {COLORS} from '../../styles'
+import { COLORS } from '../../styles'
 export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
   return (
     <div id="pdf-area" style={pdfStyles.page}>
@@ -61,12 +61,24 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
             <tbody>
               <tr>
                 {row.map((day, index) => (
-                  <td key={`week-${rowIndex}-${index}`} style={pdfStyles.timelineCell}>{weekLabels[day.date.getDay()]}</td>
+                  <td key={`week-${rowIndex}-${index}`} style={{
+                    ...pdfStyles.timelineCell,
+                    backgroundColor: day.isReleaseDay ? COLORS.releaseDay : COLORS.white,
+                    color: day.isReleaseDay ? COLORS.white : pdfStyles.timelineCell.color,
+                    fontWeight: day.isReleaseDay ? 700 : pdfStyles.timelineCell.fontWeight,
+                  }}>{weekLabels[day.date.getDay()]}</td>
                 ))}
               </tr>
               <tr>
                 {row.map((day, index) => (
-                  <td key={`day-${rowIndex}-${index}`} style={pdfStyles.timelineWeekCell}>{String(day.date.getDate()).padStart(2, "0")}</td>
+                  <td key={`day-${rowIndex}-${index}`} style={{
+                    ...pdfStyles.timelineWeekCell,
+                    backgroundColor: day.isReleaseDay ? COLORS.releaseDay : COLORS.white,
+                    color: day.isReleaseDay ? COLORS.white : pdfStyles.timelineWeekCell.color,
+                    fontWeight: day.isReleaseDay ? 700 : pdfStyles.timelineWeekCell.fontWeight,
+                  }}>
+                    {String(day.date.getDate()).padStart(2, "0")}
+                  </td>
                 ))}
               </tr>
               <tr>
@@ -97,7 +109,7 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
         <Legend color={COLORS.blocked} label="Projeto Impactado" />
         <Legend color={COLORS.esteiraPreProd} label="Esteira Pre Prod" type="border" />
         <Legend color={COLORS.chg} label="Trâmite CHG" type="border" />
-        <Legend color={COLORS.releaseTarget} label="Subida em Produção" />
+        <Legend color={COLORS.releaseDay} label="Domingo da release" />
       </div>
     </div>
 

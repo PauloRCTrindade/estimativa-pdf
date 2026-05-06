@@ -2,7 +2,7 @@ import { Legend } from '../legend'
 import { pdfStyles } from '../../styles'
 import { weekLabels } from '../../data'
 import { COLORS } from '../../styles'
-export function TimeLine({ form,timelineRows }) {
+export function TimeLine({ form, timelineRows }) {
   return (
     <div
       id="calendar-area"
@@ -29,14 +29,24 @@ export function TimeLine({ form,timelineRows }) {
             <tbody>
               <tr>
                 {row.map((day, index) => (
-                  <td key={`cal-week-${rowIndex}-${index}`} style={pdfStyles.timelineCell}>
+                  <td key={`cal-week-${rowIndex}-${index}`} style={{
+                    ...pdfStyles.timelineCell,
+                    backgroundColor: day.isReleaseDay ? COLORS.releaseDay : COLORS.white,
+                    color: day.isReleaseDay ? COLORS.white : pdfStyles.timelineCell.color,
+                    fontWeight: day.isReleaseDay ? 700 : pdfStyles.timelineCell.fontWeight,
+                  }}>
                     {weekLabels[day.date.getDay()]}
                   </td>
                 ))}
               </tr>
               <tr>
                 {row.map((day, index) => (
-                  <td key={`cal-day-${rowIndex}-${index}`} style={pdfStyles.timelineWeekCell}>
+                  <td key={`cal-day-${rowIndex}-${index}`} style={{
+                    ...pdfStyles.timelineWeekCell,
+                    backgroundColor: day.isReleaseDay ? COLORS.releaseDay : COLORS.white,
+                    color: day.isReleaseDay ? COLORS.white : pdfStyles.timelineWeekCell.color,
+                    fontWeight: day.isReleaseDay ? 700 : pdfStyles.timelineWeekCell.fontWeight,
+                  }}>
                     {String(day.date.getDate()).padStart(2, "0")}
                   </td>
                 ))}
@@ -74,6 +84,7 @@ export function TimeLine({ form,timelineRows }) {
         <Legend color={COLORS.esteiraPreProd} label="Esteira Pre Prod" type="border" />
         <Legend color={COLORS.chg} label="Trâmite CHG" type="border" />
         <Legend color={COLORS.releaseTarget} label="Subida em Produção" />
+        <Legend color={COLORS.releaseDay} label="Domingo da release" />
       </div>
     </div>
 

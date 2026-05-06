@@ -68,6 +68,12 @@ export function isHoliday(date, holidays) {
     return isValidDate(holidayDate) && sameDateBR(date, holidayDate);
   });
 }
+export function isReleaseDay(date, releases = []) {
+  return releases.some((release) => {
+    const releaseDate = parseDateBR(release);
+    return isValidDate(releaseDate) && isSameDay(date, releaseDate);
+  });
+}
 export function isBlockedDay(date, blockedDays = []) {
   return blockedDays.some((blockedDay) => {
     const blockedDate = parseDateBR(blockedDay);

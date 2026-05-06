@@ -5,7 +5,7 @@ export const COLORS = {
   subida: "#8e44ad",
   testes: "#4a90e2",
   weekend: "#bdbdbd",
-  postRelease: "#ff6b6b",
+  postRelease: "#943333",
   holiday: "#d32f2f",
   black: "#000000",
   white: "#ffffff",
@@ -17,6 +17,7 @@ export const COLORS = {
   esteiraPreProd: "#f59e0b",
   chg: "#00bcd4",
   releaseTarget: "#00bcd4",
+  releaseDay: "#2f4292",
 };
 export const pdfStyles: PdfStyles = {
   page: {
