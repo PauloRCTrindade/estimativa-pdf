@@ -159,10 +159,10 @@ export function getChgDates(releaseDate, chgDias, holidays) {
 
 export function defaultAtividades() {
   return [
-    { id: "front-default", nome: "Desenvolvimento Front-end", dias: 8, tipo: "desenvolvimento", etapa: "1" },
-    { id: "micro-default", nome: "Desenvolvimento Microserviço", dias: 8, tipo: "desenvolvimento", etapa: "1" },
-    { id: "subida-default", nome: "Subida dos repositórios em pre prod", dias: 3, tipo: "subida", etapa: "2" },
-    { id: "testes-default", nome: "Testes internos", dias: 3, tipo: "testes", etapa: "3" },
+    { id: "front-default", nome: "Desenvolvimento Front-end", dias: 1, tipo: "desenvolvimento", etapa: "1" },
+    { id: "micro-default", nome: "Desenvolvimento Microserviço", dias: 1, tipo: "desenvolvimento", etapa: "1" },
+    { id: "subida-default", nome: "Subida dos repositórios em pre prod", dias: 1, tipo: "subida", etapa: "2" },
+    { id: "testes-default", nome: "Testes internos", dias: 1, tipo: "testes", etapa: "3" },
   ];
 }
 
@@ -212,23 +212,23 @@ export function runSelfTests() {
 
   Object.entries(COLORS).forEach(([key, value]) => assertHexColor(value, key));
 
-  const workingDays = getWorkingDays(parseDateBR("05/05/2026"), 8, releases, holidays);
+  const workingDays = getWorkingDays(parseDateBR(""), 1, releases, holidays);
   console.assert(formatBR(workingDays[0]) === "05/05/2026", "Primeiro dia útil deve ser 05/05/2026");
   console.assert(formatBR(workingDays[7]) === "14/05/2026", "Oitavo dia útil deve ser 14/05/2026");
 }
 export function defaultForm() {
   return {
-    titulo: "PTI-5598 - Teste Estimativa",
+    titulo: "PTI-",
     arquiteto: "Paulo Roberto Celestino Trindade",
-    inicio: "05/05/2026",
+    inicio: "",
     releaseAlvo: "",
     diasParados: "",
     esteiraPreProd: "",
     chgDias: "",
     releases: releasesYear,
     feriados: holydaysYear,
-    pontos: "Necessário massa para testes internos e desenvolvimento\nNecessário UX definido",
-    premissas: "Atividades consideradas sequenciais para este teste\nFinal de semana, feriado e tombamento não contabilizam como desenvolvimento",
-    restricoes: "Não foram informados feriados municipais/estaduais para este teste",
+    pontos: "",
+    premissas: "Necessário massa para testes internos e desenvolvimento",
+    restricoes: "",
   };
 }
