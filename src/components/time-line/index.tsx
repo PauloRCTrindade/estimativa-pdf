@@ -86,6 +86,21 @@ export function TimeLine({ form, timelineRows }) {
         <Legend color={COLORS.releaseTarget} label="Subida em Produção" />
         <Legend color={COLORS.releaseDay} label="Domingo da release" />
       </div>
+      {form.observacoes && (
+        <div style={{ marginTop: "20px" }}>
+          <div style={pdfStyles.blackBar}>OBSERVAÇÕES</div>
+          <div style={pdfStyles.sectionContent}>
+            {String(form.observacoes)
+              .split("\n")
+              .filter(Boolean)
+              .map((line, index) => (
+                <div key={`obs-calendar-${index}`} style={pdfStyles.sectionLine}>
+                  {line}
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
     </div>
 
   );

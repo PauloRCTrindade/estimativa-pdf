@@ -29,7 +29,6 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
       <Section title="PONTOS DE ATENÇÃO" text={form.pontos} />
       <Section title="PREMISSAS" text={form.premissas} />
       <Section title="RESTRIÇÕES" text={form.restricoes} />
-      <Section title="OBSERVAÇÕES" text={form.observacoes} />
 
       <div style={{ ...pdfStyles.blackBar, marginTop: "16px" }}>ATIVIDADES</div>
       <table style={pdfStyles.table}>
@@ -100,6 +99,7 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
         ))}
       </div>
 
+
       <div style={pdfStyles.legendWrapper}>
         <Legend color={COLORS.desenvolvimento} label="Desenvolvimento" />
         <Legend color={COLORS.subida} label="Subida em Pre Prod" />
@@ -112,6 +112,21 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
         <Legend color={COLORS.chg} label="Trâmite CHG" type="border" />
         <Legend color={COLORS.releaseDay} label="Domingo da release" />
       </div>
+      {form.observacoes && (
+        <div style={{ marginTop: "20px" }}>
+          <div style={pdfStyles.blackBar}>OBSERVAÇÕES</div>
+          <div style={pdfStyles.sectionContent}>
+            {String(form.observacoes)
+              .split("\n")
+              .filter(Boolean)
+              .map((line, index) => (
+                <div key={`obs-calendar-${index}`} style={pdfStyles.sectionLine}>
+                  {line}
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
     </div>
 
   );
