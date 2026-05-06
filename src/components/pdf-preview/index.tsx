@@ -16,19 +16,19 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
         <tbody>
           <tr>
             <td style={pdfStyles.infoCell}><b>ARQUITETO:</b> {form.arquiteto}</td>
-            <td style={pdfStyles.infoCell}><b>INICIO:</b> {form.inicio}</td>
-            <td style={pdfStyles.infoCell}><b>TERMINO:</b> {formatBR(calculo.endDate)}</td>
+            <td style={pdfStyles.infoCell}><b>INÍCIO:</b> {form.inicio}</td>
+            <td style={pdfStyles.infoCell}><b>TÉRMINO:</b> {formatBR(calculo.endDate)}</td>
           </tr>
           <tr>
-            <td style={pdfStyles.infoCell}><b>ESFORCO:</b> {totalDias} dias úteis</td>
-            <td style={pdfStyles.infoCell} colSpan={2}><b>SUBIDA EM PRODUÇÂO:</b> {form.releaseAlvo || "-"}</td>
+            <td style={pdfStyles.infoCell}><b>ESFORÇO:</b> {totalDias} dias úteis</td>
+            <td style={pdfStyles.infoCell} colSpan={2}><b>SUBIDA EM PRODUÇÃO:</b> {form.releaseAlvo || "-"}</td>
           </tr>
         </tbody>
       </table>
 
-      <Section title="PONTOS DE ATENCAO" text={form.pontos} />
+      <Section title="PONTOS DE ATENÇÃO" text={form.pontos} />
       <Section title="PREMISSAS" text={form.premissas} />
-      <Section title="RESTRICOES" text={form.restricoes} />
+      <Section title="RESTRIÇÕES" text={form.restricoes} />
 
       <div style={{ ...pdfStyles.blackBar, marginTop: "16px" }}>ATIVIDADES</div>
       <table style={pdfStyles.table}>
