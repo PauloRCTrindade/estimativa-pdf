@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Settings } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { COLORS } from './styles';
@@ -54,6 +56,7 @@ export default function GeradorEstimativaPDF() {
   const [atividades, setAtividades] = useState(defaultAtividades);
   const [status, setStatus] = useState("");
   const [historico, setHistorico] = useState<Estimativa[]>([]);
+  const [openSettings, setOpenSettings] = useState(false);
   
   function salvarEstimativa() {
     const novaEstimativa: Estimativa = {
@@ -429,6 +432,14 @@ export default function GeradorEstimativaPDF() {
           <CardContent className="space-y-4 p-5">
             <div className="flex items-center justify-between gap-2">
               <h1 className="text-xl font-bold">Gerador de estimativa</h1>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setOpenSettings(true)}
+                className="h-8 w-8 p-0"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
             </div>
             
             {/* Informações da Estimativa - Sempre visível */}
@@ -459,23 +470,6 @@ export default function GeradorEstimativaPDF() {
             {/* Accordion Sections */}
             <Accordion type="single" collapsible className="w-full space-y-2">
               
-              {/* Releases e Feriados */}
-              <div className="border rounded-lg overflow-hidden">
-                <AccordionItem value="releases-holidays" className="border-0">
-                  <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">⚙️ Releases e Feriados</AccordionTrigger>
-                  <AccordionContent className="space-y-4 pt-4 px-4 pb-4 border-t">
-                    <div>
-                      <span className="text-xs font-medium text-zinc-600">Releases do Ano</span>
-                      <Textarea className="min-h-40 mt-2" value={form.releases} onChange={(event) => updateForm("releases", event.target.value)} placeholder="Releases, uma por linha" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-medium text-zinc-600">Feriados</span>
-                      <Textarea className="min-h-56 mt-2" value={form.feriados} onChange={(event) => updateForm("feriados", event.target.value)} placeholder="Feriados, um por linha. Ex: 01/01/2026 - Nome do feriado" />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </div>
-
               {/* Períodos Bloqueados */}
               <div className="border rounded-lg overflow-hidden">
                 <AccordionItem value="blocked-periods" className="border-0">
@@ -615,6 +609,24 @@ export default function GeradorEstimativaPDF() {
         />
 
       </div>
+
+      <Dialog open={openSettings} onOpenChange={setOpenSettings}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>⚙️ Releases e Feriados</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div>
+              <span className="text-xs font-medium text-zinc-600">Releases do Ano</span>
+              <Textarea className="min-h-40 mt-2" value={form.releases} onChange={(event) => updateForm("releases", event.target.value)} placeholder="Releases, uma por linha" />
+            </div>
+            <div>
+              <span className="text-xs font-medium text-zinc-600">Feriados</span>
+              <Textarea className="min-h-56 mt-2" value={form.feriados} onChange={(event) => updateForm("feriados", event.target.value)} placeholder="Feriados, um por linha. Ex: 01/01/2026 - Nome do feriado" />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
