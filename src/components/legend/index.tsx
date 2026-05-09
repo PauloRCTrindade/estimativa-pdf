@@ -8,15 +8,32 @@ interface LegendProps {
 
 export function Legend({ color, label, type = "fill" }: LegendProps) {
   return (
-    <div className="flex items-center gap-2">
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+      }}
+    >
       <div
-        className="w-4 h-4 rounded"
         style={{
+          width: "16px",
+          height: "16px",
+          borderRadius: "4px",
           backgroundColor: type === "fill" ? color : "transparent",
           border: `3px solid ${color}`,
+          boxSizing: "border-box",
+          flexShrink: 0,
         }}
       />
-      <span className="text-sm">{label}</span>
+      <span
+        style={{
+          fontSize: "14px",
+          fontFamily: "Arial, Helvetica, sans-serif",
+        }}
+      >
+        {label}
+      </span>
     </div>
   );
 }
