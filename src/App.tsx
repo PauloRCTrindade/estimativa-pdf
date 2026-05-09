@@ -486,9 +486,52 @@ export default function GeradorEstimativaPDF() {
     }
   }
 
+  const releaseTargetDate = parseDateBR(form.releaseAlvo);
+  
+  // Filtrar timeline para manter apenas dias até a release
+  let filteredTimeline = calculo.timeline;
+  if (isValidDate(releaseTargetDate)) {
+    filteredTimeline = calculo.timeline.filter(day => day.date <= releaseTargetDate);
+  }
+
+  // Calcular o número de blocos necessários e o tamanho de cada bloco
+  const daysCount = filteredTimeline.length;
+  const baseBlockSize = 15;
+  const numBlocks = Math.ceil(daysCount / baseBlockSize);
+  
+  // Distribuir os dias uniformemente entre os blocos
+  const daysPerBlock = Math.ceil(daysCount / numBlocks);
+  
+  // Criar os blocos com tamanho distribuído uniformemente
   const timelineRows = [];
-  for (let i = 0; i < calculo.timeline.length; i += 18) {
-    timelineRows.push(calculo.timeline.slice(i, i + 18));
+  for (let i = 0; i < numBlocks; i++) {
+    const startIdx = i * daysPerBlock;
+    const endIdx = Math.min(startIdx + daysPerBlock, daysCount);
+    const row = filteredTimeline.slice(startIdx, endIdx);
+    
+    if (row.length > 0) {
+      // Verificar se há pelo menos uma atividade (tipo não vazio ou cor diferente de branco)
+      const hasActivity = row.some(day => day.tipo !== "" || day.color !== COLORS.white);
+      
+      if (hasActivity && row.length < daysPerBlock) {
+        // Preencher com dias vazios até atingir daysPerBlock
+        let currentDate = new Date(row[row.length - 1].date);
+        for (let j = row.length; j < daysPerBlock; j++) {
+          currentDate.setDate(currentDate.getDate() + 1);
+          
+          row.push({
+            date: new Date(currentDate),
+            tipo: "",
+            color: COLORS.white,
+            isReleaseDay: false,
+            isEsteiraPreProd: false,
+            isChg: false,
+          });
+        }
+      }
+      
+      timelineRows.push(row);
+    }
   }
 
   return (

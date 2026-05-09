@@ -407,9 +407,19 @@ export default function GeradorEstimativaPDF() {
     }
   }
 
+  const releaseTargetDate = parseDateBR(form.releaseAlvo);
   const timelineRows = [];
-  for (let i = 0; i < calculo.timeline.length; i += 18) {
-    timelineRows.push(calculo.timeline.slice(i, i + 18));
+  for (let i = 0; i < calculo.timeline.length; i += 15) {
+    const row = calculo.timeline.slice(i, i + 15);
+    // Verificar se o primeiro dia do bloco é anterior ou igual à data da subida em produção
+    if (row.length > 0 && isValidDate(releaseTargetDate)) {
+      if (row[0].date <= releaseTargetDate) {
+        timelineRows.push(row);
+      }
+    } else if (row.length > 0) {
+      // Se não há data de release, mostrar todos os blocos
+      timelineRows.push(row);
+    }
   }
 
   return (
