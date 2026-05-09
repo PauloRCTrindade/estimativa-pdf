@@ -35,7 +35,7 @@ export function TimeLine({ form, timelineRows }) {
           return (
             <div key={`row-${rowIndex}`} style={{ marginBottom: "16px" }}>
               {/* Month header */}
-              <div style={{ display: "flex", gap: "2px", marginBottom: "6px" }}>
+              <div style={{ display: "flex", gap: "2px", marginBottom: "8px" }}>
                 {row.map((day, index) => {
                   const isFirstOfMonth = index === 0 || row[index - 1].date.getMonth() !== day.date.getMonth();
                   const monthName = day.date.toLocaleString('pt-BR', { month: 'short' }).toUpperCase();
@@ -44,10 +44,10 @@ export function TimeLine({ form, timelineRows }) {
                     <div
                       key={`month-${rowIndex}-${index}`}
                       style={{
-                        width: "32px",
-                        height: "18px",
+                        width: "56px",
+                        height: "24px",
                         textAlign: "center",
-                        fontSize: "8px",
+                        fontSize: "10px",
                         fontWeight: 700,
                         color: "#666",
                         paddingTop: "2px",

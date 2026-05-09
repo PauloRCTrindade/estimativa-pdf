@@ -67,7 +67,7 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
           return (
             <div key={`row-${rowIndex}`}>
               {/* Month header */}
-              <div style={{ display: "flex", gap: "2px", marginBottom: "4px" }}>
+              <div style={{ display: "flex", gap: "2px", marginBottom: "6px" }}>
                 {row.map((day, index) => {
                   const isFirstOfMonth = index === 0 || row[index - 1].date.getMonth() !== day.date.getMonth();
                   const monthName = day.date.toLocaleString('pt-BR', { month: 'short' }).toUpperCase();
@@ -76,10 +76,10 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
                     <div
                       key={`month-${rowIndex}-${index}`}
                       style={{
-                        width: "40px",
-                        height: "20px",
+                        width: "56px",
+                        height: "24px",
                         textAlign: "center",
-                        fontSize: "9px",
+                        fontSize: "10px",
                         fontWeight: 700,
                         color: "#666",
                         paddingTop: "2px",
