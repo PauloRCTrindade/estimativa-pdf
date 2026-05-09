@@ -1,22 +1,4 @@
-type Estimativa = {
-  id?: string;
-  titulo: string;
-  arquiteto: string;
-  inicio: string;
-  releaseAlvo: string;
-  feriados: string;
-  releases: string;
-  premissas: string;
-  restricoes: string;
-  observacoes: string;
-  atividades: Array<any>;
-  pontos?: string;
-  chgDias?: number;
-  esteiraPreProd?: string;
-  diasParados?: string;
-  criadoEm?: string;
-  atualizadoEm?: string;
-};
+import type { Estimativa } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 

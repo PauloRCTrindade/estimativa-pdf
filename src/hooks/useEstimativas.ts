@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import type { Estimativa } from '../types';
 import {
   listarEstimativas,
   obterEstimativa,
@@ -6,15 +7,6 @@ import {
   atualizarEstimativa,
   deletarEstimativa,
 } from '../services/api';
-
-type Estimativa = {
-  id?: string;
-  titulo: string;
-  arquiteto: string;
-  inicio: string;
-  releaseAlvo: string;
-  [key: string]: any;
-};
 
 export function useEstimativas() {
   const [estimativas, setEstimativas] = useState<Estimativa[]>([]);
