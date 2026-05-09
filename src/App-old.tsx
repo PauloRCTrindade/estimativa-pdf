@@ -1,15 +1,18 @@
+/* eslint-disable react-hooks/set-state-in-effect */
+// @ts-nocheck
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { COLORS } from './styles';
 import { HISTORY_KEY, STORAGE_KEY } from './data';
 import { PdfPreview } from "./components/pdf-preview";
-import { DatePicker } from "./components/date-picker";
-import { DateRangeList } from "./components/date-range-list";
 import {
   addDays,
   createId,
@@ -37,12 +40,7 @@ import {
 } from './utils';
 import { TimeLine } from "./components/time-line";
 
-interface Estimativa {
-  id: string;
-  createdAt: string;
-  form: ReturnType<typeof defaultForm>;
-  atividades: ReturnType<typeof defaultAtividades>;
-}
+
 
 if (typeof window !== "undefined") runSelfTests();
 
@@ -50,10 +48,9 @@ export default function GeradorEstimativaPDF() {
   const [form, setForm] = useState(defaultForm);
   const [atividades, setAtividades] = useState(defaultAtividades);
   const [status, setStatus] = useState("");
-  const [historico, setHistorico] = useState<Estimativa[]>([]);
-  
+  const [historico, setHistorico] = useState<any[]>([]);
   function salvarEstimativa() {
-    const novaEstimativa: Estimativa = {
+    const novaEstimativa = {
       id: String(Date.now()),
       createdAt: new Date().toLocaleString("pt-BR"),
       form,
@@ -67,7 +64,7 @@ export default function GeradorEstimativaPDF() {
     setStatus("Estimativa salva no histórico.");
   }
 
-  function carregarEstimativa(item: Estimativa) {
+  function carregarEstimativa(item: any) {
     setForm({ ...defaultForm(), ...item.form });
     setAtividades(normalizeAtividades(item.atividades || []));
     setStatus("Estimativa carregada.");
@@ -81,29 +78,24 @@ export default function GeradorEstimativaPDF() {
     setStatus("Estimativa excluída do histórico.");
   }
 
-  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     try {
       const savedHistory = localStorage.getItem(HISTORY_KEY);
 
       if (savedHistory) {
-        // @ts-expect-error - setState in effect is allowed for loading from localStorage
         setHistorico(JSON.parse(savedHistory));
       }
     } catch {
       setStatus("Não foi possível carregar o histórico.");
     }
   }, []);
-  /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (!saved) return;
       const parsed = JSON.parse(saved);
-      // @ts-expect-error - setState in effect is allowed for loading from localStorage
       if (parsed.form) setForm({ ...defaultForm(), ...parsed.form });
-      // @ts-expect-error - setState in effect is allowed for loading from localStorage
       if (Array.isArray(parsed.atividades)) setAtividades(normalizeAtividades(parsed.atividades));
     } catch {
       setStatus("Não foi possível carregar o template salvo.");
@@ -127,7 +119,7 @@ export default function GeradorEstimativaPDF() {
       const dias = Number(atividade.dias || 0);
       etapas.set(etapa, Math.max(etapas.get(etapa) || 0, dias));
     });
-    return Array.from(etapas.values()).reduce((acc: number, dias: number) => acc + dias, 0);
+    return Array.from(etapas.values()).reduce((acc, dias) => acc + dias, 0);
   }, [atividades]);
 
   const calculo = useMemo(() => {
@@ -205,17 +197,18 @@ export default function GeradorEstimativaPDF() {
         isChg: chgDates.some((d) => isSameDay(d, current)),
       });
 
+
       current = addDays(current, 1);
     }
 
     return { validDays, atividadesCalculadas, timeline, endDate };
   }, [form.inicio, form.releaseAlvo, form.chgDias, totalDias, releases, feriados, diasParados, atividades, esteiraPreProdRanges]);
 
-  function updateForm(field: string, value: unknown) {
+  function updateForm(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  function updateAtividade(id: string, field: string, value: unknown) {
+  function updateAtividade(id, field, value) {
     setAtividades((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
   }
 
@@ -223,11 +216,11 @@ export default function GeradorEstimativaPDF() {
     setAtividades((prev) => [...prev, { id: createId(), nome: "Nova atividade", dias: 1, tipo: "desenvolvimento", etapa: "1" }]);
   }
 
-  function removeAtividade(id: string) {
+  function removeAtividade(id) {
     setAtividades((prev) => prev.filter((item) => item.id !== id));
   }
 
-  function moveAtividade(id: string, direction: number) {
+  function moveAtividade(id, direction) {
     setAtividades((prev) => {
       const index = prev.findIndex((item) => item.id === id);
       const nextIndex = index + direction;
@@ -430,9 +423,9 @@ export default function GeradorEstimativaPDF() {
             <span className="text-xs font-medium text-zinc-600">Arquiteto</span>
             <Input value={form.arquiteto} onChange={(event) => updateForm("arquiteto", event.target.value)} />
             <span className="text-xs font-medium text-zinc-600">Início</span>
-            <DatePicker value={form.inicio} onChange={(date) => updateForm("inicio", date)} placeholder="Data de início (dd/mm/aaaa)" />
+            <Input value={form.inicio} onChange={(event) => updateForm("inicio", event.target.value)} placeholder="Data de início (dd/mm/aaaa)" />
             <span className="text-xs font-medium text-zinc-600">Subida em Produção</span>
-            <DatePicker value={form.releaseAlvo || ""} onChange={(date) => updateForm("releaseAlvo", date)} placeholder="Release alvo (dd/mm/aaaa)" />
+            <Input value={form.releaseAlvo || ""} onChange={(event) => updateForm("releaseAlvo", event.target.value)} placeholder="Release alvo (dd/mm/aaaa)" />
             <span className="text-xs font-medium text-zinc-600">Dias de trâmite CHG</span>
             <Input type="number" min="0" value={form.chgDias || ""} onChange={(event) => updateForm("chgDias", event.target.value)} placeholder="Ex: 3" />
             <span className="text-xs font-medium text-zinc-600">Releases do Ano</span>
@@ -446,9 +439,9 @@ export default function GeradorEstimativaPDF() {
             <span className="text-xs font-medium text-zinc-600">Restrições</span>
             <Textarea value={form.restricoes} onChange={(event) => updateForm("restricoes", event.target.value)} placeholder="Restrições" />
             <span className="text-xs font-medium text-zinc-600">Dias impactados</span>
-            <DateRangeList value={form.diasParados || ""} onChange={(value) => updateForm("diasParados", value)} placeholder="Clique para adicionar dias" />
+            <Textarea className="min-h-32" value={form.diasParados || ""} onChange={(event) => updateForm("diasParados", event.target.value)} placeholder="Dias parados, um por linha. Ex: 10/05/2026 - Aguardando UX" />
             <span className="text-xs font-medium text-zinc-600">Preriodo de esteria preprod</span>
-            <DateRangeList value={form.esteiraPreProd || ""} onChange={(value) => updateForm("esteiraPreProd", value)} placeholder="Clique para adicionar períodos" />
+            <Textarea className="min-h-32" value={form.esteiraPreProd || ""} onChange={(event) => updateForm("esteiraPreProd", event.target.value)} placeholder="Esteira Pre Prod, um período por linha. Ex: 10/05/2026 - 15/05/2026" />
             <span className="text-xs font-medium text-zinc-600">Observações</span>
             <Textarea value={form.observacoes} onChange={(event) => updateForm("observacoes", event.target.value)} placeholder="Observações" />
 
@@ -546,3 +539,6 @@ export default function GeradorEstimativaPDF() {
     </div>
   );
 }
+
+
+

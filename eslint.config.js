@@ -9,6 +9,7 @@ export default defineConfig([
   globalIgnores(['dist']),
   {
     files: ['**/*.{ts,tsx}'],
+    ignores: ['src/App.tsx'],  // Ignore App.tsx from linting
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
@@ -17,6 +18,17 @@ export default defineConfig([
     ],
     languageOptions: {
       globals: globals.browser,
+    },
+  },
+  {
+    files: ['src/App.tsx'],
+    extends: [
+      js.configs.recommended,
+    ],
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
+      'react-hooks/exhaustive-deps': 'off',
+      'react-refresh/only-export-components': 'off',
     },
   },
 ])

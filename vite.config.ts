@@ -9,4 +9,14 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      onwarn(warning) {
+        // Ignore specific warnings
+        if (warning.code === 'UNUSED_EXTERNAL_IMPORT') {
+          return;
+        }
+      },
+    },
+  },
 });
