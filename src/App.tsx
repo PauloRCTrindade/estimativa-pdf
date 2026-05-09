@@ -9,7 +9,7 @@ import { Settings, FileText, Clock } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { COLORS } from './styles';
-import { HISTORY_KEY, STORAGE_KEY } from './data';
+import { HISTORY_KEY, STORAGE_KEY, holydaysYear } from './data';
 import { PdfPreview } from "./components/pdf-preview";
 import { DatePicker } from "./components/date-picker";
 import { DateRangeList } from "./components/date-range-list";
@@ -290,6 +290,11 @@ export default function GeradorEstimativaPDF() {
     setForm(defaultForm());
     setAtividades(defaultAtividades());
     setStatus("Template padrão restaurado.");
+  }
+
+  function buscarFeriadosDoAno() {
+    updateForm("feriados", holydaysYear);
+    setStatus("Feriados do ano carregados com sucesso!");
   }
 
   async function criarPDF() {
@@ -664,7 +669,17 @@ export default function GeradorEstimativaPDF() {
               <Textarea className="min-h-40 mt-2" value={form.releases} onChange={(event) => updateForm("releases", event.target.value)} placeholder="Releases, uma por linha" />
             </div>
             <div>
-              <span className="text-xs font-medium text-zinc-600">Feriados</span>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-zinc-600">Feriados</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={buscarFeriadosDoAno}
+                  className="h-7 px-2 text-xs"
+                >
+                  📅 Carregar Feriados
+                </Button>
+              </div>
               <Textarea className="min-h-56 mt-2" value={form.feriados} onChange={(event) => updateForm("feriados", event.target.value)} placeholder="Feriados, um por linha. Ex: 01/01/2026 - Nome do feriado" />
             </div>
           </div>
