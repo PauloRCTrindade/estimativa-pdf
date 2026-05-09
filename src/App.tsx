@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { COLORS } from './styles';
@@ -437,10 +438,23 @@ export default function GeradorEstimativaPDF() {
             <DatePicker value={form.releaseAlvo || ""} onChange={(date) => updateForm("releaseAlvo", date)} placeholder="Release alvo (dd/mm/aaaa)" />
             <span className="text-xs font-medium text-zinc-600">Dias de trâmite CHG</span>
             <Input type="number" min="0" value={form.chgDias || ""} onChange={(event) => updateForm("chgDias", event.target.value)} placeholder="Ex: 3" />
-            <span className="text-xs font-medium text-zinc-600">Releases do Ano</span>
-            <Textarea className="min-h-40" value={form.releases} onChange={(event) => updateForm("releases", event.target.value)} placeholder="Releases, uma por linha" />
-            <span className="text-xs font-medium text-zinc-600">Feriados</span>
-            <Textarea className="min-h-56" value={form.feriados} onChange={(event) => updateForm("feriados", event.target.value)} placeholder="Feriados, um por linha. Ex: 01/01/2026 - Nome do feriado" />
+            
+            <Accordion type="single" collapsible className="border rounded-lg">
+              <AccordionItem value="releases-holidays">
+                <AccordionTrigger>📅 Releases e Feriados</AccordionTrigger>
+                <AccordionContent className="space-y-4 pt-2">
+                  <div>
+                    <span className="text-xs font-medium text-zinc-600">Releases do Ano</span>
+                    <Textarea className="min-h-40" value={form.releases} onChange={(event) => updateForm("releases", event.target.value)} placeholder="Releases, uma por linha" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-zinc-600">Feriados</span>
+                    <Textarea className="min-h-56" value={form.feriados} onChange={(event) => updateForm("feriados", event.target.value)} placeholder="Feriados, um por linha. Ex: 01/01/2026 - Nome do feriado" />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+            
             <span className="text-xs font-medium text-zinc-600">Pontos de atenção</span>
             <Textarea value={form.pontos} onChange={(event) => updateForm("pontos", event.target.value)} placeholder="Pontos de atenção" />
             <span className="text-xs font-medium text-zinc-600">Premissas</span>
