@@ -33,9 +33,9 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
         </tbody>
       </table>
 
-      <Section title="PONTOS DE ATENÇÃO" text={form.pontos} />
-      <Section title="PREMISSAS" text={form.premissas} />
-      <Section title="RESTRIÇÕES" text={form.restricoes} />
+      {form.pontos && <Section title="PONTOS DE ATENÇÃO" text={form.pontos} />}
+      {form.premissas && <Section title="PREMISSAS" text={form.premissas} />}
+      {form.restricoes && <Section title="RESTRIÇÕES" text={form.restricoes} />}
 
       <div style={{ ...pdfStyles.blackBar, marginTop: "16px" }}>ATIVIDADES</div>
       <table style={pdfStyles.table}>
@@ -205,7 +205,7 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
         <Legend color={COLORS.postRelease} label="✗ Tombamento" />
         <Legend color={COLORS.holiday} label="✗ Feriado" />
         <Legend color={COLORS.blocked} label="✗ Projeto Impactado" />
-        <Legend color={COLORS.releaseTarget} label="� Subida em Produção" />
+        <Legend color={COLORS.releaseTarget} label="🚀 Subida em Produção" />
         <Legend color={COLORS.esteiraPreProd} label="▬ Esteira Pre Prod" type="border" />
         <Legend color={COLORS.chg} label="▬ Trâmite CHG" type="border" />
         <Legend color={COLORS.releaseDay} label="● Domingo da release" />
