@@ -102,7 +102,34 @@ export function isEsteiraPreProdDay(date, ranges = []) {
   });
 }
 
-export function getWorkingDays(startDate, totalDays, releases, holidays, blockedDays = []) {
+export function parseDiasParadosList(value) {
+  return String(value || "")
+    .split("\n")
+    .map((line) => {
+      const matches = line.match(/\d{2}\/\d{2}\/\d{4}/g);
+
+      if (!matches || matches.length === 0) return null;
+
+      const start = parseDateBR(matches[0]);
+      const end = parseDateBR(matches[1] || matches[0]);
+
+      return { start, end };
+    })
+    .filter((range) => range && isValidDate(range.start) && isValidDate(range.end));
+}
+
+export function isParadoDay(date, paradoRanges = [], holidays = [], releases = []) {
+  // Ignore weekends, holidays, and post-release days
+  if (isWeekend(date) || isHoliday(date, holidays) || isPostRelease(date, releases)) {
+    return false;
+  }
+
+  return paradoRanges.some(({ start, end }) => {
+    return date >= start && date <= end;
+  });
+}
+
+export function getWorkingDays(startDate, totalDays, releases, holidays, paradoRanges = []) {
   const days = [];
   let current = new Date(startDate);
   let guard = 0;
@@ -112,7 +139,7 @@ export function getWorkingDays(startDate, totalDays, releases, holidays, blocked
       isWeekend(current) ||
       isPostRelease(current, releases) ||
       isHoliday(current, holidays) ||
-      isBlockedDay(current, blockedDays);
+      isParadoDay(current, paradoRanges, holidays, releases);
 
     if (!blocked) days.push(new Date(current));
 

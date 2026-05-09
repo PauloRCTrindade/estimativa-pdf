@@ -27,6 +27,8 @@ import {
   isHoliday,
   isPostRelease,
   parseDateRangeList,
+  parseDiasParadosList,
+  isParadoDay,
   defaultAtividades,
   isSameDay,
   normalizeAtividades,
@@ -113,7 +115,7 @@ export default function GeradorEstimativaPDF() {
   const releases = useMemo(() => normalizeDateList(form.releases), [form.releases]);
   const feriados = useMemo(() => normalizeDateList(form.feriados), [form.feriados]);
   const diasParados = useMemo(
-    () => normalizeDateList(form.diasParados || ""),
+    () => parseDiasParadosList(form.diasParados || ""),
     [form.diasParados]);
   const esteiraPreProdRanges = useMemo(
     () => parseDateRangeList(form.esteiraPreProd || ""),
@@ -174,7 +176,7 @@ export default function GeradorEstimativaPDF() {
       if (sameDateBR(current, releaseTargetDate)) {
         tipo = "Release alvo";
         color = COLORS.releaseTarget;
-      } else if (isBlockedDay(current, diasParados)) {
+      } else if (isParadoDay(current, diasParados, feriados, releases)) {
         tipo = "Projeto parado";
         color = COLORS.blocked;
       } else if (isWeekend(current)) {
