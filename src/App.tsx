@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
-import html2canvas from "html2canvas";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Settings } from "lucide-react";
 import jsPDF from "jspdf";
 import { COLORS } from './styles';
 import { HISTORY_KEY, STORAGE_KEY } from './data';
@@ -54,6 +55,7 @@ export default function GeradorEstimativaPDF() {
   const [atividades, setAtividades] = useState(defaultAtividades);
   const [status, setStatus] = useState("");
   const [historico, setHistorico] = useState<Estimativa[]>([]);
+  const [openSettings, setOpenSettings] = useState(false);
   
   function salvarEstimativa() {
     const novaEstimativa: Estimativa = {
@@ -427,7 +429,17 @@ export default function GeradorEstimativaPDF() {
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-[400px_1fr]">
         <Card className="print:hidden">
           <CardContent className="space-y-4 p-5">
-            <h1 className="text-xl font-bold">Gerador de estimativa</h1>
+            <div className="flex items-center justify-between gap-2">
+              <h1 className="text-xl font-bold">Gerador de estimativa</h1>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setOpenSettings(true)}
+                className="h-8 w-8 p-0"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            </div>
             <span className="text-xs font-medium text-zinc-600">Título da estimativa</span>
             <Input value={form.titulo} onChange={(event) => updateForm("titulo", event.target.value)} />
             <span className="text-xs font-medium text-zinc-600">Arquiteto</span>
@@ -438,22 +450,6 @@ export default function GeradorEstimativaPDF() {
             <DatePicker value={form.releaseAlvo || ""} onChange={(date) => updateForm("releaseAlvo", date)} placeholder="Release alvo (dd/mm/aaaa)" />
             <span className="text-xs font-medium text-zinc-600">Dias de trâmite CHG</span>
             <Input type="number" min="0" value={form.chgDias || ""} onChange={(event) => updateForm("chgDias", event.target.value)} placeholder="Ex: 3" />
-            
-            <Accordion type="single" collapsible className="border rounded-lg">
-              <AccordionItem value="releases-holidays">
-                <AccordionTrigger>📅 Releases e Feriados</AccordionTrigger>
-                <AccordionContent className="space-y-4 pt-2">
-                  <div>
-                    <span className="text-xs font-medium text-zinc-600">Releases do Ano</span>
-                    <Textarea className="min-h-40" value={form.releases} onChange={(event) => updateForm("releases", event.target.value)} placeholder="Releases, uma por linha" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-medium text-zinc-600">Feriados</span>
-                    <Textarea className="min-h-56" value={form.feriados} onChange={(event) => updateForm("feriados", event.target.value)} placeholder="Feriados, um por linha. Ex: 01/01/2026 - Nome do feriado" />
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
             
             <span className="text-xs font-medium text-zinc-600">Pontos de atenção</span>
             <Textarea value={form.pontos} onChange={(event) => updateForm("pontos", event.target.value)} placeholder="Pontos de atenção" />
@@ -559,6 +555,24 @@ export default function GeradorEstimativaPDF() {
         />
 
       </div>
+
+      <Dialog open={openSettings} onOpenChange={setOpenSettings}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>📅 Releases e Feriados</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div>
+              <span className="text-xs font-medium text-zinc-600">Releases do Ano</span>
+              <Textarea className="min-h-40 mt-2" value={form.releases} onChange={(event) => updateForm("releases", event.target.value)} placeholder="Releases, uma por linha" />
+            </div>
+            <div>
+              <span className="text-xs font-medium text-zinc-600">Feriados</span>
+              <Textarea className="min-h-56 mt-2" value={form.feriados} onChange={(event) => updateForm("feriados", event.target.value)} placeholder="Feriados, um por linha. Ex: 01/01/2026 - Nome do feriado" />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
