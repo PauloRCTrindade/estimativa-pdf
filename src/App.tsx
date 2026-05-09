@@ -9,7 +9,7 @@ import { Settings, FileText, Clock } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { COLORS } from './styles';
-import { HISTORY_KEY, STORAGE_KEY, holydaysYear } from './data';
+import { HISTORY_KEY, STORAGE_KEY } from './data';
 import { PdfPreview } from "./components/pdf-preview";
 import { DatePicker } from "./components/date-picker";
 import { DateRangeList } from "./components/date-range-list";
@@ -60,6 +60,7 @@ export default function GeradorEstimativaPDF() {
   const [status, setStatus] = useState("");
   const [historico, setHistorico] = useState<Estimativa[]>([]);
   const [openSettings, setOpenSettings] = useState(false);
+  const [loadingHolidays, setLoadingHolidays] = useState(false);
   
   function salvarEstimativa() {
     const novaEstimativa: Estimativa = {
@@ -292,9 +293,36 @@ export default function GeradorEstimativaPDF() {
     setStatus("Template padrão restaurado.");
   }
 
-  function buscarFeriadosDoAno() {
-    updateForm("feriados", holydaysYear);
-    setStatus("Feriados do ano carregados com sucesso!");
+  async function buscarFeriadosDoAno() {
+    try {
+      setLoadingHolidays(true);
+      setStatus("Buscando feriados do ano...");
+      
+      const ano = new Date().getFullYear();
+      const resposta = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${ano}/BR`);
+      
+      if (!resposta.ok) {
+        throw new Error(`Erro na API: ${resposta.status}`);
+      }
+      
+      const dados = await resposta.json();
+      
+      // Formatar feriados como "DD/MM/YYYY - Nome do feriado"
+      const feriadosFormatados = dados
+        .map((feriado: { date: string; localName: string }) => {
+          const [ano, mes, dia] = feriado.date.split('-');
+          return `${dia}/${mes}/${ano} - ${feriado.localName}`;
+        })
+        .join('\n');
+      
+      updateForm("feriados", feriadosFormatados);
+      setStatus(`✅ ${dados.length} feriados de ${ano} carregados com sucesso!`);
+      setLoadingHolidays(false);
+    } catch (erro) {
+      console.error("Erro ao buscar feriados:", erro);
+      setStatus("❌ Erro ao buscar feriados. Tente novamente.");
+      setLoadingHolidays(false);
+    }
   }
 
   async function criarPDF() {
@@ -675,9 +703,10 @@ export default function GeradorEstimativaPDF() {
                   size="sm"
                   variant="outline"
                   onClick={buscarFeriadosDoAno}
+                  disabled={loadingHolidays}
                   className="h-7 px-2 text-xs"
                 >
-                  📅 Carregar Feriados
+                  {loadingHolidays ? "⏳ Buscando..." : "📅 Carregar Feriados"}
                 </Button>
               </div>
               <Textarea className="min-h-56 mt-2" value={form.feriados} onChange={(event) => updateForm("feriados", event.target.value)} placeholder="Feriados, um por linha. Ex: 01/01/2026 - Nome do feriado" />
