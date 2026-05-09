@@ -2,12 +2,24 @@ import type { Estimativa } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+const getHeaders = (token?: string) => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
+
 /**
  * Listar todas as estimativas
  */
-export async function listarEstimativas(): Promise<Estimativa[]> {
+export async function listarEstimativas(token?: string): Promise<Estimativa[]> {
   try {
-    const response = await fetch(`${API_URL}/api/estimativas`);
+    const response = await fetch(`${API_URL}/api/estimativas`, {
+      headers: getHeaders(token),
+    });
     if (!response.ok) throw new Error('Erro ao listar estimativas');
     return await response.json();
   } catch (error) {
@@ -19,9 +31,11 @@ export async function listarEstimativas(): Promise<Estimativa[]> {
 /**
  * Obter uma estimativa específica
  */
-export async function obterEstimativa(id: string): Promise<Estimativa> {
+export async function obterEstimativa(id: string, token?: string): Promise<Estimativa> {
   try {
-    const response = await fetch(`${API_URL}/api/estimativas/${id}`);
+    const response = await fetch(`${API_URL}/api/estimativas/${id}`, {
+      headers: getHeaders(token),
+    });
     if (!response.ok) throw new Error('Estimativa não encontrada');
     return await response.json();
   } catch (error) {
@@ -33,13 +47,11 @@ export async function obterEstimativa(id: string): Promise<Estimativa> {
 /**
  * Criar uma nova estimativa
  */
-export async function criarEstimativa(estimativa: Estimativa): Promise<Estimativa> {
+export async function criarEstimativa(estimativa: Estimativa, token?: string): Promise<Estimativa> {
   try {
     const response = await fetch(`${API_URL}/api/estimativas`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(token),
       body: JSON.stringify(estimativa),
     });
 
@@ -54,13 +66,11 @@ export async function criarEstimativa(estimativa: Estimativa): Promise<Estimativ
 /**
  * Atualizar uma estimativa
  */
-export async function atualizarEstimativa(id: string, estimativa: Partial<Estimativa>): Promise<Estimativa> {
+export async function atualizarEstimativa(id: string, estimativa: Partial<Estimativa>, token?: string): Promise<Estimativa> {
   try {
     const response = await fetch(`${API_URL}/api/estimativas/${id}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(token),
       body: JSON.stringify(estimativa),
     });
 
@@ -75,10 +85,11 @@ export async function atualizarEstimativa(id: string, estimativa: Partial<Estima
 /**
  * Deletar uma estimativa
  */
-export async function deletarEstimativa(id: string): Promise<void> {
+export async function deletarEstimativa(id: string, token?: string): Promise<void> {
   try {
     const response = await fetch(`${API_URL}/api/estimativas/${id}`, {
       method: 'DELETE',
+      headers: getHeaders(token),
     });
 
     if (!response.ok) throw new Error('Erro ao deletar estimativa');
