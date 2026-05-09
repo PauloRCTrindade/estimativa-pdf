@@ -44,6 +44,9 @@ import {
   isReleaseDay
 } from './utils';
 import { TimeLine } from "./components/time-line";
+import { useAuth } from "./hooks/useAuth";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { AuthPage } from "./components/auth/AuthPage";
 
 interface Estimativa {
   id: string;
@@ -54,7 +57,7 @@ interface Estimativa {
 
 if (typeof window !== "undefined") runSelfTests();
 
-export default function GeradorEstimativaPDF() {
+function GeradorEstimativaPDF() {
   const [form, setForm] = useState(defaultForm);
   const [atividades, setAtividades] = useState(defaultAtividades);
   const [status, setStatus] = useState("");
@@ -755,5 +758,42 @@ export default function GeradorEstimativaPDF() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// Wrapper com autenticação
+export default function App() {
+  const { isAuthenticated, checkAuth, logout, loading } = useAuth();
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center space-y-4">
+          <div className="inline-block animate-spin">
+            <div className="text-5xl">⏳</div>
+          </div>
+          <p className="text-gray-600 font-medium">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthPage onAuthSuccess={() => window.location.reload()} />;
+  }
+
+  const handleLogout = async () => {
+    await logout();
+    window.location.reload();
+  };
+
+  return (
+    <ProtectedRoute onLogout={handleLogout}>
+      <GeradorEstimativaPDF />
+    </ProtectedRoute>
   );
 }
