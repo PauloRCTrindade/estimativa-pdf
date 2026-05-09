@@ -70,6 +70,25 @@ export function TimeLine({ form, timelineRows }) {
                 <tbody>
                   <tr>
                     {row.map((day, index) => (
+                      <td key={`cal-rocket-${rowIndex}-${index}`} style={{
+                        ...pdfStyles.timelineCell,
+                        width: "64px",
+                        height: "24px",
+                        lineHeight: "24px",
+                        fontSize: "16px",
+                        backgroundColor: "transparent",
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                        border: "none",
+                        borderBottom: "none",
+                        color: day.isReleaseDay ? COLORS.releaseDay : "transparent",
+                      }}>
+                        {day.isReleaseDay ? "🚀" : ""}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    {row.map((day, index) => (
                       <td key={`cal-week-${rowIndex}-${index}`} style={{
                         ...pdfStyles.timelineCell,
                         width: "64px",

@@ -102,6 +102,24 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
                 <tbody>
                   <tr>
                     {row.map((day, index) => (
+                      <td key={`rocket-${rowIndex}-${index}`} style={{
+                        ...pdfStyles.timelineCell,
+                        height: "24px",
+                        lineHeight: "24px",
+                        fontSize: "16px",
+                        backgroundColor: "transparent",
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                        border: "none",
+                        borderBottom: "none",
+                        color: day.isReleaseDay ? COLORS.releaseDay : "transparent",
+                      }}>
+                        {day.isReleaseDay ? "🚀" : ""}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    {row.map((day, index) => (
                       <td key={`week-${rowIndex}-${index}`} style={{
                         ...pdfStyles.timelineCell,
                         backgroundColor: day.isReleaseDay ? COLORS.releaseDay : COLORS.white,

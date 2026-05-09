@@ -16,7 +16,7 @@ export const COLORS = {
   blocked: "#6b7280",
   esteiraPreProd: "#f59e0b",
   chg: "#06b6d4",
-  releaseTarget: "#06b6d4",
+  releaseTarget: "#22c55e",
   releaseDay: "#1e40af",
 };
 export const pdfStyles: PdfStyles = {
