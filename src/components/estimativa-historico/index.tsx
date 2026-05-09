@@ -9,12 +9,15 @@ interface EstimativaItemProps {
 }
 
 export function EstimativaHistoricoItem({ item, onLoad, onDelete }: EstimativaItemProps) {
+  const titulo = item.titulo || "Estimativa sem título";
+  const criado = new Date(item.criadoEm).toLocaleString("pt-BR");
+  
   return (
     <Card className="p-3 border-zinc-200 hover:border-zinc-300 transition-colors">
       <div className="space-y-2">
         <div>
-          <p className="font-medium text-sm truncate">{item.form?.titulo || "Estimativa sem título"}</p>
-          <p className="text-xs text-zinc-500">{item.createdAt}</p>
+          <p className="font-medium text-sm truncate">{titulo}</p>
+          <p className="text-xs text-zinc-500">{criado}</p>
         </div>
         <div className="flex gap-2">
           <Button
