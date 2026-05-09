@@ -205,7 +205,7 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
         <Legend color={COLORS.postRelease} label="✗ Tombamento" />
         <Legend color={COLORS.holiday} label="✗ Feriado" />
         <Legend color={COLORS.blocked} label="✗ Projeto Impactado" />
-        <Legend color={COLORS.releaseTarget} label="📍 Subida em Produção" />
+        <Legend color={COLORS.releaseTarget} label="� Subida em Produção" />
         <Legend color={COLORS.esteiraPreProd} label="▬ Esteira Pre Prod" type="border" />
         <Legend color={COLORS.chg} label="▬ Trâmite CHG" type="border" />
         <Legend color={COLORS.releaseDay} label="● Domingo da release" />
