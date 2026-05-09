@@ -55,7 +55,7 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
       </table>
 
       <div style={{ ...pdfStyles.blackBar, marginTop: "20px" }}>LINHA DO TEMPO</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "12px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "12px" }}>
         {timelineRows.map((row, rowIndex) => {
           // Get months for this row
           const months = new Set<string>();
@@ -63,6 +63,8 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
             const monthYear = new Date(day.date.getFullYear(), day.date.getMonth()).toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
             months.add(monthYear.charAt(0).toUpperCase() + monthYear.slice(1));
           });
+          
+          const isAlternate = rowIndex % 2 === 1;
           
           return (
             <div key={`row-${rowIndex}`}>
@@ -93,7 +95,10 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
               </div>
               
               {/* Timeline table */}
-              <table style={pdfStyles.timelineTable}>
+              <table style={{
+                ...pdfStyles.timelineTable,
+                backgroundColor: isAlternate ? "#f9fafb" : "#ffffff",
+              }}>
                 <tbody>
                   <tr>
                     {row.map((day, index) => (

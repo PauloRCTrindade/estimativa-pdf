@@ -32,8 +32,10 @@ export function TimeLine({ form, timelineRows }) {
             months.add(monthYear.charAt(0).toUpperCase() + monthYear.slice(1));
           });
           
+          const isAlternate = rowIndex % 2 === 1;
+          
           return (
-            <div key={`row-${rowIndex}`} style={{ marginBottom: "16px" }}>
+            <div key={`row-${rowIndex}`} style={{ marginBottom: "24px" }}>
               {/* Month header */}
               <div style={{ display: "flex", gap: "2px", marginBottom: "8px" }}>
                 {row.map((day, index) => {
@@ -61,7 +63,10 @@ export function TimeLine({ form, timelineRows }) {
               </div>
               
               {/* Timeline table */}
-              <table key={`calendar-${rowIndex}`} style={pdfStyles.timelineTable}>
+              <table key={`calendar-${rowIndex}`} style={{
+                ...pdfStyles.timelineTable,
+                backgroundColor: isAlternate ? "#f9fafb" : "#ffffff",
+              }}>
                 <tbody>
                   <tr>
                     {row.map((day, index) => (
