@@ -461,20 +461,20 @@ export default function GeradorEstimativaPDF() {
                 <span className="text-xs font-medium text-zinc-600">Subida em Produção</span>
                 <DatePicker value={form.releaseAlvo || ""} onChange={(date) => updateForm("releaseAlvo", date)} placeholder="Release alvo (dd/mm/aaaa)" />
               </div>
-              <div>
-                <span className="text-xs font-medium text-zinc-600">Dias de trâmite CHG</span>
-                <Input type="number" min="0" value={form.chgDias || ""} onChange={(event) => updateForm("chgDias", event.target.value)} placeholder="Ex: 3" />
-              </div>
             </div>
 
             {/* Accordion Sections */}
             <Accordion type="single" collapsible className="w-full space-y-2">
               
-              {/* Períodos Bloqueados */}
+              {/* Visualização de Impacto */}
               <div className="border rounded-lg overflow-hidden">
-                <AccordionItem value="blocked-periods" className="border-0">
-                  <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">📍 Períodos Bloqueados</AccordionTrigger>
+                <AccordionItem value="impact-view" className="border-0">
+                  <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">🎯 Visualização de Impacto</AccordionTrigger>
                   <AccordionContent className="space-y-4 pt-4 px-4 pb-4 border-t">
+                    <div>
+                      <span className="text-xs font-medium text-zinc-600">Dias de trâmite CHG</span>
+                      <Input type="number" min="0" value={form.chgDias || ""} onChange={(event) => updateForm("chgDias", event.target.value)} placeholder="Ex: 3" />
+                    </div>
                     <div>
                       <span className="text-xs font-medium text-zinc-600">Dias impactados</span>
                       <DateRangeList value={form.diasParados || ""} onChange={(value) => updateForm("diasParados", value)} placeholder="Clique para adicionar dias" />
@@ -487,10 +487,10 @@ export default function GeradorEstimativaPDF() {
                 </AccordionItem>
               </div>
 
-              {/* Contexto do Projeto */}
+              {/* Observações */}
               <div className="border rounded-lg overflow-hidden">
-                <AccordionItem value="project-context" className="border-0">
-                  <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">📌 Contexto do Projeto</AccordionTrigger>
+                <AccordionItem value="observations" className="border-0">
+                  <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">📝 Observações</AccordionTrigger>
                   <AccordionContent className="space-y-4 pt-4 px-4 pb-4 border-t">
                     <div>
                       <span className="text-xs font-medium text-zinc-600">Pontos de atenção</span>
