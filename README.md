@@ -1,6 +1,6 @@
 # Gerador de Estimativa em PDF
 
-Aplicação web para gerar estimativas de desenvolvimento em PDF, com interface moderna construída com **React + TypeScript + Tailwind CSS + shadcn/ui**.
+Aplicação web para gerar estimativas de desenvolvimento em PDF, com interface moderna e segura construída com **React + TypeScript + Tailwind CSS + shadcn/ui**.
 
 ## 🎯 Objetivo
 
