@@ -46,10 +46,10 @@ export function TimeLine({ form, timelineRows }) {
                     <div
                       key={`month-${rowIndex}-${index}`}
                       style={{
-                        width: "56px",
-                        height: "24px",
+                        width: "64px",
+                        height: "26px",
                         textAlign: "center",
-                        fontSize: "10px",
+                        fontSize: "11px",
                         fontWeight: 700,
                         color: "#666",
                         paddingTop: "2px",
@@ -72,6 +72,10 @@ export function TimeLine({ form, timelineRows }) {
                     {row.map((day, index) => (
                       <td key={`cal-week-${rowIndex}-${index}`} style={{
                         ...pdfStyles.timelineCell,
+                        width: "64px",
+                        height: "44px",
+                        lineHeight: "44px",
+                        fontSize: "12px",
                         backgroundColor: day.isReleaseDay ? COLORS.releaseDay : COLORS.white,
                         color: day.isReleaseDay ? COLORS.white : pdfStyles.timelineCell.color,
                         fontWeight: day.isReleaseDay ? 700 : pdfStyles.timelineCell.fontWeight,
@@ -84,6 +88,10 @@ export function TimeLine({ form, timelineRows }) {
                     {row.map((day, index) => (
                       <td key={`cal-day-${rowIndex}-${index}`} style={{
                         ...pdfStyles.timelineWeekCell,
+                        width: "64px",
+                        height: "40px",
+                        lineHeight: "40px",
+                        fontSize: "13px",
                         backgroundColor: day.isReleaseDay ? COLORS.releaseDay : COLORS.white,
                         color: day.isReleaseDay ? COLORS.white : pdfStyles.timelineWeekCell.color,
                         fontWeight: day.isReleaseDay ? 700 : pdfStyles.timelineWeekCell.fontWeight,
@@ -96,6 +104,8 @@ export function TimeLine({ form, timelineRows }) {
                     {row.map((day, index) => {
                       const baseStyle = {
                         ...pdfStyles.timelineColorCell,
+                        width: "64px",
+                        height: "40px",
                         backgroundColor: day.color,
                       };
                       
