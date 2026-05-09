@@ -4,6 +4,13 @@ import { pdfStyles } from '../../styles'
 import { formatBR, getTimelineBorder, } from '../../utils'
 import { weekLabels } from '../../data'
 import { COLORS } from '../../styles'
+
+function isReleaseDeploymentDay(day: Date, releaseAlvoStr: string): boolean {
+  if (!releaseAlvoStr) return false;
+  const [dia, mes, ano] = releaseAlvoStr.split('/').map(Number);
+  return day.getDate() === dia && day.getMonth() === mes - 1 && day.getFullYear() === ano;
+}
+
 export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
   return (
     <div id="pdf-area" style={pdfStyles.page}>
@@ -112,9 +119,9 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
                         verticalAlign: "middle",
                         border: "none",
                         borderBottom: "none",
-                        color: day.isReleaseDay ? COLORS.releaseDay : "transparent",
+                        color: isReleaseDeploymentDay(day.date, form.releaseAlvo) ? COLORS.releaseTarget : "transparent",
                       }}>
-                        {day.isReleaseDay ? "🚀" : ""}
+                        {isReleaseDeploymentDay(day.date, form.releaseAlvo) ? "🚀" : ""}
                       </td>
                     ))}
                   </tr>

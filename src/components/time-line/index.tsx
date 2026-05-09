@@ -2,6 +2,13 @@ import { Legend } from '../legend'
 import { pdfStyles } from '../../styles'
 import { weekLabels } from '../../data'
 import { COLORS } from '../../styles'
+
+function isReleaseDeploymentDay(day: Date, releaseAlvoStr: string): boolean {
+  if (!releaseAlvoStr) return false;
+  const [dia, mes, ano] = releaseAlvoStr.split('/').map(Number);
+  return day.getDate() === dia && day.getMonth() === mes - 1 && day.getFullYear() === ano;
+}
+
 export function TimeLine({ form, timelineRows }) {
   return (
     <div
@@ -81,9 +88,9 @@ export function TimeLine({ form, timelineRows }) {
                         verticalAlign: "middle",
                         border: "none",
                         borderBottom: "none",
-                        color: day.isReleaseDay ? COLORS.releaseDay : "transparent",
+                        color: isReleaseDeploymentDay(day.date, form.releaseAlvo) ? COLORS.releaseTarget : "transparent",
                       }}>
-                        {day.isReleaseDay ? "🚀" : ""}
+                        {isReleaseDeploymentDay(day.date, form.releaseAlvo) ? "🚀" : ""}
                       </td>
                     ))}
                   </tr>
