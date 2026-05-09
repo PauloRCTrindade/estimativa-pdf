@@ -10,6 +10,7 @@ Esta aplicação permite criar, gerenciar e exportar estimativas de projetos de 
 - Gestão de atividades e etapas
 - Histórico de estimativas
 - Exportação em PDF
+- 🔐 Autenticação segura com Supabase
 
 ## ✨ Refatoração com Shadcn/UI
 
