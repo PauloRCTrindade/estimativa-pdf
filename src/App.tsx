@@ -9,7 +9,7 @@ import { Settings, FileText, Clock } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { COLORS } from './styles';
-import { HISTORY_KEY, STORAGE_KEY } from './data';
+import { STORAGE_KEY } from './data';
 import { PdfPreview } from "./components/pdf-preview";
 import { DatePicker } from "./components/date-picker";
 import { DateRangeList } from "./components/date-range-list";
@@ -45,15 +45,9 @@ import {
 } from './utils';
 import { TimeLine } from "./components/time-line";
 import { useAuth } from "./hooks/useAuth";
+import { useEstimativas } from "./hooks/useEstimativas";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AuthPage } from "./components/auth/AuthPage";
-
-interface Estimativa {
-  id: string;
-  createdAt: string;
-  form: ReturnType<typeof defaultForm>;
-  atividades: ReturnType<typeof defaultAtividades>;
-}
 
 if (typeof window !== "undefined") runSelfTests();
 
@@ -61,50 +55,79 @@ function GeradorEstimativaPDF() {
   const [form, setForm] = useState(defaultForm);
   const [atividades, setAtividades] = useState(defaultAtividades);
   const [status, setStatus] = useState("");
-  const [historico, setHistorico] = useState<Estimativa[]>([]);
   const [openSettings, setOpenSettings] = useState(false);
   const [loadingHolidays, setLoadingHolidays] = useState(false);
+  const { estimativas, listar, criar, deletar } = useEstimativas();
   
-  function salvarEstimativa() {
-    const novaEstimativa: Estimativa = {
-      id: String(Date.now()),
-      createdAt: new Date().toLocaleString("pt-BR"),
-      form,
-      atividades,
-    };
+  async function salvarEstimativa() {
+    try {
+      setStatus("Salvando estimativa...");
+      
+      const novaEstimativa = {
+        titulo: form.titulo,
+        arquiteto: form.arquiteto,
+        inicio: form.inicio,
+        releaseAlvo: form.releaseAlvo,
+        feriados: form.feriados,
+        releases: form.releases,
+        premissas: form.premissas,
+        restricoes: form.restricoes,
+        observacoes: form.observacoes,
+        atividades,
+        pontos: form.pontos,
+        chgDias: parseInt(form.chgDias) || 0,
+        esteiraPreProd: form.esteiraPreProd,
+        diasParados: form.diasParados,
+      };
 
-    const historicoAtualizado = [novaEstimativa, ...historico];
-
-    setHistorico(historicoAtualizado);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(historicoAtualizado));
-    setStatus("Estimativa salva no histórico.");
+      await criar(novaEstimativa);
+      await listar(); // Recarregar lista
+      setStatus("✅ Estimativa salva com sucesso!");
+    } catch (erro) {
+      console.error("Erro ao salvar:", erro);
+      setStatus("❌ Erro ao salvar estimativa.");
+    }
   }
 
-  function carregarEstimativa(item: Estimativa) {
-    setForm({ ...defaultForm(), ...item.form });
+  function carregarEstimativa(item: any) {
+    setForm({ 
+      ...defaultForm(), 
+      titulo: item.titulo,
+      arquiteto: item.arquiteto,
+      inicio: item.inicio,
+      releaseAlvo: item.releaseAlvo,
+      feriados: item.feriados,
+      releases: item.releases,
+      premissas: item.premissas,
+      restricoes: item.restricoes,
+      observacoes: item.observacoes,
+      pontos: item.pontos,
+      chgDias: String(item.chgDias || 0),
+      esteiraPreProd: item.esteiraPreProd,
+      diasParados: item.diasParados,
+    });
     setAtividades(normalizeAtividades(item.atividades || []));
-    setStatus("Estimativa carregada.");
+    setStatus("✅ Estimativa carregada.");
   }
 
-  function excluirEstimativa(id: string) {
-    const historicoAtualizado = historico.filter((item) => item.id !== id);
-
-    setHistorico(historicoAtualizado);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(historicoAtualizado));
-    setStatus("Estimativa excluída do histórico.");
+  async function excluirEstimativa(id: string) {
+    try {
+      setStatus("Excluindo estimativa...");
+      await deletar(id);
+      await listar(); // Recarregar lista
+      setStatus("✅ Estimativa excluída com sucesso!");
+    } catch (erro) {
+      console.error("Erro ao excluir:", erro);
+      setStatus("❌ Erro ao excluir estimativa.");
+    }
   }
 
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
-    try {
-      const savedHistory = localStorage.getItem(HISTORY_KEY);
-
-      if (savedHistory) {
-        setHistorico(JSON.parse(savedHistory));
-      }
-    } catch {
+    listar().catch(erro => {
+      console.error("Erro ao carregar histórico:", erro);
       setStatus("Não foi possível carregar o histórico.");
-    }
+    });
   }, []);
   /* eslint-enable react-hooks/exhaustive-deps */
 
@@ -694,7 +717,7 @@ function GeradorEstimativaPDF() {
             </div>
 
             <EstimativaHistorico
-              historico={historico}
+              historico={estimativas}
               onLoad={carregarEstimativa}
               onDelete={excluirEstimativa}
               onSave={salvarEstimativa}
