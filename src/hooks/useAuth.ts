@@ -22,6 +22,18 @@ export function useAuth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Obter token da sessão
+  const getToken = async (): Promise<string | null> => {
+    try {
+      const { data, error: err } = await supabase.auth.getSession();
+      if (err) throw err;
+      return data.session?.access_token || null;
+    } catch (err) {
+      console.error('Erro ao obter token:', err);
+      return null;
+    }
+  };
+
   // Verificar se já está logado
   const checkAuth = async () => {
     try {
@@ -166,6 +178,7 @@ export function useAuth() {
     logout,
     checkAuth,
     resetPassword,
+    getToken,
     isAuthenticated: !!user,
   };
 }

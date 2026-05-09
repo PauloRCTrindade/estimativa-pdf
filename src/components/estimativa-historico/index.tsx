@@ -10,7 +10,9 @@ interface EstimativaItemProps {
 
 export function EstimativaHistoricoItem({ item, onLoad, onDelete }: EstimativaItemProps) {
   const titulo = item.titulo || "Estimativa sem título";
-  const criado = new Date(item.criadoEm).toLocaleString("pt-BR");
+  const criado = item.created_at 
+    ? new Date(item.created_at).toLocaleString("pt-BR")
+    : "Data indisponível";
   
   return (
     <Card className="p-3 border-zinc-200 hover:border-zinc-300 transition-colors">

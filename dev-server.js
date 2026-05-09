@@ -20,7 +20,7 @@ app.get('/api/estimativas', async (req, res) => {
     const { data, error } = await supabase
       .from('estimativas')
       .select('*')
-      .order('criadoEm', { ascending: false });
+      .order('id', { ascending: false });
 
     if (error) {
       return res.status(400).json({ error: error.message });

@@ -52,12 +52,12 @@ import { AuthPage } from "./components/auth/AuthPage";
 if (typeof window !== "undefined") runSelfTests();
 
 function GeradorEstimativaPDF() {
+  const { estimativas, listar, criar, deletar } = useEstimativas();
   const [form, setForm] = useState(defaultForm);
   const [atividades, setAtividades] = useState(defaultAtividades);
   const [status, setStatus] = useState("");
   const [openSettings, setOpenSettings] = useState(false);
   const [loadingHolidays, setLoadingHolidays] = useState(false);
-  const { estimativas, listar, criar, deletar } = useEstimativas();
   
   async function salvarEstimativa() {
     try {

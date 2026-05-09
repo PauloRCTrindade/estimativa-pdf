@@ -25,7 +25,7 @@ export default async function handler(
       const { data, error } = await supabase
         .from('estimativas')
         .select('*')
-        .order('criadoEm', { ascending: false });
+        .order('id', { ascending: false });
 
       if (error) {
         return res.status(400).json({ erro: error.message });
