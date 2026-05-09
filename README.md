@@ -4,6 +4,8 @@ Aplicação web para gerar estimativas de desenvolvimento em PDF, com interface 
 
 ## 🎯 Objetivo
 
+teste
+
 Esta aplicação permite criar, gerenciar e exportar estimativas de projetos de desenvolvimento em formato PDF, incluindo:
 - Timeline visual de desenvolvimento
 - Cálculo automático de dias úteis
