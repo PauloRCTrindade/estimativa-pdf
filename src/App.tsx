@@ -176,45 +176,78 @@ export default function GeradorEstimativaPDF() {
         ? releaseTargetDate
         : calculatedEndDate;
 
-    while (isValidDate(current) && isValidDate(endDate) && current <= endDate) {
+    // Build a map of dates from the original timeline for quick lookup
+    const originalTimelineData: Record<string, { tipo: string; color: string; isReleaseDay: boolean; isEsteiraPreProd: boolean; isChg: boolean }> = {};
+    let currentOrig = startDate;
+    while (isValidDate(currentOrig) && isValidDate(endDate) && currentOrig <= endDate) {
       let tipo = "";
       let color = COLORS.white;
 
-      if (sameDateBR(current, releaseTargetDate)) {
+      if (sameDateBR(currentOrig, releaseTargetDate)) {
         tipo = "Release alvo";
         color = COLORS.releaseTarget;
-      } else if (isParadoDay(current, diasParados, feriados, releases)) {
+      } else if (isParadoDay(currentOrig, diasParados, feriados, releases)) {
         tipo = "Projeto parado";
         color = COLORS.blocked;
-      } else if (isWeekend(current)) {
+      } else if (isWeekend(currentOrig)) {
         tipo = "Fim de semana";
         color = COLORS.weekend;
       }
-      else if (isHoliday(current, feriados)) {
+      else if (isHoliday(currentOrig, feriados)) {
         tipo = "Feriado";
         color = COLORS.holiday;
-      } else if (isPostRelease(current, releases)) {
+      } else if (isPostRelease(currentOrig, releases)) {
         tipo = "Tombamento";
         color = COLORS.postRelease;
       } else {
         const activity = atividadesCalculadas.find((item) => {
-          return isValidDate(item.inicio) && isValidDate(item.termino) && current >= item.inicio && current <= item.termino;
+          return isValidDate(item.inicio) && isValidDate(item.termino) && currentOrig >= item.inicio && currentOrig <= item.termino;
         });
 
         tipo = getTimelineLabel(activity?.tipo, activity?.nome);
         color = getTimelineColor(activity?.tipo);
       }
 
-      timeline.push({
-        date: new Date(current),
+      const dateKey = currentOrig.toISOString().split('T')[0];
+      originalTimelineData[dateKey] = {
         tipo,
         color,
-        isReleaseDay: isReleaseDay(current, releases),
-        isEsteiraPreProd: isEsteiraPreProdDay(current, esteiraPreProdRanges),
-        isChg: chgDates.some((d) => isSameDay(d, current)),
-      });
+        isReleaseDay: isReleaseDay(currentOrig, releases),
+        isEsteiraPreProd: isEsteiraPreProdDay(currentOrig, esteiraPreProdRanges),
+        isChg: chgDates.some((d) => isSameDay(d, currentOrig)),
+      };
 
-      current = addDays(current, 1);
+      currentOrig = addDays(currentOrig, 1);
+    }
+
+    // Get all months from start to end date
+    let currentMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    const lastMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+    
+    while (currentMonth <= lastMonth) {
+      // Get the last day of the month
+      const lastDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+      
+      // Iterate through all days of the month (01 to 31/30/28/29)
+      for (let day = 1; day <= lastDayOfMonth.getDate(); day++) {
+        const dateInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+        const dateKey = dateInMonth.toISOString().split('T')[0];
+        
+        // Get data if it exists in the original timeline, otherwise use empty/white
+        const data = originalTimelineData[dateKey];
+        
+        timeline.push({
+          date: new Date(dateInMonth),
+          tipo: data?.tipo || "",
+          color: data?.color || COLORS.white,
+          isReleaseDay: data?.isReleaseDay || false,
+          isEsteiraPreProd: data?.isEsteiraPreProd || false,
+          isChg: data?.isChg || false,
+        });
+      }
+      
+      // Move to next month
+      currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
     }
 
     return { validDays, atividadesCalculadas, timeline, endDate };
