@@ -102,8 +102,6 @@ export function TimeLine({ form, timelineRows }) {
                             style={{
                               ...baseStyle,
                               border: `3px solid ${COLORS.chg}`,
-                              outline: `1px solid ${COLORS.esteiraPreProd}`,
-                              outlineOffset: "-4px",
                             }}
                           />
                         );

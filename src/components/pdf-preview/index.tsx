@@ -132,8 +132,6 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
                             style={{
                               ...baseStyle,
                               border: `3px solid ${COLORS.chg}`,
-                              outline: `1px solid ${COLORS.esteiraPreProd}`,
-                              outlineOffset: "-4px",
                             }}
                           />
                         );
