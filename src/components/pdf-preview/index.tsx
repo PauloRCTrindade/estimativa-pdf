@@ -15,13 +15,13 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
       <table style={{ ...pdfStyles.table, marginTop: "16px" }}>
         <tbody>
           <tr>
-            <td style={pdfStyles.infoCell}><b>ARQUITETO:</b> {form.arquiteto}</td>
-            <td style={pdfStyles.infoCell}><b>INÍCIO:</b> {form.inicio}</td>
-            <td style={pdfStyles.infoCell}><b>TÉRMINO:</b> {formatBR(calculo.endDate)}</td>
+            <td style={pdfStyles.infoCell}><b>👤 ARQUITETO:</b> <br/> {form.arquiteto}</td>
+            <td style={pdfStyles.infoCell}><b>📅 INÍCIO:</b> <br/> {form.inicio}</td>
+            <td style={pdfStyles.infoCell}><b>📅 TÉRMINO:</b> <br/> {formatBR(calculo.endDate)}</td>
           </tr>
           <tr>
-            <td style={pdfStyles.infoCell}><b>ESFORÇO:</b> {totalDias} dias úteis</td>
-            <td style={pdfStyles.infoCell} colSpan={2}><b>SUBIDA EM PRODUÇÃO:</b> {form.releaseAlvo || "-"}</td>
+            <td style={pdfStyles.infoCell}><b>⏱️ ESFORÇO:</b> <br/> {totalDias} dias úteis</td>
+            <td style={pdfStyles.infoCell} colSpan={2}><b>🚀 SUBIDA EM PRODUÇÃO:</b> <br/> {form.releaseAlvo || "-"}</td>
           </tr>
         </tbody>
       </table>
@@ -55,7 +55,7 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
       </table>
 
       <div style={{ ...pdfStyles.blackBar, marginTop: "20px" }}>LINHA DO TEMPO</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "12px" }}>
         {timelineRows.map((row, rowIndex) => (
           <table key={`timeline-${rowIndex}`} style={pdfStyles.timelineTable}>
             <tbody>
@@ -66,7 +66,7 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
                     backgroundColor: day.isReleaseDay ? COLORS.releaseDay : COLORS.white,
                     color: day.isReleaseDay ? COLORS.white : pdfStyles.timelineCell.color,
                     fontWeight: day.isReleaseDay ? 700 : pdfStyles.timelineCell.fontWeight,
-                  }}>{weekLabels[day.date.getDay()]}</td>
+                  }}>{weekLabels[day.date.getDay()].substring(0, 3).toUpperCase()}</td>
                 ))}
               </tr>
               <tr>
@@ -82,17 +82,48 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
                 ))}
               </tr>
               <tr>
-                {row.map((day, index) => (
-                  <td
-                    key={`color-${rowIndex}-${index}`}
-                    title={day.tipo}
-                    style={{
-                      ...pdfStyles.timelineColorCell,
-                      backgroundColor: day.color,
-                      border: getTimelineBorder(day),
-                    }}
-                  />
-                ))}
+                {row.map((day, index) => {
+                  const baseStyle = {
+                    ...pdfStyles.timelineColorCell,
+                    backgroundColor: day.color,
+                  };
+                  
+                  if (day.isChg) {
+                    return (
+                      <td
+                        key={`color-${rowIndex}-${index}`}
+                        title={day.isEsteiraPreProd ? `${day.tipo} + Esteira Pre Prod + CHG` : `${day.tipo} + CHG`}
+                        style={{
+                          ...baseStyle,
+                          border: `3px solid ${COLORS.chg}`,
+                          outline: `1px solid ${COLORS.esteiraPreProd}`,
+                          outlineOffset: "-4px",
+                        }}
+                      />
+                    );
+                  }
+                  
+                  if (day.isEsteiraPreProd) {
+                    return (
+                      <td
+                        key={`color-${rowIndex}-${index}`}
+                        title={`${day.tipo} + Esteira Pre Prod`}
+                        style={{
+                          ...baseStyle,
+                          border: `3px solid ${COLORS.esteiraPreProd}`,
+                        }}
+                      />
+                    );
+                  }
+                  
+                  return (
+                    <td
+                      key={`color-${rowIndex}-${index}`}
+                      title={day.tipo}
+                      style={baseStyle}
+                    />
+                  );
+                })}
               </tr>
             </tbody>
           </table>
@@ -101,16 +132,16 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
 
 
       <div style={pdfStyles.legendWrapper}>
-        <Legend color={COLORS.desenvolvimento} label="Desenvolvimento" />
-        <Legend color={COLORS.subida} label="Subida em Pre Prod" />
-        <Legend color={COLORS.testes} label="QA Compass" />
-        <Legend color={COLORS.weekend} label="Fim de semana" />
-        <Legend color={COLORS.postRelease} label="Tombamento" />
-        <Legend color={COLORS.holiday} label="Feriado" />
-        <Legend color={COLORS.blocked} label="Projeto Impactado" />
-        <Legend color={COLORS.esteiraPreProd} label="Esteira Pre Prod" type="border" />
-        <Legend color={COLORS.chg} label="Trâmite CHG" type="border" />
-        <Legend color={COLORS.releaseDay} label="Domingo da release" />
+        <Legend color={COLORS.desenvolvimento} label="✓ Desenvolvimento" />
+        <Legend color={COLORS.subida} label="✓ Subida em Pre Prod" />
+        <Legend color={COLORS.testes} label="✓ QA Compass" />
+        <Legend color={COLORS.weekend} label="✗ Fim de semana" />
+        <Legend color={COLORS.postRelease} label="✗ Tombamento" />
+        <Legend color={COLORS.holiday} label="✗ Feriado" />
+        <Legend color={COLORS.blocked} label="✗ Projeto Impactado" />
+        <Legend color={COLORS.esteiraPreProd} label="▬ Esteira Pre Prod" type="border" />
+        <Legend color={COLORS.chg} label="▬ Trâmite CHG" type="border" />
+        <Legend color={COLORS.releaseDay} label="● Domingo da release" />
       </div>
       {form.observacoes && (
         <div style={{ marginTop: "20px" }}>

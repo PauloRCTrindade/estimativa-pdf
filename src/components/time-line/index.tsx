@@ -35,7 +35,7 @@ export function TimeLine({ form, timelineRows }) {
                     color: day.isReleaseDay ? COLORS.white : pdfStyles.timelineCell.color,
                     fontWeight: day.isReleaseDay ? 700 : pdfStyles.timelineCell.fontWeight,
                   }}>
-                    {weekLabels[day.date.getDay()]}
+                    {weekLabels[day.date.getDay()].substring(0, 3).toUpperCase()}
                   </td>
                 ))}
               </tr>
@@ -52,21 +52,48 @@ export function TimeLine({ form, timelineRows }) {
                 ))}
               </tr>
               <tr>
-                {row.map((day, index) => (
-                  <td
-                    key={`cal-color-${rowIndex}-${index}`}
-                    title={day.isEsteiraPreProd ? `${day.tipo} + Esteira Pre Prod` : day.tipo}
-                    style={{
-                      ...pdfStyles.timelineColorCell,
-                      backgroundColor: day.color,
-                      border: day.isChg
-                        ? `3px solid ${COLORS.chg}`
-                        : day.isEsteiraPreProd
-                          ? `3px solid ${COLORS.esteiraPreProd}`
-                          : pdfStyles.timelineColorCell.border,
-                    }}
-                  />
-                ))}
+                {row.map((day, index) => {
+                  const baseStyle = {
+                    ...pdfStyles.timelineColorCell,
+                    backgroundColor: day.color,
+                  };
+                  
+                  if (day.isChg) {
+                    return (
+                      <td
+                        key={`cal-color-${rowIndex}-${index}`}
+                        title={day.isEsteiraPreProd ? `${day.tipo} + Esteira Pre Prod + CHG` : `${day.tipo} + CHG`}
+                        style={{
+                          ...baseStyle,
+                          border: `3px solid ${COLORS.chg}`,
+                          outline: `1px solid ${COLORS.esteiraPreProd}`,
+                          outlineOffset: "-4px",
+                        }}
+                      />
+                    );
+                  }
+                  
+                  if (day.isEsteiraPreProd) {
+                    return (
+                      <td
+                        key={`cal-color-${rowIndex}-${index}`}
+                        title={`${day.tipo} + Esteira Pre Prod`}
+                        style={{
+                          ...baseStyle,
+                          border: `3px solid ${COLORS.esteiraPreProd}`,
+                        }}
+                      />
+                    );
+                  }
+                  
+                  return (
+                    <td
+                      key={`cal-color-${rowIndex}-${index}`}
+                      title={day.tipo}
+                      style={baseStyle}
+                    />
+                  );
+                })}
               </tr>
             </tbody>
           </table>
@@ -74,17 +101,17 @@ export function TimeLine({ form, timelineRows }) {
       </div>
 
       <div style={pdfStyles.legendWrapper}>
-        <Legend color={COLORS.desenvolvimento} label="Desenvolvimento" />
-        <Legend color={COLORS.subida} label="Subida em Pre Prod" />
-        <Legend color={COLORS.testes} label="QA Compass" />
-        <Legend color={COLORS.weekend} label="Fim de semana" />
-        <Legend color={COLORS.postRelease} label="Tombamento" />
-        <Legend color={COLORS.holiday} label="Feriado" />
-        <Legend color={COLORS.blocked} label="Projeto parado" />
-        <Legend color={COLORS.esteiraPreProd} label="Esteira Pre Prod" type="border" />
-        <Legend color={COLORS.chg} label="Trâmite CHG" type="border" />
-        <Legend color={COLORS.releaseTarget} label="Subida em Produção" />
-        <Legend color={COLORS.releaseDay} label="Domingo da release" />
+        <Legend color={COLORS.desenvolvimento} label="✓ Desenvolvimento" />
+        <Legend color={COLORS.subida} label="✓ Subida em Pre Prod" />
+        <Legend color={COLORS.testes} label="✓ QA Compass" />
+        <Legend color={COLORS.weekend} label="✗ Fim de semana" />
+        <Legend color={COLORS.postRelease} label="✗ Tombamento" />
+        <Legend color={COLORS.holiday} label="✗ Feriado" />
+        <Legend color={COLORS.blocked} label="✗ Projeto Impactado" />
+        <Legend color={COLORS.esteiraPreProd} label="▬ Esteira Pre Prod" type="border" />
+        <Legend color={COLORS.chg} label="▬ Trâmite CHG" type="border" />
+        <Legend color={COLORS.releaseTarget} label="◎ Subida em Produção" />
+        <Legend color={COLORS.releaseDay} label="● Domingo da release" />
       </div>
       {form.observacoes && (
         <div style={{ marginTop: "20px" }}>
