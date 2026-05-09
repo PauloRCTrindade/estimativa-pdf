@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Select,
   SelectContent,
@@ -124,18 +125,22 @@ export function AtividadesList({
   onAdd,
 }: AtividadesListProps) {
   return (
-    <div className="space-y-2">
-      {atividades.map((atividade, index) => (
-        <AtividadeItem
-          key={atividade.id}
-          atividade={atividade}
-          index={index}
-          totalItems={atividades.length}
-          onUpdate={onUpdate}
-          onMove={onMove}
-          onRemove={onRemove}
-        />
-      ))}
+    <div className="space-y-3">
+      <ScrollArea className="h-96 border rounded-lg p-4 bg-white">
+        <div className="space-y-2 pr-4">
+          {atividades.map((atividade, index) => (
+            <AtividadeItem
+              key={atividade.id}
+              atividade={atividade}
+              index={index}
+              totalItems={atividades.length}
+              onUpdate={onUpdate}
+              onMove={onMove}
+              onRemove={onRemove}
+            />
+          ))}
+        </div>
+      </ScrollArea>
       <Button variant="outline" className="w-full" onClick={onAdd}>
         <Plus className="h-4 w-4 mr-2" />
         Adicionar atividade
