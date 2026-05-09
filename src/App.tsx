@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Settings } from "lucide-react";
+import { Settings, FileText, Clock } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { COLORS } from './styles';
@@ -13,6 +13,9 @@ import { HISTORY_KEY, STORAGE_KEY } from './data';
 import { PdfPreview } from "./components/pdf-preview";
 import { DatePicker } from "./components/date-picker";
 import { DateRangeList } from "./components/date-range-list";
+import { FormField } from "./components/form-field";
+import { AtividadesList } from "./components/atividades-list";
+import { EstimativaHistorico } from "./components/estimativa-historico";
 import {
   addDays,
   createId,
@@ -443,25 +446,44 @@ export default function GeradorEstimativaPDF() {
             </div>
             
             {/* Informações da Estimativa - Sempre visível */}
-            <div className="space-y-3 border-b pb-4">
-              <h2 className="font-semibold text-sm">📋 Informações da Estimativa</h2>
-              <div>
-                <span className="text-xs font-medium text-zinc-600">Título da estimativa</span>
-                <Input value={form.titulo} onChange={(event) => updateForm("titulo", event.target.value)} />
+            <Card className="border-zinc-200">
+              <div className="p-4">
+                <h2 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Informações da Estimativa
+                </h2>
+                <div className="space-y-3">
+                  <FormField label="Título da estimativa" required>
+                    <Input 
+                      value={form.titulo} 
+                      onChange={(event) => updateForm("titulo", event.target.value)} 
+                      placeholder="Ex: PTI-123"
+                    />
+                  </FormField>
+                  <FormField label="Arquiteto" required>
+                    <Input 
+                      value={form.arquiteto} 
+                      onChange={(event) => updateForm("arquiteto", event.target.value)} 
+                      placeholder="Nome do arquiteto"
+                    />
+                  </FormField>
+                  <FormField label="Início" required hint="Primeiro dia útil do projeto">
+                    <DatePicker 
+                      value={form.inicio} 
+                      onChange={(date) => updateForm("inicio", date)} 
+                      placeholder="Data de início (dd/mm/aaaa)" 
+                    />
+                  </FormField>
+                  <FormField label="Subida em Produção" required hint="Data prevista de release">
+                    <DatePicker 
+                      value={form.releaseAlvo || ""} 
+                      onChange={(date) => updateForm("releaseAlvo", date)} 
+                      placeholder="Release alvo (dd/mm/aaaa)" 
+                    />
+                  </FormField>
+                </div>
               </div>
-              <div>
-                <span className="text-xs font-medium text-zinc-600">Arquiteto</span>
-                <Input value={form.arquiteto} onChange={(event) => updateForm("arquiteto", event.target.value)} />
-              </div>
-              <div>
-                <span className="text-xs font-medium text-zinc-600">Início</span>
-                <DatePicker value={form.inicio} onChange={(date) => updateForm("inicio", date)} placeholder="Data de início (dd/mm/aaaa)" />
-              </div>
-              <div>
-                <span className="text-xs font-medium text-zinc-600">Subida em Produção</span>
-                <DatePicker value={form.releaseAlvo || ""} onChange={(date) => updateForm("releaseAlvo", date)} placeholder="Release alvo (dd/mm/aaaa)" />
-              </div>
-            </div>
+            </Card>
 
             {/* Accordion Sections */}
             <Accordion type="single" collapsible className="w-full space-y-2">
@@ -471,18 +493,29 @@ export default function GeradorEstimativaPDF() {
                 <AccordionItem value="impact-view" className="border-0">
                   <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">🎯 Visualização de Impacto</AccordionTrigger>
                   <AccordionContent className="space-y-4 pt-4 px-4 pb-4 border-t">
-                    <div>
-                      <span className="text-xs font-medium text-zinc-600">Dias de trâmite CHG</span>
-                      <Input type="number" min="0" value={form.chgDias || ""} onChange={(event) => updateForm("chgDias", event.target.value)} placeholder="Ex: 3" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-medium text-zinc-600">Dias impactados</span>
-                      <DateRangeList value={form.diasParados || ""} onChange={(value) => updateForm("diasParados", value)} placeholder="Clique para adicionar dias" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-medium text-zinc-600">Período de esteira preprod</span>
-                      <DateRangeList value={form.esteiraPreProd || ""} onChange={(value) => updateForm("esteiraPreProd", value)} placeholder="Clique para adicionar períodos" />
-                    </div>
+                    <FormField label="Dias de trâmite CHG" hint="Número de dias de processamento">
+                      <Input 
+                        type="number" 
+                        min="0" 
+                        value={form.chgDias || ""} 
+                        onChange={(event) => updateForm("chgDias", event.target.value)} 
+                        placeholder="Ex: 3" 
+                      />
+                    </FormField>
+                    <FormField label="Dias impactados" hint="Períodos em que o projeto está parado">
+                      <DateRangeList 
+                        value={form.diasParados || ""} 
+                        onChange={(value) => updateForm("diasParados", value)} 
+                        placeholder="Clique para adicionar dias" 
+                      />
+                    </FormField>
+                    <FormField label="Período de esteira preprod" hint="Tempo em pré-produção">
+                      <DateRangeList 
+                        value={form.esteiraPreProd || ""} 
+                        onChange={(value) => updateForm("esteiraPreProd", value)} 
+                        placeholder="Clique para adicionar períodos" 
+                      />
+                    </FormField>
                   </AccordionContent>
                 </AccordionItem>
               </div>
@@ -492,22 +525,38 @@ export default function GeradorEstimativaPDF() {
                 <AccordionItem value="observations" className="border-0">
                   <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">📝 Observações</AccordionTrigger>
                   <AccordionContent className="space-y-4 pt-4 px-4 pb-4 border-t">
-                    <div>
-                      <span className="text-xs font-medium text-zinc-600">Pontos de atenção</span>
-                      <Textarea className="mt-2" value={form.pontos} onChange={(event) => updateForm("pontos", event.target.value)} placeholder="Pontos de atenção" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-medium text-zinc-600">Premissas</span>
-                      <Textarea className="mt-2" value={form.premissas} onChange={(event) => updateForm("premissas", event.target.value)} placeholder="Premissas" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-medium text-zinc-600">Restrições</span>
-                      <Textarea className="mt-2" value={form.restricoes} onChange={(event) => updateForm("restricoes", event.target.value)} placeholder="Restrições" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-medium text-zinc-600">Observações</span>
-                      <Textarea className="mt-2" value={form.observacoes} onChange={(event) => updateForm("observacoes", event.target.value)} placeholder="Observações" />
-                    </div>
+                    <FormField label="Pontos de atenção">
+                      <Textarea 
+                        value={form.pontos} 
+                        onChange={(event) => updateForm("pontos", event.target.value)} 
+                        placeholder="Listee os pontos de atenção" 
+                        className="min-h-24"
+                      />
+                    </FormField>
+                    <FormField label="Premissas">
+                      <Textarea 
+                        value={form.premissas} 
+                        onChange={(event) => updateForm("premissas", event.target.value)} 
+                        placeholder="Listee as premissas do projeto" 
+                        className="min-h-24"
+                      />
+                    </FormField>
+                    <FormField label="Restrições">
+                      <Textarea 
+                        value={form.restricoes} 
+                        onChange={(event) => updateForm("restricoes", event.target.value)} 
+                        placeholder="Listee as restrições" 
+                        className="min-h-24"
+                      />
+                    </FormField>
+                    <FormField label="Observações">
+                      <Textarea 
+                        value={form.observacoes} 
+                        onChange={(event) => updateForm("observacoes", event.target.value)} 
+                        placeholder="Observações gerais" 
+                        className="min-h-24"
+                      />
+                    </FormField>
                   </AccordionContent>
                 </AccordionItem>
               </div>
@@ -517,82 +566,43 @@ export default function GeradorEstimativaPDF() {
                 <AccordionItem value="activities" className="border-0">
                   <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">✓ Atividades</AccordionTrigger>
                   <AccordionContent className="space-y-3 pt-4 px-4 pb-4 border-t">
-                    {atividades.map((atividade, index) => (
-                      <div key={atividade.id} className="grid grid-cols-[1fr_70px] gap-2 rounded-lg border p-2">
-                        <Input value={atividade.nome} onChange={(event) => updateAtividade(atividade.id, "nome", event.target.value)} />
-                        <Input type="number" min="1" value={atividade.dias} onChange={(event) => updateAtividade(atividade.id, "dias", event.target.value)} />
-                        <Input className="col-span-2" value={atividade.etapa ?? ""} onChange={(event) => updateAtividade(atividade.id, "etapa", event.target.value)} placeholder="Etapa. Ex: 1 para atividades paralelas" />
-                        <select className="col-span-2 rounded border p-2" value={atividade.tipo} onChange={(event) => updateAtividade(atividade.id, "tipo", event.target.value)}>
-                          <option value="desenvolvimento">Desenvolvimento</option>
-                          <option value="subida">Subida Pre Prod</option>
-                          <option value="testes">Testes internos</option>
-                        </select>
-                        <div className="col-span-2 grid grid-cols-3 gap-2">
-                          <Button variant="outline" disabled={index === 0} onClick={() => moveAtividade(atividade.id, -1)}>Subir</Button>
-                          <Button variant="outline" disabled={index === atividades.length - 1} onClick={() => moveAtividade(atividade.id, 1)}>Descer</Button>
-                          <Button variant="outline" onClick={() => removeAtividade(atividade.id)}>Remover</Button>
-                        </div>
-                      </div>
-                    ))}
-                    <Button variant="outline" className="w-full" onClick={addAtividade}>Adicionar atividade</Button>
+                    <AtividadesList
+                      atividades={atividades}
+                      onUpdate={updateAtividade}
+                      onMove={moveAtividade}
+                      onRemove={removeAtividade}
+                      onAdd={addAtividade}
+                    />
                   </AccordionContent>
                 </AccordionItem>
               </div>
             </Accordion>
 
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" onClick={salvarTemplate}>Salvar template</Button>
-              <Button variant="outline" onClick={restaurarPadrao}>Restaurar padrão</Button>
-            </div>
-            <div className="space-y-3 rounded-lg border p-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-semibold">Histórico</h2>
 
-                <Button variant="outline" onClick={salvarEstimativa}>
-                  Salvar estimativa
-                </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" onClick={salvarTemplate} size="sm">Salvar template</Button>
+              <Button variant="outline" onClick={restaurarPadrao} size="sm">Restaurar padrão</Button>
+            </div>
+
+            <EstimativaHistorico
+              historico={historico}
+              onLoad={carregarEstimativa}
+              onDelete={excluirEstimativa}
+              onSave={salvarEstimativa}
+            />
+
+            {status && (
+              <div className="rounded-lg bg-blue-50 border border-blue-200 p-2 text-xs text-blue-700">
+                {status}
               </div>
+            )}
 
-              {historico.length === 0 && (
-                <p className="text-sm text-zinc-500">
-                  Nenhuma estimativa salva.
-                </p>
-              )}
-
-              {historico.map((item) => (
-                <div
-                  key={item.id}
-                  className="space-y-2 rounded-md border bg-white p-3 text-sm"
-                >
-                  <div>
-                    <strong>{item.form?.titulo || "Estimativa sem título"}</strong>
-                    <p className="text-xs text-zinc-500">{item.createdAt}</p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button size="sm" onClick={() => carregarEstimativa(item)}>
-                      Carregar
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => excluirEstimativa(item.id)}
-                    >
-                      Excluir
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {status && <p className="text-xs text-zinc-600">{status}</p>}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
               <Button className="w-full" onClick={abrirPDF}>Abrir PDF</Button>
-              <Button className="w-full" onClick={gerarPDF}>Baixar PDF</Button>
-              <Button className="w-full col-span-2" onClick={gerarPDFCalendario}>
-                Baixar PDF Calendário
-              </Button>
-
+              <div className="grid grid-cols-2 gap-2">
+                <Button className="w-full" onClick={gerarPDF} variant="default">Baixar PDF</Button>
+                <Button className="w-full" onClick={gerarPDFCalendario} variant="outline">📅 Calendário</Button>
+              </div>
             </div>
           </CardContent>
         </Card>
