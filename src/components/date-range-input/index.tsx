@@ -129,7 +129,6 @@ export function DateRangeInput({
               onSelect={handleSingleDateSelect}
               locale={pt}
               disabled={(date) => date < new Date("1900-01-01")}
-              initialFocus
             />
           </TabsContent>
 
@@ -148,7 +147,6 @@ export function DateRangeInput({
                 onSelect={handleRangeDateSelect}
                 locale={pt}
                 disabled={(date) => date < new Date("1900-01-01")}
-                initialFocus
               />
             </div>
           </TabsContent>

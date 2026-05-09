@@ -130,7 +130,6 @@ export function DateRangeList({
                 onSelect={setSelectedDate}
                 locale={pt}
                 disabled={(date) => date < new Date("1900-01-01")}
-                initialFocus
               />
               <div className="space-y-2">
                 <Input
@@ -165,7 +164,6 @@ export function DateRangeList({
                 onSelect={setDateRange}
                 locale={pt}
                 disabled={(date) => date < new Date("1900-01-01")}
-                initialFocus
                 numberOfMonths={1}
               />
               <div className="space-y-2">

@@ -74,7 +74,6 @@ export function DatePicker({
           onSelect={handleDateSelect}
           locale={pt}
           disabled={(date) => date < new Date("1900-01-01")}
-          initialFocus
         />
       </PopoverContent>
     </Popover>

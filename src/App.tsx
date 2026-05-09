@@ -97,7 +97,6 @@ export default function GeradorEstimativaPDF() {
       const savedHistory = localStorage.getItem(HISTORY_KEY);
 
       if (savedHistory) {
-        // @ts-expect-error - setState in effect is allowed for loading from localStorage
         setHistorico(JSON.parse(savedHistory));
       }
     } catch {
@@ -111,9 +110,7 @@ export default function GeradorEstimativaPDF() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (!saved) return;
       const parsed = JSON.parse(saved);
-      // @ts-expect-error - setState in effect is allowed for loading from localStorage
       if (parsed.form) setForm({ ...defaultForm(), ...parsed.form });
-      // @ts-expect-error - setState in effect is allowed for loading from localStorage
       if (Array.isArray(parsed.atividades)) setAtividades(normalizeAtividades(parsed.atividades));
     } catch {
       setStatus("Não foi possível carregar o template salvo.");
