@@ -1,0 +1,38 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(256 256)">
+    <g>
+      <animateTransform
+        attributeName="transform"
+        type="rotate"
+        from="0"
+        to="360"
+        dur="1.2s"
+        repeatCount="indefinite" />
+
+      <!-- transparent background loading swirl -->
+      <path
+        d="M88 -86
+           C38 -126 -50 -103 -93 -33
+           C-140 43 -87 118 -4 118
+           C76 118 130 63 119 -9
+           C108 -80 42 -103 -6 -68
+           C-48 -38 -48 25 -7 47
+           C34 69 72 36 61 -4"
+        fill="none"
+        stroke="#FF8A00"
+        stroke-width="42"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+      <!-- tip -->
+      <path
+        d="M84 -84 L126 -128"
+        stroke="#FF8A00"
+        stroke-width="42"
+        stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- subtle glow -->
+  <circle cx="256" cy="256" r="112" fill="#FF8A00" opacity="0.08"/>
+</svg>
