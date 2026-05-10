@@ -102,10 +102,19 @@ export function Login({ onLoginSuccess, onSwitchToSignup }: LoginProps) {
   return (
     <Card className="w-full max-w-md mx-auto p-6 space-y-6">
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold">Login</h1>
-        <p className="text-sm text-gray-600">
-          Bem-vindo de volta! Faça login com suas credenciais
-        </p>
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold">Login</h1>
+            <p className="text-sm text-gray-600">
+              Bem-vindo de volta! Faça login com suas credenciais
+            </p>
+          </div>
+          <img 
+            src="/chikamaru-thinking.svg" 
+            alt="Chikamaru pensando" 
+            className="w-20 h-20 flex-shrink-0"
+          />
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
