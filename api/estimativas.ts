@@ -68,19 +68,30 @@ export default async function handler(
 
   try {
     if (req.method === 'GET') {
-      // Listar todas as estimativas
-      const { data, error } = await supabase
-        .from('estimativas')
-        .select('*')
-        .order('id', { ascending: false });
+      try {
+        // Listar todas as estimativas
+        const { data, error } = await supabase
+          .from('estimativas')
+          .select('*')
+          .order('id', { ascending: false });
 
-      if (error) {
-        return res.status(400).json({ erro: error.message });
+        if (error) {
+          console.error('❌ Erro Supabase:', error);
+          return res.status(400).json({ erro: error.message });
+        }
+
+        // Converter resposta para camelCase
+        try {
+          const converted = data?.map(lowercaseToCamel) || [];
+          return res.status(200).json(converted);
+        } catch (conversionError) {
+          console.error('❌ Erro ao converter dados:', conversionError);
+          return res.status(500).json({ erro: 'Erro ao converter dados da API' });
+        }
+      } catch (queryError) {
+        console.error('❌ Erro na query Supabase:', queryError);
+        return res.status(500).json({ erro: 'Erro ao consultar banco de dados' });
       }
-
-      // Converter para camelCase
-      const converted = data?.map(lowercaseToCamel) || [];
-      return res.status(200).json(converted);
     }
 
     if (req.method === 'POST') {
