@@ -1,6 +1,53 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabase } from '../../lib/supabase';
 
+// Conversor de camelCase para lowercase (schema do banco)
+function camelToLowercase(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj;
+  
+  const converted: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const lowerKey = key.toLowerCase();
+    if (Array.isArray(value)) {
+      converted[lowerKey] = value.map(item => 
+        typeof item === 'object' ? camelToLowercase(item) : item
+      );
+    } else if (typeof value === 'object' && value !== null) {
+      converted[lowerKey] = camelToLowercase(value);
+    } else {
+      converted[lowerKey] = value;
+    }
+  }
+  return converted;
+}
+
+// Conversor de lowercase para camelCase (resposta ao cliente)
+function lowercaseToCamel(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj;
+  
+  const converted: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    let camelKey = key;
+    if (key === 'releasealvo') camelKey = 'releaseAlvo';
+    else if (key === 'chgdias') camelKey = 'chgDias';
+    else if (key === 'esteirapreprod') camelKey = 'esteiraPreProd';
+    else if (key === 'diasparados') camelKey = 'diasParados';
+    else if (key === 'criadoem') camelKey = 'criadoEm';
+    else if (key === 'atualizadoem') camelKey = 'atualizadoEm';
+    
+    if (Array.isArray(value)) {
+      converted[camelKey] = value.map(item => 
+        typeof item === 'object' ? lowercaseToCamel(item) : item
+      );
+    } else if (typeof value === 'object' && value !== null) {
+      converted[camelKey] = lowercaseToCamel(value);
+    } else {
+      converted[camelKey] = value;
+    }
+  }
+  return converted;
+}
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
@@ -38,14 +85,17 @@ export default async function handler(
         return res.status(404).json({ erro: 'Estimativa não encontrada' });
       }
 
-      return res.status(200).json(data);
+      return res.status(200).json(lowercaseToCamel(data));
     }
 
     if (req.method === 'PUT') {
+      // Converter camelCase para lowercase antes de enviar
+      const convertedBody = camelToLowercase(req.body);
+      
       // Atualizar estimativa
       const { data, error } = await supabase
         .from('estimativas')
-        .update(req.body)
+        .update(convertedBody)
         .eq('id', id)
         .select()
         .single();
@@ -54,7 +104,7 @@ export default async function handler(
         return res.status(400).json({ erro: error.message });
       }
 
-      return res.status(200).json(data);
+      return res.status(200).json(lowercaseToCamel(data));
     }
 
     if (req.method === 'DELETE') {
