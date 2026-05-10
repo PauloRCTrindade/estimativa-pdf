@@ -10,7 +10,9 @@
     "setup:db": "node setup-db.js",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:backend": "node test-save-backend.js",
+    "test:backend:ts": "npx tsx test-backend-integration.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
