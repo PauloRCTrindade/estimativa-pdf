@@ -77,3 +77,10 @@ export default async function handler(
     return res.status(500).json({ erro: error.message || 'Erro no servidor' });
   }
 }
+
+    return res.status(405).json({ erro: 'Método não permitido' });
+  } catch (error: any) {
+    console.error('Erro:', error);
+    return res.status(500).json({ erro: error.message || 'Erro no servidor' });
+  }
+}

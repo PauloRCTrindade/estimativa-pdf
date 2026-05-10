@@ -1,12 +1,12 @@
 -- Criar tabela de estimativas
-CREATE TABLE estimativas (
+CREATE TABLE IF NOT EXISTS estimativas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
   -- Informações básicas
   titulo TEXT NOT NULL,
   arquiteto TEXT NOT NULL,
   inicio DATE NOT NULL,
-  releaseAlvo DATE NOT NULL,
+  release_alvo DATE NOT NULL,
   
   -- Dados da estimativa
   feriados TEXT,
@@ -17,16 +17,16 @@ CREATE TABLE estimativas (
   pontos TEXT,
   
   -- Configurações
-  chgDias INTEGER DEFAULT 0,
-  esteiraPreProd TEXT,
-  diasParados TEXT,
+  chg_dias INTEGER DEFAULT 0,
+  esteira_pre_prod TEXT,
+  dias_parados TEXT,
   
   -- Atividades (armazenadas como JSON)
   atividades JSONB DEFAULT '[]'::jsonb,
   
   -- Auditoria
-  criadoEm TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  atualizadoEm TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   
   -- Índices para melhor performance
   CONSTRAINT titulo_not_empty CHECK (titulo <> ''),
@@ -34,27 +34,34 @@ CREATE TABLE estimativas (
 );
 
 -- Criar índices
-CREATE INDEX idx_estimativas_criadoEm ON estimativas(criadoEm DESC);
-CREATE INDEX idx_estimativas_releaseAlvo ON estimativas(releaseAlvo);
+CREATE INDEX IF NOT EXISTS idx_estimativas_criado_em ON estimativas(criado_em DESC);
+CREATE INDEX IF NOT EXISTS idx_estimativas_release_alvo ON estimativas(release_alvo);
 
--- Criar trigger para atualizar atualizadoEm automaticamente
-CREATE OR REPLACE FUNCTION update_atualizadoEm()
+-- Criar trigger para atualizar atualizado_em automaticamente
+CREATE OR REPLACE FUNCTION update_atualizado_em()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.atualizadoEm = NOW();
+  NEW.atualizado_em = NOW();
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_update_atualizadoEm
+DROP TRIGGER IF EXISTS trigger_update_atualizado_em ON estimativas;
+
+CREATE TRIGGER trigger_update_atualizado_em
 BEFORE UPDATE ON estimativas
 FOR EACH ROW
-EXECUTE FUNCTION update_atualizadoEm();
+EXECUTE FUNCTION update_atualizado_em();
 
 -- Habilitar RLS (Row Level Security) - opcional, para controle de acesso
 ALTER TABLE estimativas ENABLE ROW LEVEL SECURITY;
 
 -- Política pública (remova se quiser adicionar autenticação depois)
+DROP POLICY IF EXISTS "Enable read access for all users" ON estimativas;
+DROP POLICY IF EXISTS "Enable insert for all users" ON estimativas;
+DROP POLICY IF EXISTS "Enable update for all users" ON estimativas;
+DROP POLICY IF EXISTS "Enable delete for all users" ON estimativas;
+
 CREATE POLICY "Enable read access for all users" ON estimativas
 AS PERMISSIVE FOR SELECT
 USING (true);
