@@ -98,40 +98,42 @@ export default async function handler(
 
         if (error) {
           console.error('❌ Erro Supabase:', error);
-          return res.status(400).json({ erro: error.message });
+          return res.status(400).json({ erro: 'Erro ao consultar banco', detalhes: error.message });
         }
 
-        // Converter resposta para camelCase
-        try {
-          const converted = data?.map(lowercaseToCamel) || [];
-          return res.status(200).json(converted);
-        } catch (conversionError) {
-          console.error('❌ Erro ao converter dados:', conversionError);
-          return res.status(500).json({ erro: 'Erro ao converter dados da API' });
-        }
-      } catch (queryError) {
+        console.log(`✅ Retornando ${data?.length || 0} estimativas`);
+
+        // Retornar dados brutos do Supabase sem conversão (debug)
+        return res.status(200).json(data || []);
+      } catch (queryError: any) {
         console.error('❌ Erro na query Supabase:', queryError);
-        return res.status(500).json({ erro: 'Erro ao consultar banco de dados' });
+        return res.status(500).json({ erro: 'Erro ao consultar banco de dados', detalhes: queryError.message });
       }
     }
 
     if (req.method === 'POST') {
-      // Converter camelCase para lowercase antes de enviar
-      const convertedBody = camelToLowercase(req.body);
-      
-      // Criar nova estimativa
-      const { data, error } = await supabase
-        .from('estimativas')
-        .insert([convertedBody])
-        .select()
-        .single();
+      try {
+        console.log('📨 Recebido POST body:', JSON.stringify(req.body).substring(0, 200));
+        
+        // Enviar direto para Supabase sem conversão (debug)
+        const { data, error } = await supabase
+          .from('estimativas')
+          .insert([req.body])
+          .select()
+          .single();
 
-      if (error) {
-        return res.status(400).json({ erro: error.message });
+        if (error) {
+          console.error('❌ Erro ao inserir:', error);
+          return res.status(400).json({ erro: 'Erro ao criar estimativa', detalhes: error.message });
+        }
+
+        console.log('✅ Estimativa criada:', data?.id);
+        return res.status(201).json(data);
+      } catch (insertError: any) {
+        console.error('❌ Erro na inserção:', insertError);
+        return res.status(500).json({ erro: 'Erro ao criar estimativa', detalhes: insertError.message });
       }
-
-      // Converter resposta para camelCase
-      return res.status(201).json(lowercaseToCamel(data));
+    }
     }
 
     return res.status(405).json({ erro: 'Método não permitido' });
