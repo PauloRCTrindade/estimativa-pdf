@@ -19,7 +19,11 @@ export function ProtectedRoute({ children, onLogout }: ProtectedRouteProps) {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center space-y-4">
           <div className="inline-block animate-spin">
-            <div className="text-4xl">⏳</div>
+            <img 
+              src="/loading_naruto_inspirado.svg" 
+              alt="Carregando" 
+              className="w-16 h-16"
+            />
           </div>
           <p className="text-gray-600">Verificando autenticação...</p>
         </div>
@@ -40,10 +44,10 @@ export function ProtectedRoute({ children, onLogout }: ProtectedRouteProps) {
             <img 
               src="/chikamaru-thinking.svg" 
               alt="Chikamaru pensando" 
-              className="w-10 h-10"
+              className="w-10 h-10 rounded-full bg-gray-100 p-1"
             />
             <h2 className="text-lg font-semibold text-gray-900">
-              👤 {user?.user_metadata?.full_name || user?.email || 'Usuário'}
+              {user?.user_metadata?.full_name || user?.email || 'Usuário'}
             </h2>
           </div>
           <button
