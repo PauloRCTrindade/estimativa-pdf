@@ -1,11 +1,31 @@
 import type { Estimativa } from '../types';
 
 // Construir URL base da API
-// Em produção (Vercel): /api (mesmo domínio)
-// Em desenvolvimento: http://localhost:3000/api
-const API_BASE = import.meta.env.VITE_API_URL 
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api';
+// - Em produção (Vercel): usa /api (mesmo domínio) - VITE_API_URL deve estar VAZIO
+// - Em desenvolvimento: usa http://localhost:3000 - VITE_API_URL = http://localhost:3000
+const buildApiBase = () => {
+  const apiUrl = import.meta.env.VITE_API_URL?.trim() || '';
+  
+  // Se vazio, usar relativo (produção no Vercel)
+  if (!apiUrl) {
+    return '/api';
+  }
+  
+  // Se já tem /api no final, não duplicar
+  if (apiUrl.endsWith('/api')) {
+    return apiUrl;
+  }
+  
+  // Senão, adicionar /api
+  return `${apiUrl}/api`;
+};
+
+const API_BASE = buildApiBase();
+
+// Debug: log no console para verificar URL em produção
+if (typeof window !== 'undefined') {
+  console.log('🔧 API_BASE configurado:', API_BASE);
+}
 
 const getHeaders = (token?: string) => {
   const headers: Record<string, string> = {
