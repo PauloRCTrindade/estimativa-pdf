@@ -134,7 +134,6 @@ export default async function handler(
         return res.status(500).json({ erro: 'Erro ao criar estimativa', detalhes: insertError.message });
       }
     }
-    }
 
     return res.status(405).json({ erro: 'Método não permitido' });
   } catch (error: any) {
