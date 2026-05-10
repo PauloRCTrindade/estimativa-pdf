@@ -1,38 +1,39 @@
 /**
- * Teste de salvamento de estimativas no backend
+ * Teste de salvamento de estimativas no backend (com conversão camelCase)
  * Run: node test-save-backend.js
  */
 
 const API_URL = process.env.API_URL || 'http://localhost:3000';
 
-// Dados de teste - use nomes de colunas em lowercase
+// Dados de teste em camelCase (como o frontend envia)
 const estimativaTest = {
-  titulo: 'Teste de Salvamento Completo',
+  titulo: 'Teste de Salvamento Completo Frontend',
   arquiteto: 'Arquiteto Teste',
-  inicio: '2024-01-15',
-  releasealvo: '2024-03-15',
-  feriados: 'Nenhum feriado',
-  releases: 'v1.0',
+  inicio: '2024-02-15',
+  releaseAlvo: '2024-04-15',
+  feriados: 'Carnaval',
+  releases: 'v2.0',
   premissas: 'Premissa de teste',
   restricoes: 'Nenhuma restrição',
-  observacoes: 'Este é um teste de salvamento automatizado',
+  observacoes: 'Este é um teste de salvamento com camelCase',
   atividades: [
-    { descricao: 'Análise', dias: 3, recurso: 'Analista' },
-    { descricao: 'Desenvolvimento', dias: 10, recurso: 'Dev' }
+    { descricao: 'Design', dias: 2, recurso: 'Designer' },
+    { descricao: 'Desenvolvimento', dias: 8, recurso: 'Dev' },
+    { descricao: 'Testes', dias: 3, recurso: 'QA' }
   ],
-  pontos: '21',
-  chgdias: 2,
-  esteirapreprod: 'Sim',
-  diasparados: '0'
+  pontos: '13',
+  chgDias: 1,
+  esteiraPreProd: 'Sim',
+  diasParados: '1'
 };
 
 async function testar() {
-  console.log('🚀 Iniciando testes de salvamento...\n');
+  console.log('🚀 Iniciando testes de salvamento (com camelCase)...\n');
   console.log(`URL da API: ${API_URL}\n`);
 
   try {
     // 1. CRIAR ESTIMATIVA
-    console.log('📝 [1] Criando estimativa completa...');
+    console.log('📝 [1] Criando estimativa em camelCase...');
     const resPost = await fetch(`${API_URL}/api/estimativas`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -73,16 +74,18 @@ async function testar() {
 
     console.log('✅ Estimativa encontrada na base de dados!\n');
 
-    // 3. VALIDAR DADOS
-    console.log('🔍 [3] Validando dados salvos...');
+    // 3. VALIDAR DADOS E CONVERSÃO
+    console.log('🔍 [3] Validando dados salvos e conversão...');
     const validacoes = [
       { campo: 'titulo', esperado: estimativaTest.titulo, obtido: estimativaEncontrada.titulo },
       { campo: 'arquiteto', esperado: estimativaTest.arquiteto, obtido: estimativaEncontrada.arquiteto },
       { campo: 'inicio', esperado: estimativaTest.inicio, obtido: estimativaEncontrada.inicio },
-      { campo: 'releasealvo', esperado: estimativaTest.releasealvo, obtido: estimativaEncontrada.releasealvo },
+      { campo: 'releaseAlvo', esperado: estimativaTest.releaseAlvo, obtido: estimativaEncontrada.releaseAlvo },
       { campo: 'feriados', esperado: estimativaTest.feriados, obtido: estimativaEncontrada.feriados },
       { campo: 'pontos', esperado: estimativaTest.pontos, obtido: estimativaEncontrada.pontos },
-      { campo: 'chgdias', esperado: estimativaTest.chgdias, obtido: estimativaEncontrada.chgdias },
+      { campo: 'chgDias', esperado: estimativaTest.chgDias, obtido: estimativaEncontrada.chgDias },
+      { campo: 'esteiraPreProd', esperado: estimativaTest.esteiraPreProd, obtido: estimativaEncontrada.esteiraPreProd },
+      { campo: 'diasParados', esperado: estimativaTest.diasParados, obtido: estimativaEncontrada.diasParados },
       { campo: 'atividades (count)', esperado: estimativaTest.atividades.length, obtido: estimativaEncontrada.atividades.length }
     ];
 
@@ -101,11 +104,20 @@ async function testar() {
       process.exit(1);
     }
 
-    // 4. VERIFICAR TIMESTAMPS
-    console.log('\n⏰ [4] Verificando timestamps...');
-    if (estimativaEncontrada.criadoem && estimativaEncontrada.atualizadoem) {
-      console.log(`   ✅ criadoem: ${estimativaEncontrada.criadoem}`);
-      console.log(`   ✅ atualizadoem: ${estimativaEncontrada.atualizadoem}`);
+    // 4. VERIFICAR FORMATO CAMEL CASE NA RESPOSTA
+    console.log('\n🔄 [4] Verificando conversão camelCase...');
+    const temsKey = (obj, key) => Object.keys(obj).includes(key);
+    if (temsKey(estimativaEncontrada, 'releaseAlvo')) {
+      console.log('   ✅ Resposta em camelCase correto (releaseAlvo)');
+    } else {
+      console.log('   ❌ Resposta não está em camelCase');
+    }
+
+    // 5. VERIFICAR TIMESTAMPS
+    console.log('\n⏰ [5] Verificando timestamps...');
+    if (estimativaEncontrada.criadoEm && estimativaEncontrada.atualizadoEm) {
+      console.log(`   ✅ criadoEm: ${estimativaEncontrada.criadoEm}`);
+      console.log(`   ✅ atualizadoEm: ${estimativaEncontrada.atualizadoEm}`);
     } else {
       console.log('   ⚠️  Timestamps não encontrados');
     }
@@ -113,7 +125,7 @@ async function testar() {
     console.log('\n' + '='.repeat(60));
     console.log('✅ TODOS OS TESTES PASSARAM COM SUCESSO!');
     console.log('='.repeat(60));
-    console.log('\n📊 Dados completos salvos:');
+    console.log('\n📊 Dados completos salvos (em camelCase):');
     console.log(JSON.stringify(estimativaEncontrada, null, 2));
 
   } catch (error) {
