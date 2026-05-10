@@ -813,7 +813,11 @@ export default function App() {
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center space-y-4">
           <div className="inline-block animate-spin">
-            <div className="text-5xl">⏳</div>
+            <img 
+              src="/loading_naruto_inspirado.svg" 
+              alt="Carregando" 
+              className="w-16 h-16"
+            />
           </div>
           <p className="text-gray-600 font-medium">Verificando autenticação...</p>
         </div>
