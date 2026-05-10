@@ -1,48 +1,52 @@
-<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
-  <!-- Head -->
-  <circle cx="100" cy="80" r="45" fill="#f4a460" stroke="#8b7355" stroke-width="2"/>
-  
-  <!-- Hair -->
-  <path d="M 60 50 Q 55 30 100 25 Q 145 30 140 50" fill="#2d2d2d" stroke="#000" stroke-width="1.5"/>
-  
-  <!-- Eyes -->
-  <circle cx="85" cy="75" r="6" fill="#000"/>
-  <circle cx="115" cy="75" r="6" fill="#000"/>
-  
-  <!-- Pupils looking up (thinking expression) -->
-  <circle cx="85" cy="73" r="3" fill="#fff"/>
-  <circle cx="115" cy="73" r="3" fill="#fff"/>
-  
-  <!-- Mouth (thinking) -->
-  <path d="M 90 95 Q 100 98 110 95" stroke="#8b5a3c" stroke-width="2" fill="none" stroke-linecap="round"/>
-  
-  <!-- Hand on chin (thinking pose) -->
-  <ellipse cx="55" cy="105" rx="12" ry="18" fill="#f4a460" stroke="#8b7355" stroke-width="1.5"/>
-  <!-- Fingers -->
-  <circle cx="48" cy="100" r="4" fill="#f4a460" stroke="#8b7355" stroke-width="1.5"/>
-  <circle cx="45" cy="108" r="4" fill="#f4a460" stroke="#8b7355" stroke-width="1.5"/>
-  
-  <!-- Neck -->
-  <rect x="90" y="120" width="20" height="15" fill="#f4a460" stroke="#8b7355" stroke-width="1.5"/>
-  
-  <!-- Shirt/Body -->
-  <rect x="60" y="135" width="80" height="60" fill="#1a472a" stroke="#000" stroke-width="2" rx="5"/>
-  
-  <!-- Shirt details - pattern -->
-  <line x1="70" y1="135" x2="70" y2="195" stroke="#2d5a3d" stroke-width="1" opacity="0.5"/>
-  <line x1="85" y1="135" x2="85" y2="195" stroke="#2d5a3d" stroke-width="1" opacity="0.5"/>
-  <line x1="100" y1="135" x2="100" y2="195" stroke="#2d5a3d" stroke-width="1" opacity="0.5"/>
-  <line x1="115" y1="135" x2="115" y2="195" stroke="#2d5a3d" stroke-width="1" opacity="0.5"/>
-  <line x1="130" y1="135" x2="130" y2="195" stroke="#2d5a3d" stroke-width="1" opacity="0.5"/>
-  
-  <!-- Thought cloud -->
-  <g opacity="0.3">
-    <circle cx="160" cy="40" r="15" fill="none" stroke="#999" stroke-width="1.5"/>
-    <circle cx="140" cy="25" r="12" fill="none" stroke="#999" stroke-width="1.5"/>
-    <circle cx="155" cy="15" r="10" fill="none" stroke="#999" stroke-width="1.5"/>
-  </g>
-  
-  <!-- Connector from head to thought bubble -->
-  <circle cx="150" cy="50" r="3" fill="#999" opacity="0.3"/>
-  <circle cx="158" cy="42" r="2" fill="#999" opacity="0.3"/>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="42" fill="#EAF2E3"/>
+  <circle cx="256" cy="256" r="215" fill="#D7E7D0"/>
+
+  <!-- shadow -->
+  <ellipse cx="270" cy="438" rx="145" ry="28" fill="#B8C7B1" opacity="0.45"/>
+
+  <!-- neck -->
+  <path d="M224 276h70v70c0 21-16 38-35 38s-35-17-35-38v-70z" fill="#F2C29D" stroke="#1F1F1F" stroke-width="8"/>
+
+  <!-- vest -->
+  <path d="M151 360c16-54 51-86 105-86s89 32 105 86l23 82H128l23-82z" fill="#566B4F" stroke="#1F1F1F" stroke-width="9" stroke-linejoin="round"/>
+  <path d="M205 306l51 83 51-83" stroke="#2F3B2B" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M188 375h46v45h-46zM278 375h46v45h-46z" fill="#465A41" stroke="#1F1F1F" stroke-width="6" rx="7"/>
+
+  <!-- head -->
+  <path d="M161 184c0-61 43-105 101-105s101 44 101 105v37c0 64-45 112-101 112s-101-48-101-112v-37z" fill="#F6C9A5" stroke="#1F1F1F" stroke-width="9"/>
+
+  <!-- hair -->
+  <path d="M162 177c5-68 46-112 101-112 48 0 89 34 99 92-22-17-43-24-72-20l-17-39-17 44-31-41-4 50-42-24c-9 14-14 30-17 50z" fill="#151515" stroke="#1F1F1F" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M256 66c-2-38 19-58 43-64-4 23-1 44 18 63 25-22 52-28 82-18-29 20-42 43-38 74-42-26-76-35-105-55z" fill="#151515" stroke="#1F1F1F" stroke-width="8" stroke-linejoin="round"/>
+
+  <!-- ears -->
+  <path d="M157 202c-24-4-39 12-34 38 5 25 24 36 44 25" fill="#F2C29D"/>
+  <path d="M157 202c-24-4-39 12-34 38 5 25 24 36 44 25" stroke="#1F1F1F" stroke-width="8" stroke-linecap="round"/>
+  <path d="M364 202c24-4 39 12 34 38-5 25-24 36-44 25" fill="#F2C29D"/>
+  <path d="M364 202c24-4 39 12 34 38-5 25-24 36-44 25" stroke="#1F1F1F" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- face -->
+  <path d="M206 206c19-11 39-10 56 2" stroke="#1F1F1F" stroke-width="8" stroke-linecap="round"/>
+  <path d="M296 208c17-12 37-13 56-2" stroke="#1F1F1F" stroke-width="8" stroke-linecap="round"/>
+  <path d="M225 235c13 8 26 8 39 0" stroke="#1F1F1F" stroke-width="6" stroke-linecap="round"/>
+  <path d="M302 235c13 8 26 8 39 0" stroke="#1F1F1F" stroke-width="6" stroke-linecap="round"/>
+  <path d="M268 230c-2 23-8 39-15 51 11 5 23 4 34-1" stroke="#1F1F1F" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M223 300c23 14 55 14 78 0" stroke="#1F1F1F" stroke-width="7" stroke-linecap="round"/>
+
+  <!-- thinking hand -->
+  <path d="M314 324c-17-17-39-19-58-5-16 12-22 32-12 50 9 16 27 20 44 10l35-21c12-7 15-23 5-34h-14z" fill="#F2C29D" stroke="#1F1F1F" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M251 337c25-1 46 5 65 19" stroke="#1F1F1F" stroke-width="6" stroke-linecap="round"/>
+  <path d="M249 363c18 3 34 9 48 20" stroke="#1F1F1F" stroke-width="6" stroke-linecap="round"/>
+  <path d="M323 320c-4 24-14 43-30 58" stroke="#1F1F1F" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- thought bubble -->
+  <circle cx="394" cy="107" r="14" fill="white" stroke="#1F1F1F" stroke-width="6"/>
+  <circle cx="426" cy="74" r="22" fill="white" stroke="#1F1F1F" stroke-width="6"/>
+  <ellipse cx="346" cy="68" rx="54" ry="31" fill="white" stroke="#1F1F1F" stroke-width="6"/>
+  <text x="318" y="81" font-family="Arial, sans-serif" font-size="37" font-weight="700" fill="#1F1F1F">?</text>
+
+  <!-- leaf symbol inspired arm band -->
+  <rect x="90" y="318" width="68" height="44" rx="10" fill="#D9D9D9" stroke="#1F1F1F" stroke-width="6"/>
+  <path d="M121 348c14 0 21-17 7-25 20 1 25 23 8 34-16 10-34-2-31-19" stroke="#1F1F1F" stroke-width="5" fill="none" stroke-linecap="round"/>
 </svg>
