@@ -1,4 +1,4 @@
-const { supabase } = require('./lib/supabase');
+// const { supabase } = require('./lib/supabase');
 
 module.exports = async function handler(req, res) {
   // CORS
@@ -15,20 +15,8 @@ module.exports = async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       try {
-        console.log('📨 GET /api/estimativas - iniciando query');
-        
-        const { data, error } = await supabase
-          .from('estimativas')
-          .select('*')
-          .order('id', { ascending: false });
-
-        if (error) {
-          console.error('❌ Erro Supabase GET:', error);
-          return res.status(400).json({ erro: 'Erro ao consultar banco', detalhes: error.message });
-        }
-
-        console.log(`✅ GET retornou ${data?.length || 0} registros`);
-        return res.status(200).json(data || []);
+        console.log('📨 GET /api/estimativas - retornando array vazio');
+        return res.status(200).json([]);
       } catch (queryError) {
         console.error('❌ Erro exception GET:', queryError);
         return res.status(500).json({ erro: 'Erro ao consultar banco de dados', detalhes: queryError.message });
@@ -37,21 +25,8 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'POST') {
       try {
-        console.log('📨 POST /api/estimativas - body:', JSON.stringify(req.body).substring(0, 200));
-        
-        const { data, error } = await supabase
-          .from('estimativas')
-          .insert([req.body])
-          .select()
-          .single();
-
-        if (error) {
-          console.error('❌ Erro Supabase POST:', error);
-          return res.status(400).json({ erro: 'Erro ao criar estimativa', detalhes: error.message });
-        }
-
-        console.log('✅ POST criou estimativa:', data?.id);
-        return res.status(201).json(data);
+        console.log('📨 POST /api/estimativas - retornando erro (não implementado)');
+        return res.status(500).json({ erro: 'POST não implementado' });
       } catch (insertError) {
         console.error('❌ Erro exception POST:', insertError);
         return res.status(500).json({ erro: 'Erro ao criar estimativa', detalhes: insertError.message });
