@@ -59,6 +59,14 @@ function GeradorEstimativaPDF() {
   const [openSettings, setOpenSettings] = useState(false);
   const [loadingHolidays, setLoadingHolidays] = useState(false);
   
+  // Converter data de dd/mm/yyyy para yyyy-mm-dd
+  function converterData(dataDDMMYYYY: string): string {
+    if (!dataDDMMYYYY) return '';
+    const [dia, mes, ano] = dataDDMMYYYY.split('/');
+    if (!dia || !mes || !ano) return '';
+    return `${ano}-${mes}-${dia}`;
+  }
+
   async function salvarEstimativa() {
     try {
       setStatus("Salvando estimativa...");
@@ -66,8 +74,8 @@ function GeradorEstimativaPDF() {
       const novaEstimativa = {
         titulo: form.titulo,
         arquiteto: form.arquiteto,
-        inicio: form.inicio,
-        releaseAlvo: form.releaseAlvo,
+        inicio: converterData(form.inicio),
+        releaseAlvo: converterData(form.releaseAlvo),
         feriados: form.feriados,
         releases: form.releases,
         premissas: form.premissas,
