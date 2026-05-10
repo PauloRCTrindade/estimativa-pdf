@@ -1,21 +1,36 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabase } from '../lib/supabase';
 
-// Conversor de camelCase para lowercase (schema do banco)
+// Conversor de camelCase para snake_case (schema do banco)
 function camelToLowercase(obj: any): any {
   if (!obj || typeof obj !== 'object') return obj;
   
+  const keyMap: Record<string, string> = {
+    'releaseAlvo': 'release_alvo',
+    'chgDias': 'chg_dias',
+    'esteiraPreProd': 'esteira_pre_prod',
+    'diasParados': 'dias_parados',
+    'criadoEm': 'created_at',
+    'atualizadoEm': 'updated_at',
+  };
+  
   const converted: any = {};
   for (const [key, value] of Object.entries(obj)) {
-    const lowerKey = key.toLowerCase();
+    // Usar mapeamento se existir, senão converter camelCase para snake_case
+    let snakeKey = keyMap[key];
+    if (!snakeKey) {
+      // Converter camelCase para snake_case automaticamente
+      snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+    }
+    
     if (Array.isArray(value)) {
-      converted[lowerKey] = value.map(item => 
+      converted[snakeKey] = value.map(item => 
         typeof item === 'object' ? camelToLowercase(item) : item
       );
-    } else if (typeof value === 'object' && value !== null) {
-      converted[lowerKey] = camelToLowercase(value);
+    } else if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
+      converted[snakeKey] = camelToLowercase(value);
     } else {
-      converted[lowerKey] = value;
+      converted[snakeKey] = value;
     }
   }
   return converted;
@@ -26,20 +41,26 @@ function lowercaseToCamel(obj: any): any {
   if (!obj || typeof obj !== 'object') return obj;
   
   const converted: any = {};
+  const keyMap: Record<string, string> = {
+    'release_alvo': 'releaseAlvo',
+    'chg_dias': 'chgDias',
+    'esteira_pre_prod': 'esteiraPreProd',
+    'dias_parados': 'diasParados',
+    'created_at': 'criadoEm',
+    'updated_at': 'atualizadoEm',
+    'inicio': 'inicio',  // Manter como está
+    'atividades': 'atividades',
+  };
+  
   for (const [key, value] of Object.entries(obj)) {
-    let camelKey = key;
-    if (key === 'releasealvo') camelKey = 'releaseAlvo';
-    else if (key === 'chgdias') camelKey = 'chgDias';
-    else if (key === 'esteirapreprod') camelKey = 'esteiraPreProd';
-    else if (key === 'diasparados') camelKey = 'diasParados';
-    else if (key === 'criadoem') camelKey = 'criadoEm';
-    else if (key === 'atualizadoem') camelKey = 'atualizadoEm';
+    // Usar mapeamento se existir, senão usar a chave como está
+    const camelKey = keyMap[key] || key;
     
     if (Array.isArray(value)) {
       converted[camelKey] = value.map(item => 
         typeof item === 'object' ? lowercaseToCamel(item) : item
       );
-    } else if (typeof value === 'object' && value !== null) {
+    } else if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
       converted[camelKey] = lowercaseToCamel(value);
     } else {
       converted[camelKey] = value;
