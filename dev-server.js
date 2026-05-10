@@ -61,8 +61,29 @@ function lowercaseToCamel(obj) {
   return converted;
 }
 
-// Middleware
-app.use(cors());
+// Middleware - Configurar CORS com origins específicas
+const corsOptions = {
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      'http://localhost:5173',     // Vite dev
+      'http://localhost:3000',      // Local
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:3000',
+      process.env.FRONTEND_URL,     // Produção (Vercel)
+    ].filter(Boolean);
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS não permitido'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // GET /api/estimativas - Listar todas

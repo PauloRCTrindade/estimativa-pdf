@@ -1,6 +1,8 @@
 import type { Estimativa } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// Em produção (Vercel): usa URL relativa (mesmo domínio)
+// Em desenvolvimento: usa localhost:3000
+const API_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:3000' : '');
 
 const getHeaders = (token?: string) => {
   const headers: Record<string, string> = {
