@@ -181,6 +181,13 @@ function GeradorEstimativaPDF() {
 
   const calculo = useMemo(() => {
     const startDate = parseDateBR(form.inicio);
+    const releaseTargetDate = parseDateBR(form.releaseAlvo);
+    
+    // Safely handle invalid dates
+    if (!isValidDate(startDate) || !isValidDate(releaseTargetDate)) {
+      return { timeline: [], atividadesCalculadas: [], timeline2d: [] };
+    }
+    
     const validDays = getWorkingDays(startDate, totalDias, releases, feriados, diasParados);
     const etapasOrdenadas = Array.from(new Set(atividades.map((atividade) => String(atividade.etapa || "1")))).sort((a, b) => Number(a) - Number(b));
 

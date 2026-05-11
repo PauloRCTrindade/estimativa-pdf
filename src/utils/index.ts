@@ -8,22 +8,46 @@ export function createId() {
 /**
  * Parse date from either ISO format (yyyy-mm-dd) or BR format (dd/mm/yyyy)
  * @param value - Date string to parse
- * @returns Parsed Date object
+ * @returns Parsed Date object or invalid date if parsing fails
  */
 export function parseDateBR(value) {
-  if (!value) return new Date(NaN);
+  // Handle null/undefined/empty
+  if (!value || typeof value !== 'string') {
+    return new Date(NaN);
+  }
   
   const cleanValue = String(value).trim().slice(0, 10);
+  if (!cleanValue) {
+    return new Date(NaN);
+  }
+  
+  let year = NaN, month = NaN, day = NaN;
   
   // Try ISO format first (yyyy-mm-dd)
-  if (cleanValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
-    const [year, month, day] = cleanValue.split("-").map(Number);
+  if (cleanValue.includes("-")) {
+    const parts = cleanValue.split("-").map(p => parseInt(p, 10));
+    if (parts.length === 3 && !parts.some(isNaN)) {
+      year = parts[0];
+      month = parts[1];
+      day = parts[2];
+    }
+  }
+  // Fall back to BR format (dd/mm/yyyy)
+  else if (cleanValue.includes("/")) {
+    const parts = cleanValue.split("/").map(p => parseInt(p, 10));
+    if (parts.length === 3 && !parts.some(isNaN)) {
+      day = parts[0];
+      month = parts[1];
+      year = parts[2];
+    }
+  }
+  
+  // Only create date if all parts are valid numbers
+  if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
     return new Date(year, month - 1, day);
   }
   
-  // Fall back to BR format (dd/mm/yyyy)
-  const [day, month, year] = cleanValue.split("/").map(Number);
-  return new Date(year, month - 1, day);
+  return new Date(NaN);
 }
 
 export function isValidDate(date) {
