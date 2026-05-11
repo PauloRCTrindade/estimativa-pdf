@@ -24,6 +24,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
+      console.log('POST body:', JSON.stringify(req.body));
       const { data, error } = await supabase
         .from('estimativas')
         .insert([req.body])
@@ -31,7 +32,8 @@ export default async function handler(req, res) {
         .single();
 
       if (error) {
-        return res.status(400).json({ error: error.message });
+        console.error('POST error:', error);
+        return res.status(400).json({ error: error.message, details: error });
       }
 
       return res.status(201).json(data);
