@@ -77,10 +77,11 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      console.log('POST body:', JSON.stringify(req.body));
+      console.log('POST raw body:', JSON.stringify(req.body).substring(0, 200));
       
       // Convert request to lowercase
       const convertedBody = camelToLowercase(req.body);
+      console.log('POST converted body:', JSON.stringify(convertedBody).substring(0, 200));
       
       const { data, error } = await supabase
         .from('estimativas')
