@@ -5,21 +5,25 @@ export function createId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+/**
+ * Parse date from either ISO format (yyyy-mm-dd) or BR format (dd/mm/yyyy)
+ * @param value - Date string to parse
+ * @returns Parsed Date object
+ */
 export function parseDateBR(value) {
   if (!value) return new Date(NaN);
   
   const cleanValue = String(value).trim().slice(0, 10);
   
-  // Detect format: ISO (yyyy-mm-dd) or BR (dd/mm/yyyy)
-  if (cleanValue.includes("-")) {
-    // ISO format: yyyy-mm-dd
+  // Try ISO format first (yyyy-mm-dd)
+  if (cleanValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
     const [year, month, day] = cleanValue.split("-").map(Number);
     return new Date(year, month - 1, day);
-  } else {
-    // BR format: dd/mm/yyyy
-    const [day, month, year] = cleanValue.split("/").map(Number);
-    return new Date(year, month - 1, day);
   }
+  
+  // Fall back to BR format (dd/mm/yyyy)
+  const [day, month, year] = cleanValue.split("/").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 export function isValidDate(date) {
