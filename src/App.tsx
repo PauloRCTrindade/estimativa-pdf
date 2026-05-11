@@ -511,10 +511,57 @@ function GeradorEstimativaPDF() {
       const pdf = new jsPDF("l", "mm", "a4");
 
       const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
       const imgWidth = pageWidth;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+      // Calculate number of pages needed
+      const pagesNeeded = Math.ceil(imgHeight / pageHeight);
+
+      // Add image to PDF with multi-page support
+      if (pagesNeeded === 1) {
+        // Single page - add normally
+        pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+      } else {
+        // Multi-page - divide image and add to each page
+        const pixelsPerPage = (canvas.height * pageHeight) / imgHeight;
+        
+        for (let page = 0; page < pagesNeeded; page++) {
+          if (page > 0) {
+            pdf.addPage();
+          }
+
+          // Calculate crop area for this page
+          const startPixel = page * pixelsPerPage;
+          const endPixel = Math.min((page + 1) * pixelsPerPage, canvas.height);
+          const cropHeight = endPixel - startPixel;
+          
+          // Create temporary canvas for cropped image
+          const tempCanvas = document.createElement("canvas");
+          tempCanvas.width = canvas.width;
+          tempCanvas.height = cropHeight;
+          
+          const ctx = tempCanvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(
+              canvas,
+              0,
+              startPixel,
+              canvas.width,
+              cropHeight,
+              0,
+              0,
+              canvas.width,
+              cropHeight
+            );
+            
+            const croppedImgData = tempCanvas.toDataURL("image/png");
+            const pageImgHeight = (cropHeight * imgWidth) / canvas.width;
+            pdf.addImage(croppedImgData, "PNG", 0, 0, imgWidth, pageImgHeight);
+          }
+        }
+      }
+
       pdf.save(`${sanitizeFileName(form.titulo)}_calendario.pdf`);
 
       setStatus("PDF do calendário gerado com sucesso.");
