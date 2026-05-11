@@ -13,6 +13,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 
 interface DateRangeListProps {
@@ -188,22 +189,26 @@ export function DateRangeList({
 
       {/* Items List */}
       {items.length > 0 && (
-        <Card className="p-3 space-y-2 bg-muted/50 max-h-48 overflow-y-auto">
-          {items.map((item, index) => (
-            <div
-              key={index}
-              className="flex items-center justify-between text-xs p-2 bg-background rounded border"
-            >
-              <span>{item}</span>
-              <button
-                onClick={() => handleRemoveItem(index)}
-                className="text-muted-foreground hover:text-destructive transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
+        <div className="border rounded-lg bg-muted/50">
+          <ScrollArea className="h-48">
+            <div className="p-3 space-y-2">
+              {items.map((item, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between text-xs p-2 bg-background rounded border"
+                >
+                  <span>{item}</span>
+                  <button
+                    onClick={() => handleRemoveItem(index)}
+                    className="text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
             </div>
-          ))}
-        </Card>
+          </ScrollArea>
+        </div>
       )}
     </div>
   )
