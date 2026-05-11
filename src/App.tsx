@@ -267,6 +267,10 @@ function GeradorEstimativaPDF() {
     }
 
     // Get all months from start to end date
+    if (!isValidDate(endDate)) {
+      return { validDays: [], atividadesCalculadas: [], timeline: [], endDate: startDate };
+    }
+    
     let currentMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
     const lastMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
     
