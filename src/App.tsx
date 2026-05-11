@@ -44,6 +44,7 @@ import {
   isReleaseDay
 } from './utils';
 import { TimeLine } from "./components/time-line";
+import { CalculoFinanceiro } from "./components/calculo-financeiro";
 import { useAuth } from "./hooks/useAuth";
 import { useEstimativas } from "./hooks/useEstimativas";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
@@ -721,6 +722,16 @@ function GeradorEstimativaPDF() {
                         placeholder="Clique para adicionar períodos" 
                       />
                     </FormField>
+                  </AccordionContent>
+                </AccordionItem>
+              </div>
+
+              {/* Cálculo Financeiro */}
+              <div className="border rounded-lg overflow-hidden">
+                <AccordionItem value="financial-calc" className="border-0">
+                  <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">💰 Cálculo Financeiro</AccordionTrigger>
+                  <AccordionContent className="pt-4 px-4 pb-4 border-t">
+                    <CalculoFinanceiro atividades={atividades} />
                   </AccordionContent>
                 </AccordionItem>
               </div>
