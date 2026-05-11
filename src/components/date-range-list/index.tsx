@@ -188,7 +188,7 @@ export function DateRangeList({
 
       {/* Items List */}
       {items.length > 0 && (
-        <Card className="p-3 space-y-2 bg-muted/50">
+        <Card className="p-3 space-y-2 bg-muted/50 max-h-48 overflow-y-auto">
           {items.map((item, index) => (
             <div
               key={index}
