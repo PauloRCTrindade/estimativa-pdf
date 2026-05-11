@@ -215,7 +215,6 @@ function GeradorEstimativaPDF() {
     const timeline = [];
     let current = startDate;
     const calculatedEndDate = validDays[validDays.length - 1];
-    const releaseTargetDate = parseDateBR(form.releaseAlvo);
     const chgDates = getChgDates(releaseTargetDate, form.chgDias, feriados);
 
     const endDate =
