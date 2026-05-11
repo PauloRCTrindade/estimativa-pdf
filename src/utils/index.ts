@@ -6,9 +6,20 @@ export function createId() {
 }
 
 export function parseDateBR(value) {
-  const cleanValue = String(value || "").trim().slice(0, 10);
-  const [day, month, year] = cleanValue.split("/").map(Number);
-  return new Date(year, month - 1, day);
+  if (!value) return new Date(NaN);
+  
+  const cleanValue = String(value).trim().slice(0, 10);
+  
+  // Detect format: ISO (yyyy-mm-dd) or BR (dd/mm/yyyy)
+  if (cleanValue.includes("-")) {
+    // ISO format: yyyy-mm-dd
+    const [year, month, day] = cleanValue.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  } else {
+    // BR format: dd/mm/yyyy
+    const [day, month, year] = cleanValue.split("/").map(Number);
+    return new Date(year, month - 1, day);
+  }
 }
 
 export function isValidDate(date) {
