@@ -2,7 +2,8 @@ import { useMemo, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { DollarSign } from "lucide-react"
+import { DollarSign, Calendar, AlertCircle } from "lucide-react"
+import { parseDateBR, isValidDate, isWeekend, addDays, isSameDay } from "@/utils"
 
 interface Atividade {
   id: string
@@ -14,12 +15,14 @@ interface Atividade {
 
 interface CalculoFinanceiroProps {
   atividades: Atividade[]
+  dataInicio?: string
+  dataFim?: string
+  feriados?: string
 }
 
 const TIPOS = [
   { key: "desenvolvimento", label: "Desenvolvimento", color: "text-blue-600 bg-blue-50 border-blue-200" },
   { key: "testes", label: "QA / Testes internos", color: "text-green-600 bg-green-50 border-green-200" },
-  { key: "subida", label: "Subida Pre Prod", color: "text-orange-600 bg-orange-50 border-orange-200" },
 ]
 
 function formatBRL(value: number): string {
@@ -33,21 +36,80 @@ function parseInputValue(raw: string): number {
   return isNaN(n) ? 0 : n
 }
 
-export function CalculoFinanceiro({ atividades }: CalculoFinanceiroProps) {
+function parseFeriados(value: string | undefined): Date[] {
+  if (!value) return []
+  return value
+    .split("\n")
+    .map((line) => line.trim().slice(0, 10))
+    .filter(Boolean)
+    .map((dateStr) => parseDateBR(dateStr))
+    .filter(isValidDate)
+}
+
+function calcularDiasUteis(inicio: string, fim: string, feriados: Date[]): { total: number; uteis: number; feriados: Date[] } {
+  const startDate = parseDateBR(inicio)
+  const endDate = parseDateBR(fim)
+
+  if (!isValidDate(startDate) || !isValidDate(endDate)) {
+    return { total: 0, uteis: 0, feriados: [] }
+  }
+
+  let total = 0
+  let uteis = 0
+  const feriadosEncontrados: Date[] = []
+  let current = startDate
+
+  while (current <= endDate) {
+    total++
+
+    const isFeriado = feriados.some((f) => isSameDay(current, f))
+    const isWeekendDay = isWeekend(current)
+
+    if (isFeriado) {
+      feriadosEncontrados.push(new Date(current))
+    } else if (!isWeekendDay) {
+      uteis++
+    }
+
+    current = addDays(current, 1)
+  }
+
+  return { total, uteis, feriados: feriadosEncontrados }
+}
+
+export function CalculoFinanceiro({ atividades, dataInicio = "", dataFim = "", feriados = "" }: CalculoFinanceiroProps) {
   const [valoresDia, setValoresDia] = useState<Record<string, string>>({
     desenvolvimento: "",
     testes: "",
-    subida: "",
   })
 
   const diasPorTipo = useMemo(() => {
-    const map: Record<string, number> = { desenvolvimento: 0, testes: 0, subida: 0 }
+    const map: Record<string, Record<string, number>> = {
+      desenvolvimento: {},
+      testes: {},
+    }
+
+    // Agrupar por tipo e etapa
     atividades.forEach((a) => {
-      const tipo = a.tipo || "desenvolvimento"
+      const tipo = a.tipo === "subida" ? "desenvolvimento" : (a.tipo || "desenvolvimento")
+      const etapa = String(a.etapa || "1")
       const dias = Number(a.dias || 0)
-      if (tipo in map) map[tipo] += dias
+
+      if (tipo in map) {
+        // Manter apenas o máximo de dias para esta etapa
+        if (!(etapa in map[tipo]) || map[tipo][etapa] < dias) {
+          map[tipo][etapa] = dias
+        }
+      }
     })
-    return map
+
+    // Somar o máximo de cada etapa para cada tipo
+    const totais: Record<string, number> = { desenvolvimento: 0, testes: 0 }
+    Object.entries(map).forEach(([tipo, etapas]) => {
+      totais[tipo] = Object.values(etapas).reduce((acc, dias) => acc + dias, 0)
+    })
+
+    return totais
   }, [atividades])
 
   const totalAtividades = useMemo(
@@ -70,6 +132,12 @@ export function CalculoFinanceiro({ atividades }: CalculoFinanceiroProps) {
     [custoPorTipo]
   )
 
+  const feriadosParsed = useMemo(() => parseFeriados(feriados), [feriados])
+
+  const diasUteis = useMemo(() => {
+    return calcularDiasUteis(dataInicio, dataFim, feriadosParsed)
+  }, [dataInicio, dataFim, feriadosParsed])
+
   const handleValorChange = (tipo: string, raw: string) => {
     setValoresDia((prev) => ({ ...prev, [tipo]: raw }))
   }
@@ -86,6 +154,57 @@ export function CalculoFinanceiro({ atividades }: CalculoFinanceiroProps) {
 
       {temAtividades && (
         <>
+          {/* Informações de Data e Dias Úteis */}
+          {(dataInicio || dataFim) && (
+            <Card className="p-3 bg-slate-50 border-slate-200">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Calendar className="h-4 w-4 text-slate-600" />
+                  <p className="text-xs font-semibold text-slate-700">Período do Projeto</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <p className="text-muted-foreground">Início</p>
+                    <p className="font-semibold">{dataInicio || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Término</p>
+                    <p className="font-semibold">{dataFim || "—"}</p>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-slate-200">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-white rounded p-2 border border-slate-200">
+                      <p className="text-muted-foreground">Dias totais</p>
+                      <p className="text-lg font-bold text-slate-700">{diasUteis.total}</p>
+                    </div>
+                    <div className="bg-white rounded p-2 border border-slate-200">
+                      <p className="text-muted-foreground">Dias úteis</p>
+                      <p className="text-lg font-bold text-emerald-600">{diasUteis.uteis}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Feriados encontrados */}
+                {diasUteis.feriados.length > 0 && (
+                  <div className="pt-2 border-t border-slate-200">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+                      <p className="text-xs font-semibold text-amber-700">{diasUteis.feriados.length} Feriado{diasUteis.feriados.length !== 1 ? "s" : ""}</p>
+                    </div>
+                    <div className="space-y-1">
+                      {diasUteis.feriados.map((f, i) => (
+                        <div key={i} className="text-xs bg-amber-50 border border-amber-200 rounded px-2 py-1 text-amber-800">
+                          📅 {f.toLocaleDateString("pt-BR")}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
           {/* Resumo de dias */}
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">

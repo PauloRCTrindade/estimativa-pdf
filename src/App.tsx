@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Settings, FileText, Clock } from "lucide-react";
+import { Settings, FileText, DollarSign } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { COLORS } from './styles';
@@ -53,12 +53,18 @@ import { AuthPage } from "./components/auth/AuthPage";
 if (typeof window !== "undefined") runSelfTests();
 
 function GeradorEstimativaPDF() {
-  const { estimativas, listar, criar, deletar } = useEstimativas();
+  const { estimativas, listar, criar, deletar, buscarComFiltros } = useEstimativas();
   const [form, setForm] = useState(defaultForm);
   const [atividades, setAtividades] = useState(defaultAtividades);
   const [status, setStatus] = useState("");
   const [openSettings, setOpenSettings] = useState(false);
   const [loadingHolidays, setLoadingHolidays] = useState(false);
+  const [page, setPage] = useState<"estimativa" | "estimativa-rapida" | "financeiro">("estimativa-rapida");
+  const [tipoFiltro, setTipoFiltro] = useState<"arquiteto" | "demanda">("arquiteto");
+  const [valorFiltro, setValorFiltro] = useState("");
+  const [estimativaFinanceiro, setEstimativaFinanceiro] = useState<any | null>(null);
+  const [estimativasFiltradas, setEstimativasFiltradas] = useState<any[]>([]);
+  const [carregandoFiltro, setCarregandoFiltro] = useState(false);
   
   // Converter data de dd/mm/yyyy para yyyy-mm-dd (para enviar ao backend)
   function converterData(dataDDMMYYYY: string): string {
@@ -159,6 +165,29 @@ function GeradorEstimativaPDF() {
       setStatus("Não foi possível carregar o template salvo.");
     }
   }, []);
+
+  // Função para buscar estimativas por tipo de filtro (acionada pelo botão)
+  const executarBusca = async () => {
+    if (!valorFiltro.trim()) {
+      setEstimativasFiltradas([]);
+      setEstimativaFinanceiro(null);
+      return;
+    }
+
+    setCarregandoFiltro(true);
+    try {
+      const resultados = await buscarComFiltros({
+        arquiteto: tipoFiltro === "arquiteto" ? valorFiltro.trim() : undefined,
+        titulo: tipoFiltro === "demanda" ? valorFiltro.trim() : undefined,
+      });
+      setEstimativasFiltradas(resultados);
+    } catch (erro) {
+      console.error("Erro ao buscar estimativas:", erro);
+      setEstimativasFiltradas([]);
+    } finally {
+      setCarregandoFiltro(false);
+    }
+  };
 
   const releases = useMemo(() => normalizeDateList(form.releases), [form.releases]);
   const feriados = useMemo(() => normalizeDateList(form.feriados), [form.feriados]);
@@ -613,29 +642,209 @@ function GeradorEstimativaPDF() {
       // Verificar se há pelo menos uma atividade (tipo não vazio ou cor diferente de branco)
       const hasActivity = row.some(day => day.tipo !== "" || day.color !== COLORS.white);
       
-      if (hasActivity && row.length < daysPerBlock) {
-        // Preencher com dias vazios até atingir daysPerBlock
-        let currentDate = new Date(row[row.length - 1].date);
-        for (let j = row.length; j < daysPerBlock; j++) {
-          currentDate.setDate(currentDate.getDate() + 1);
-          
-          row.push({
-            date: new Date(currentDate),
-            tipo: "",
-            color: COLORS.white,
-            isReleaseDay: false,
-            isEsteiraPreProd: false,
-            isChg: false,
-          });
+      if (hasActivity) {
+        if (row.length < daysPerBlock) {
+          // Preencher com dias vazios até atingir daysPerBlock
+          let currentDate = new Date(row[row.length - 1].date);
+          for (let j = row.length; j < daysPerBlock; j++) {
+            currentDate.setDate(currentDate.getDate() + 1);
+            
+            row.push({
+              date: new Date(currentDate),
+              tipo: "",
+              color: COLORS.white,
+              isReleaseDay: false,
+              isEsteiraPreProd: false,
+              isChg: false,
+            });
+          }
         }
+        
+        timelineRows.push(row);
       }
-      
-      timelineRows.push(row);
     }
   }
 
   return (
     <div className="min-h-screen bg-zinc-100 p-6">
+      {/* Navegação entre páginas */}
+      <div className="mx-auto max-w-7xl mb-4">
+        <div className="flex gap-1 bg-white border rounded-lg p-1 w-fit">
+          <button
+            onClick={() => setPage("estimativa-rapida")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              page === "estimativa-rapida"
+                ? "bg-zinc-900 text-white"
+                : "text-zinc-600 hover:bg-zinc-100"
+            }`}
+          >
+            <FileText className="h-4 w-4" />
+            Estimativa Rápida
+          </button>
+          <button
+            onClick={() => setPage("estimativa")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              page === "estimativa"
+                ? "bg-zinc-900 text-white"
+                : "text-zinc-600 hover:bg-zinc-100"
+            }`}
+          >
+            <FileText className="h-4 w-4" />
+            Estimativa
+          </button>
+          <button
+            onClick={() => setPage("financeiro")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              page === "financeiro"
+                ? "bg-zinc-900 text-white"
+                : "text-zinc-600 hover:bg-zinc-100"
+            }`}
+          >
+            <DollarSign className="h-4 w-4" />
+            Cálculo Financeiro
+          </button>
+        </div>
+      </div>
+
+      {/* Página: Cálculo Financeiro */}
+      {page === "financeiro" && (
+        <div className="mx-auto max-w-2xl space-y-4">
+          {/* Filtro por arquiteto */}
+          <Card>
+            <CardContent className="p-4">
+              <h2 className="text-lg font-bold mb-3">💰 Cálculo Financeiro</h2>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-zinc-700 block mb-2">
+                    Tipo de Filtro
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setTipoFiltro("arquiteto")}
+                      className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
+                        tipoFiltro === "arquiteto"
+                          ? "bg-zinc-900 text-white border-zinc-900"
+                          : "bg-white hover:bg-zinc-50 border-zinc-200"
+                      }`}
+                    >
+                      👤 Arquiteto
+                    </button>
+                    <button
+                      onClick={() => setTipoFiltro("demanda")}
+                      className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
+                        tipoFiltro === "demanda"
+                          ? "bg-zinc-900 text-white border-zinc-900"
+                          : "bg-white hover:bg-zinc-50 border-zinc-200"
+                      }`}
+                    >
+                      📋 Demanda
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-zinc-700 block mb-1">
+                    {tipoFiltro === "arquiteto" ? "Nome do Arquiteto" : "Título ou Código da Demanda"}
+                  </label>
+                  <Input
+                    placeholder={tipoFiltro === "arquiteto" ? "Digite o nome do arquiteto..." : "Digite o título ou código..."}
+                    value={valorFiltro}
+                    onChange={(e) => setValorFiltro(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        executarBusca();
+                      }
+                    }}
+                  />
+                </div>
+                <Button
+                  onClick={executarBusca}
+                  disabled={carregandoFiltro || !valorFiltro.trim()}
+                  className="w-full"
+                  size="sm"
+                >
+                  {carregandoFiltro ? "🔍 Buscando..." : "🔍 Buscar"}
+                </Button>
+
+                {/* Lista de estimativas filtradas */}
+                {estimativasFiltradas.length > 0 && (
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    <p className="text-xs text-muted-foreground mb-1">
+                      {estimativasFiltradas.length} estimativa{estimativasFiltradas.length !== 1 ? "s" : ""} encontrada{estimativasFiltradas.length !== 1 ? "s" : ""}
+                    </p>
+                    {estimativasFiltradas.map((est) => (
+                      <button
+                        key={est.id}
+                        onClick={() => setEstimativaFinanceiro(est)}
+                        className={`w-full text-left px-3 py-2 rounded-md border text-sm transition-colors ${
+                          estimativaFinanceiro?.id === est.id
+                            ? "bg-zinc-900 text-white border-zinc-900"
+                            : "bg-white hover:bg-zinc-50 border-zinc-200"
+                        }`}
+                      >
+                        <div className="font-medium">{est.titulo || "Sem título"}</div>
+                        <div className={`text-xs ${estimativaFinanceiro?.id === est.id ? "text-zinc-300" : "text-muted-foreground"}`}>
+                          {est.arquiteto} · {est.inicio ? converterDataDoBackend(est.inicio) : "—"} → {est.releaseAlvo ? converterDataDoBackend(est.releaseAlvo) : "—"}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Sem filtro: mostrar estimativa atual */}
+                {estimativasFiltradas.length === 0 && !carregandoFiltro && (
+                  <p className="text-xs text-muted-foreground">
+                    Selecione o tipo de filtro ({tipoFiltro === "arquiteto" ? "Arquiteto" : "Demanda"}) e clique em "Buscar" para selecionar uma estimativa, ou veja abaixo os dados da estimativa atual:{" "}
+                    <span className="font-medium text-foreground">{form.titulo || "sem título"}</span>
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Cálculo financeiro da estimativa selecionada */}
+          {estimativaFinanceiro ? (
+            <Card>
+              <CardContent className="p-6">
+                <div className="mb-4">
+                  <h3 className="font-semibold text-sm">{estimativaFinanceiro.titulo}</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Arquiteto: <span className="font-medium text-foreground">{estimativaFinanceiro.arquiteto}</span>
+                  </p>
+                  {estimativaFinanceiro.esteiraPreProd && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Esteira Preprod: <span className="font-medium text-foreground">{estimativaFinanceiro.esteiraPreProd}</span>
+                    </p>
+                  )}
+                </div>
+                <CalculoFinanceiro
+                  atividades={estimativaFinanceiro.atividades || []}
+                  dataInicio={converterDataDoBackend(estimativaFinanceiro.inicio)}
+                  dataFim={converterDataDoBackend(estimativaFinanceiro.releaseAlvo)}
+                  feriados={estimativaFinanceiro.feriados || ""}
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-6">
+                <p className="text-xs text-muted-foreground mb-4">
+                  Baseado nas atividades da estimativa atual:{" "}
+                  <span className="font-medium text-foreground">{form.titulo || "sem título"}</span>
+                </p>
+                <CalculoFinanceiro
+                  atividades={atividades}
+                  dataInicio={form.inicio}
+                  dataFim={form.releaseAlvo}
+                  feriados={form.feriados}
+                />
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Página: Estimativa Rápida */}
+      {page === "estimativa-rapida" && (
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-[400px_1fr]">
         <Card className="print:hidden">
           <CardContent className="space-y-4 p-5">
@@ -722,16 +931,6 @@ function GeradorEstimativaPDF() {
                         placeholder="Clique para adicionar períodos" 
                       />
                     </FormField>
-                  </AccordionContent>
-                </AccordionItem>
-              </div>
-
-              {/* Cálculo Financeiro */}
-              <div className="border rounded-lg overflow-hidden">
-                <AccordionItem value="financial-calc" className="border-0">
-                  <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">💰 Cálculo Financeiro</AccordionTrigger>
-                  <AccordionContent className="pt-4 px-4 pb-4 border-t">
-                    <CalculoFinanceiro atividades={atividades} />
                   </AccordionContent>
                 </AccordionItem>
               </div>
@@ -835,6 +1034,101 @@ function GeradorEstimativaPDF() {
         />
 
       </div>
+      )}
+
+      {/* Página: Estimativa */}
+      {page === "estimativa" && (
+        <div className="mx-auto max-w-7xl space-y-4">
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="text-2xl font-bold mb-4">📊 Estimativas</h2>
+              <div className="space-y-4">
+                <p className="text-sm text-zinc-600 mb-4">
+                  Bem-vindo à página de Estimativas. Aqui você pode gerenciar todas as suas estimativas de projetos.
+                </p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card className="border-zinc-200">
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold mb-2">📝 Criar Nova Estimativa</h3>
+                      <p className="text-sm text-zinc-600 mb-3">
+                        Inicie uma nova estimativa com todas as ferramentas disponíveis.
+                      </p>
+                      <Button 
+                        className="w-full"
+                        onClick={() => setPage("estimativa-rapida")}
+                      >
+                        Ir para Estimativa Rápida
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-zinc-200">
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold mb-2">💰 Análise Financeira</h3>
+                      <p className="text-sm text-zinc-600 mb-3">
+                        Visualize e analise dados financeiros das estimativas.
+                      </p>
+                      <Button 
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setPage("financeiro")}
+                      >
+                        Ir para Financeiro
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card className="border-zinc-200 mt-6">
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold mb-3">📋 Estimativas Recentes</h3>
+                    {estimativas && estimativas.length > 0 ? (
+                      <div className="space-y-2 max-h-96 overflow-y-auto">
+                        {estimativas.slice().reverse().map((est: any) => (
+                          <div 
+                            key={est.id}
+                            className="p-3 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer"
+                            onClick={() => {
+                              carregarEstimativa(est);
+                              setPage("estimativa-rapida");
+                            }}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <h4 className="font-medium text-sm">{est.titulo || "Sem título"}</h4>
+                                <p className="text-xs text-zinc-600 mt-1">
+                                  Arquiteto: <span className="font-medium">{est.arquiteto}</span>
+                                </p>
+                                <p className="text-xs text-zinc-600">
+                                  {est.inicio ? converterDataDoBackend(est.inicio) : "—"} → {est.releaseAlvo ? converterDataDoBackend(est.releaseAlvo) : "—"}
+                                </p>
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  excluirEstimativa(est.id);
+                                }}
+                                className="ml-2 text-xs px-2 py-1 text-red-600 hover:bg-red-50 rounded border border-red-200"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-zinc-500 text-center py-8">
+                        Nenhuma estimativa salva ainda. Crie a primeira!
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Dialog open={openSettings} onOpenChange={setOpenSettings}>
         <DialogContent className="max-w-2xl">

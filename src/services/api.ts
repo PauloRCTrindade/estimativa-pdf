@@ -54,6 +54,37 @@ export async function listarEstimativas(token?: string): Promise<Estimativa[]> {
 }
 
 /**
+ * Buscar estimativas por arquiteto e/ou título
+ */
+export async function buscarEstimativas(filtros?: { arquiteto?: string; titulo?: string }, token?: string): Promise<Estimativa[]> {
+  try {
+    const url = new URL(`${API_BASE}/estimativas`, window.location.origin);
+    if (filtros?.arquiteto) {
+      url.searchParams.append('arquiteto', filtros.arquiteto);
+    }
+    if (filtros?.titulo) {
+      url.searchParams.append('titulo', filtros.titulo);
+    }
+    
+    const response = await fetch(url.toString(), {
+      headers: getHeaders(token),
+    });
+    if (!response.ok) throw new Error('Erro ao buscar estimativas');
+    return await response.json();
+  } catch (error) {
+    console.error('Erro ao buscar estimativas:', error);
+    throw error;
+  }
+}
+
+/**
+ * Buscar estimativas por arquiteto (compatibilidade)
+ */
+export async function buscarEstimativasPorArquiteto(arquiteto: string, token?: string): Promise<Estimativa[]> {
+  return buscarEstimativas({ arquiteto }, token);
+}
+
+/**
  * Obter uma estimativa específica
  */
 export async function obterEstimativa(id: string, token?: string): Promise<Estimativa> {
