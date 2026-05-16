@@ -7,6 +7,7 @@ import {
   criarEstimativa,
   atualizarEstimativa,
   deletarEstimativa,
+  buscarEstimativas,
 } from '../services/api';
 
 export function useEstimativas() {
@@ -113,6 +114,25 @@ export function useEstimativas() {
     }
   }, [getToken]);
 
+  /**
+   * Buscar estimativas com filtros (arquiteto e/ou título)
+   */
+  const buscarComFiltros = useCallback(async (filtros?: { arquiteto?: string; titulo?: string }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = await getToken();
+      const dados = await buscarEstimativas(filtros, token || undefined);
+      return dados;
+    } catch (err: any) {
+      const mensagem = err.message || 'Erro ao buscar estimativas';
+      setError(mensagem);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [getToken]);
+
   return {
     estimativas,
     loading,
@@ -122,5 +142,6 @@ export function useEstimativas() {
     criar,
     atualizar,
     deletar,
+    buscarComFiltros,
   };
 }

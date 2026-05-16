@@ -61,10 +61,23 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const { data, error } = await supabase
+      const { arquiteto, titulo } = req.query;
+      
+      let query = supabase
         .from('estimativas')
-        .select('*')
-        .order('id', { ascending: false });
+        .select('*');
+      
+      // Se filtro de arquiteto for fornecido, filtrar (case-insensitive)
+      if (arquiteto && arquiteto.trim()) {
+        query = query.ilike('arquiteto', `%${arquiteto}%`);
+      }
+      
+      // Se filtro de título for fornecido, filtrar (case-insensitive)
+      if (titulo && titulo.trim()) {
+        query = query.ilike('titulo', `%${titulo}%`);
+      }
+      
+      const { data, error } = await query.order('criadoem', { ascending: false });
 
       if (error) {
         console.error('GET error:', error);
