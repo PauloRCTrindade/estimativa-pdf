@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,8 @@ import {
   isReleaseDay
 } from './utils';
 import { TimeLine } from "./components/time-line";
+import { Legend } from "./components/legend";
+import { ToastNotification, notify } from "./components/ui/toast-notification";
 import { CalculoFinanceiro } from "./components/calculo-financeiro";
 import { useAuth } from "./hooks/useAuth";
 import { useEstimativas } from "./hooks/useEstimativas";
@@ -65,6 +67,7 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
   const [form, setForm] = useState(defaultForm);
   const [atividades, setAtividades] = useState(defaultAtividades);
   const [status, setStatus] = useState("");
+  const _notify = (msg: string) => { setStatus(msg); notify(msg); };
   const [loadingHolidays, setLoadingHolidays] = useState(false);
   const [tipoFiltro, setTipoFiltro] = useState<"arquiteto" | "demanda">("arquiteto");
   const [valorFiltro, setValorFiltro] = useState("");
@@ -177,7 +180,7 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
 
   async function salvarEstimativa(tipo: 'estimativa-rapida' | 'estimativa-pacotes') {
     try {
-      setStatus("Salvando estimativa...");
+      _notify("Salvando estimativa...");
       
       const novaEstimativa = {
         titulo: form.titulo,
@@ -200,10 +203,10 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
 
       await criar(novaEstimativa);
       await listar(); // Recarregar lista
-      setStatus("✅ Estimativa salva com sucesso!");
+      _notify("✅ Estimativa salva com sucesso!");
     } catch (erro) {
       console.error("Erro ao salvar:", erro);
-      setStatus("❌ Erro ao salvar estimativa.");
+      _notify("❌ Erro ao salvar estimativa.");
     }
   }
 
@@ -249,22 +252,22 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
             : [],
         })));
       }
-      setStatus("✅ Estimativa carregada.");
+      _notify("✅ Estimativa carregada.");
     } catch (err) {
       console.error("Erro ao carregar estimativa:", err);
-      setStatus("❌ Erro ao carregar estimativa.");
+      _notify("❌ Erro ao carregar estimativa.");
     }
   }
 
   async function excluirEstimativa(id: string) {
     try {
-      setStatus("Excluindo estimativa...");
+      _notify("Excluindo estimativa...");
       await deletar(id);
       await listar(); // Recarregar lista
-      setStatus("✅ Estimativa excluída com sucesso!");
+      _notify("✅ Estimativa excluída com sucesso!");
     } catch (erro) {
       console.error("Erro ao excluir:", erro);
-      setStatus("❌ Erro ao excluir estimativa.");
+      _notify("❌ Erro ao excluir estimativa.");
     }
   }
 
@@ -272,7 +275,7 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
   useEffect(() => {
     listar().catch(erro => {
       console.error("Erro ao carregar histórico:", erro);
-      setStatus("Não foi possível carregar o histórico.");
+      notify("Não foi possível carregar o histórico.");
     });
   }, []);
   /* eslint-enable react-hooks/exhaustive-deps */
@@ -285,7 +288,7 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
       if (parsed.form) setForm({ ...defaultForm(), ...parsed.form });
       if (Array.isArray(parsed.atividades)) setAtividades(normalizeAtividades(parsed.atividades));
     } catch {
-      setStatus("Não foi possível carregar o template salvo.");
+      notify("Não foi possível carregar o template salvo.");
     }
   }, []);
 
@@ -677,19 +680,19 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
 
   function salvarTemplate() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ form, atividades }));
-    setStatus("Template salvo no navegador.");
+    notify("Template salvo no navegador.");
   }
 
   function restaurarPadrao() {
     setForm(defaultForm());
     setAtividades(defaultAtividades());
-    setStatus("Template padrão restaurado.");
+    notify("Template padrão restaurado.");
   }
 
   async function buscarFeriadosDoAno() {
     try {
       setLoadingHolidays(true);
-      setStatus("Buscando feriados do ano...");
+      notify("Buscando feriados do ano...");
       
       const ano = new Date().getFullYear();
       const resposta = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${ano}/BR`);
@@ -709,11 +712,11 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
         .join('\n');
       
       updateForm("feriados", feriadosFormatados);
-      setStatus(`✅ ${dados.length} feriados de ${ano} carregados com sucesso!`);
+      notify(`✅ ${dados.length} feriados de ${ano} carregados com sucesso!`);
       setLoadingHolidays(false);
     } catch (erro) {
       console.error("Erro ao buscar feriados:", erro);
-      setStatus("❌ Erro ao buscar feriados. Tente novamente.");
+      notify("❌ Erro ao buscar feriados. Tente novamente.");
       setLoadingHolidays(false);
     }
   }
@@ -789,24 +792,24 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
 
   async function gerarPDF() {
     try {
-      setStatus("Gerando PDF...");
+      notify("Gerando PDF...");
       const pdf = await criarPDF();
       pdf.save(sanitizeFileName(form.titulo) + ".pdf");
-      setStatus("PDF baixado com sucesso.");
+      notify("PDF baixado com sucesso.");
     } catch (error) {
       console.error(error);
-      setStatus("Não foi possível gerar o PDF. Verifique se a biblioteca html2canvas está instalada.");
+      notify("Não foi possível gerar o PDF. Verifique se a biblioteca html2canvas está instalada.");
     }
   }
 
   async function gerarPDFCalendario() {
     try {
-      setStatus("Gerando PDF do calendário...");
+      notify("Gerando PDF do calendário...");
 
       const element = document.getElementById("calendar-area");
 
       if (!element) {
-        setStatus("Área do calendário não encontrada.");
+        notify("Área do calendário não encontrada.");
         return;
       }
 
@@ -908,24 +911,74 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
 
       pdf.save(`${sanitizeFileName(form.titulo)}_calendario.pdf`);
 
-      setStatus("PDF do calendário gerado com sucesso.");
+      notify("PDF do calendário gerado com sucesso.");
     } catch (error) {
       console.error(error);
-      setStatus("Não foi possível gerar o PDF do calendário.");
+      notify("Não foi possível gerar o PDF do calendário.");
     }
   }
 
   async function abrirPDF() {
     try {
-      setStatus("Abrindo PDF...");
+      notify("Abrindo PDF...");
       const pdf = await criarPDF();
       const blob = pdf.output("blob");
       const blobUrl = URL.createObjectURL(blob);
       window.open(blobUrl, "_blank", "noopener,noreferrer");
-      setStatus("PDF aberto em uma nova aba.");
+      notify("PDF aberto em uma nova aba.");
     } catch (error) {
       console.error(error);
-      setStatus("Não foi possível abrir o PDF no navegador.");
+      notify("Não foi possível abrir o PDF no navegador.");
+    }
+  }
+
+  async function abrirCalendario() {
+    try {
+      notify("Abrindo calendário de atividades...");
+      const element = document.getElementById("calendar-area");
+      if (!element) { notify("Área do calendário não encontrada."); return; }
+      const canvas = await html2canvas(element, {
+        scale: 2, backgroundColor: "#ffffff", useCORS: true,
+        onclone: (doc) => {
+          doc.documentElement.classList.remove("dark");
+          doc.querySelectorAll('style, link[rel="stylesheet"]').forEach((node) => node.remove());
+          const safeStyle = doc.createElement("style");
+          safeStyle.innerHTML = `html,body{margin:0;background:#fff!important;color:#111!important;font-family:Arial,Helvetica,sans-serif!important}table{border-collapse:collapse}*,*::before,*::after{box-sizing:border-box}`;
+          doc.head.appendChild(safeStyle);
+          const cloned = doc.getElementById("calendar-area");
+          if (cloned) { cloned.style.backgroundColor = "#ffffff"; cloned.style.color = "#111111"; }
+        },
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("l", "mm", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pagesNeeded = Math.ceil(imgHeight / pageHeight);
+      if (pagesNeeded === 1) {
+        pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+      } else {
+        const pixelsPerPage = (canvas.height * pageHeight) / imgHeight;
+        for (let page = 0; page < pagesNeeded; page++) {
+          if (page > 0) pdf.addPage();
+          const startPixel = page * pixelsPerPage;
+          const cropHeight = Math.min((page + 1) * pixelsPerPage, canvas.height) - startPixel;
+          const tempCanvas = document.createElement("canvas");
+          tempCanvas.width = canvas.width; tempCanvas.height = cropHeight;
+          const ctx = tempCanvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(canvas, 0, startPixel, canvas.width, cropHeight, 0, 0, canvas.width, cropHeight);
+            pdf.addImage(tempCanvas.toDataURL("image/png"), "PNG", 0, 0, imgWidth, (cropHeight * imgWidth) / canvas.width);
+          }
+        }
+      }
+      const blob = pdf.output("blob");
+      window.open(URL.createObjectURL(blob), "_blank", "noopener,noreferrer");
+      notify("Calendário de atividades aberto em uma nova aba.");
+    } catch (error) {
+      console.error(error);
+      notify("Não foi possível abrir o calendário de atividades.");
     }
   }
 
@@ -1419,17 +1472,14 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
               onSave={() => salvarEstimativa('estimativa-rapida')}
             />
 
-            {status && (
-              <div className="rounded-lg bg-blue-50 border border-blue-200 p-2 text-xs text-blue-700">
-                {status}
-              </div>
-            )}
-
             <div className="space-y-2">
-              <Button className="w-full" onClick={abrirPDF}>Abrir PDF</Button>
               <div className="grid grid-cols-2 gap-2">
-                <Button className="w-full" onClick={gerarPDF} variant="default">Baixar PDF</Button>
-                <Button className="w-full" onClick={gerarPDFCalendario} variant="outline">📅 Calendário</Button>
+                <Button className="w-full" onClick={abrirPDF} variant="default">Abrir Estimativa</Button>
+                <Button className="w-full" onClick={gerarPDF} variant="default">Baixar Estimativa</Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button className="w-full" onClick={abrirCalendario} variant="default">🗓️ Abrir Calendário</Button>
+                <Button className="w-full" onClick={gerarPDFCalendario} variant="default">📅 Baixar Calendário</Button>
               </div>
             </div>
           </CardContent>
@@ -1453,9 +1503,31 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
       {page === "estimativa" && (
         <div className="mx-auto max-w-[1800px] space-y-4 px-4">
 
+          {/* Seção: Informações */}
+          <div className="pt-2">
+            <h1 className="text-xl font-bold">Informações</h1>
+          </div>
+
+          {/* Campos de Informações — largura total */}
+          <Card className="w-full print:hidden">
+            <CardContent className="p-5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField label="Título da estimativa" required>
+                  <Input value={form.titulo} onChange={(e) => updateForm("titulo", e.target.value)} placeholder="Ex: PTI-123" />
+                </FormField>
+                <FormField label="Arquiteto" required>
+                  <Input value={form.arquiteto} onChange={(e) => updateForm("arquiteto", e.target.value)} placeholder="Nome do arquiteto" />
+                </FormField>
+                <FormField label="Subida em Produção" hint="Data prevista">
+                  <DatePicker value={form.releaseAlvo || ""} onChange={(date) => updateForm("releaseAlvo", date)} placeholder="dd/mm/aaaa" feriados={feriados} releases={releases} />
+                </FormField>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Cabeçalho */}
           <div className="pt-2">
-            <h1 className="text-xl font-bold">Detalhamento de Estimativa</h1>
+            <h1 className="text-xl font-bold">Detalhamento</h1>
           </div>
 
           {/* Pacotes e Atividades — largura total */}
@@ -1537,113 +1609,126 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
             </CardContent>
           </Card>
 
-          {/* Seção Preview */}
-          <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-4 items-start">
-            {/* Coluna esquerda: Informações da Estimativa */}
-            <Card className="print:hidden">
-              <CardContent className="space-y-4 p-5">
-                <h2 className="font-semibold text-base flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Preview
-                </h2>
-
-                <Card className="border-zinc-200">
-                  <div className="p-4">
-                    <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                      Informações da Estimativa
-                    </h3>
-                    <div className="space-y-3">
-                      <FormField label="Título da estimativa" required>
-                        <Input value={form.titulo} onChange={(e) => updateForm("titulo", e.target.value)} placeholder="Ex: PTI-123" />
-                      </FormField>
-                      <FormField label="Arquiteto" required>
-                        <Input value={form.arquiteto} onChange={(e) => updateForm("arquiteto", e.target.value)} placeholder="Nome do arquiteto" />
-                      </FormField>
-                      <FormField label="Subida em Produção" required hint="Data prevista de release">
-                        <DatePicker value={form.releaseAlvo || ""} onChange={(date) => updateForm("releaseAlvo", date)} placeholder="Release alvo (dd/mm/aaaa)" />
-                      </FormField>
-                    </div>
-                  </div>
-                </Card>
-
-                <Accordion type="single" collapsible className="w-full space-y-2">
-                  <div className="border rounded-lg overflow-hidden">
-                    <AccordionItem value="impact-view-prev" className="border-0">
-                      <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">🎯 Visualização de Impacto</AccordionTrigger>
-                      <AccordionContent className="space-y-4 pt-4 px-4 pb-4 border-t">
-                        <FormField label="Dias de trâmite CHG" hint="Número de dias de processamento">
-                          <Input type="number" min="0" value={form.chgDias || ""} onChange={(e) => updateForm("chgDias", e.target.value)} placeholder="Ex: 3" />
-                        </FormField>
-                        <FormField label="Dias impactados" hint="Períodos em que o projeto está parado">
-                          <DateRangeList value={form.diasParados || ""} onChange={(v) => updateForm("diasParados", v)} placeholder="Clique para adicionar dias" />
-                        </FormField>
-                        <FormField label="Período de esteira preprod" hint="Tempo em pré-produção">
-                          <DateRangeList value={form.esteiraPreProd || ""} onChange={(v) => updateForm("esteiraPreProd", v)} placeholder="Clique para adicionar períodos" />
-                        </FormField>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </div>
-
-                  <div className="border rounded-lg overflow-hidden">
-                    <AccordionItem value="observations-prev" className="border-0">
-                      <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">📝 Observações</AccordionTrigger>
-                      <AccordionContent className="space-y-4 pt-4 px-4 pb-4 border-t">
-                        <FormField label="Pontos de atenção">
-                          <Textarea value={form.pontos} onChange={(e) => updateForm("pontos", e.target.value)} placeholder="Liste os pontos de atenção" className="min-h-20" />
-                        </FormField>
-                        <FormField label="Premissas">
-                          <Textarea value={form.premissas} onChange={(e) => updateForm("premissas", e.target.value)} placeholder="Liste as premissas do projeto" className="min-h-20" />
-                        </FormField>
-                        <FormField label="Restrições">
-                          <Textarea value={form.restricoes} onChange={(e) => updateForm("restricoes", e.target.value)} placeholder="Liste as restrições" className="min-h-20" />
-                        </FormField>
-                        <FormField label="Observações">
-                          <Textarea value={form.observacoes} onChange={(e) => updateForm("observacoes", e.target.value)} placeholder="Observações gerais" className="min-h-20" />
-                        </FormField>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </div>
-                </Accordion>
-
-                <EstimativaHistorico
-                  historico={estimativas.filter(e => e.tipo === 'estimativa-pacotes')}
-                  onLoad={carregarEstimativa}
-                  onDelete={excluirEstimativa}
-                  onSave={() => salvarEstimativa('estimativa-pacotes')}
-                />
-
-                {status && (
-                  <div className="rounded-lg bg-blue-50 border border-blue-200 p-2 text-xs text-blue-700">
-                    {status}
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Button className="w-full" onClick={abrirPDF}>Abrir PDF</Button>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button className="w-full" onClick={gerarPDF} variant="default">Baixar PDF</Button>
-                    <Button className="w-full" onClick={gerarPDFCalendario} variant="outline">📅 Calendário</Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Coluna direita: PDF Preview */}
-            <div>
-              <PdfPreview
-                form={{ ...form, inicio: calculoPreviaPacotes.inicioPacote }}
-                totalDias={totalDiasPacotes}
-                calculo={calculoPreviaPacotes}
-                timelineRows={timelineRowsPreviaPacotes}
-              />
-            </div>
+          {/* Seção: Gerar Documento */}
+          <div className="pt-2">
+            <h1 className="text-xl font-bold">Gerar Documento</h1>
           </div>
 
-          {/* Calendário da Preview */}
-          <TimeLine
-            form={{ ...form, inicio: calculoPreviaPacotes.inicioPacote }}
-            timelineRows={timelineRowsPreviaPacotes}
-          />
+          {/* PdfPreview oculto com linha do tempo — usado pelo html2canvas para gerar PDF */}
+          <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
+            <PdfPreview
+              form={{ ...form, inicio: calculoPreviaPacotes.inicioPacote }}
+              totalDias={totalDiasPacotes}
+              calculo={calculoPreviaPacotes}
+              timelineRows={timelineRowsPreviaPacotes}
+            />
+          </div>
+
+          <Card className="w-full print:hidden">
+            <CardContent className="p-5 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField label="Pontos de atenção">
+                  <Textarea value={form.pontos} onChange={(e) => updateForm("pontos", e.target.value)} placeholder="Liste os pontos de atenção" className="min-h-20" />
+                </FormField>
+                <FormField label="Premissas">
+                  <Textarea value={form.premissas} onChange={(e) => updateForm("premissas", e.target.value)} placeholder="Liste as premissas do projeto" className="min-h-20" />
+                </FormField>
+                <FormField label="Restrições">
+                  <Textarea value={form.restricoes} onChange={(e) => updateForm("restricoes", e.target.value)} placeholder="Liste as restrições" className="min-h-20" />
+                </FormField>
+                <FormField label="Observações">
+                  <Textarea value={form.observacoes} onChange={(e) => updateForm("observacoes", e.target.value)} placeholder="Observações gerais" className="min-h-20" />
+                </FormField>
+              </div>
+
+              {/* Preview da Estimativa de Desenvolvimento */}
+              <div className="w-full rounded-lg border border-zinc-200 overflow-hidden">
+                <PdfPreview
+                  form={{ ...form, inicio: calculoPreviaPacotes.inicioPacote }}
+                  totalDias={totalDiasPacotes}
+                  calculo={calculoPreviaPacotes}
+                  timelineRows={timelineRowsPreviaPacotes}
+                  hideTimeline={true}
+                  pdfId="pdf-area-screen"
+                  fullWidth={true}
+                />
+              </div>
+
+            </CardContent>
+          </Card>
+
+          {/* Seção: Visualização de Impacto */}
+          <div className="pt-2">
+            <h1 className="text-xl font-bold">Visualização de Impacto</h1>
+          </div>
+
+          <Card className="w-full print:hidden">
+            <CardContent className="p-5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField label="Dias de trâmite CHG" hint="Número de dias de processamento">
+                  <Input type="number" min="0" value={form.chgDias || ""} onChange={(e) => updateForm("chgDias", e.target.value)} placeholder="Ex: 3" />
+                </FormField>
+                <FormField label="Dias impactados" hint="Períodos em que o projeto está parado">
+                  <DateRangeList value={form.diasParados || ""} onChange={(v) => updateForm("diasParados", v)} placeholder="Clique para adicionar dias" />
+                </FormField>
+                <FormField label="Período de esteira preprod" hint="Tempo em pré-produção">
+                  <DateRangeList value={form.esteiraPreProd || ""} onChange={(v) => updateForm("esteiraPreProd", v)} placeholder="Clique para adicionar períodos" />
+                </FormField>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Seção dedicada: Linha do Tempo - Largura total */}
+          <Card className="w-full">
+            <CardContent className="p-5">
+              <TimeLine
+                form={{ ...form, inicio: calculoPreviaPacotes.inicioPacote }}
+                timelineRows={timelineRowsPreviaPacotes}
+                visible={true}
+              />
+              {/* Legenda abaixo da linha do tempo */}
+              <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 pt-4 border-t">
+                <Legend color={COLORS.desenvolvimento} label="✓ Desenvolvimento" />
+                <Legend color={COLORS.subida} label="✓ Subida em Pre Prod" />
+                <Legend color={COLORS.testes} label="✓ QA Compass" />
+                <Legend color={COLORS.weekend} label="✗ Fim de semana" />
+                <Legend color={COLORS.postRelease} label="✗ Tombamento" />
+                <Legend color={COLORS.holiday} label="✗ Feriado" />
+                <Legend color={COLORS.blocked} label="✗ Projeto Impactado" />
+                <Legend color={COLORS.releaseTarget} label="🚀 Subida em Produção" />
+                <Legend color={COLORS.esteiraPreProd} label="▬ Esteira Pre Prod" type="border" />
+                <Legend color={COLORS.chg} label="▬ Trâmite CHG" type="border" />
+                <Legend color={COLORS.releaseDay} label="● Domingo da release" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Seção: Salvar Estimativa */}
+          <div className="pt-2">
+            <h1 className="text-xl font-bold">Salvar Estimativa</h1>
+          </div>
+
+          <Card className="w-full print:hidden">
+            <CardContent className="p-5 space-y-4">
+              <EstimativaHistorico
+                historico={estimativas.filter(e => e.tipo === 'estimativa-pacotes')}
+                onLoad={carregarEstimativa}
+                onDelete={excluirEstimativa}
+                onSave={() => salvarEstimativa('estimativa-pacotes')}
+              />
+
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button className="w-full" onClick={abrirPDF} variant="default">Abrir Estimativa</Button>
+                  <Button className="w-full" onClick={gerarPDF} variant="default">Baixar Estimativa</Button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button className="w-full" onClick={abrirCalendario} variant="default">🗓️ Abrir Calendário</Button>
+                  <Button className="w-full" onClick={gerarPDFCalendario} variant="default">📅 Baixar Calendário</Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -1682,7 +1767,7 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
 // Wrapper com autenticação
 export default function App() {
   const { isAuthenticated, checkAuth, logout, loading } = useAuth();
-  const [page, setPage] = useState<"estimativa" | "estimativa-rapida" | "financeiro">("estimativa-rapida");
+  const [page, setPage] = useState<"estimativa" | "estimativa-rapida" | "financeiro">("estimativa");
   const [openSettings, setOpenSettings] = useState(false);
 
   useEffect(() => {
@@ -1718,22 +1803,13 @@ export default function App() {
   const nav = (
     <div className="flex gap-1 bg-zinc-100 rounded-lg p-1">
       <button
-        onClick={() => setPage("estimativa-rapida")}
-        className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-          page === "estimativa-rapida" ? "bg-white shadow text-zinc-900" : "text-zinc-500 hover:text-zinc-800"
-        }`}
-      >
-        <FileText className="h-4 w-4" />
-        Estimativa Rápida
-      </button>
-      <button
         onClick={() => setPage("estimativa")}
         className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
           page === "estimativa" ? "bg-white shadow text-zinc-900" : "text-zinc-500 hover:text-zinc-800"
         }`}
       >
         <FileText className="h-4 w-4" />
-        Estimativa por Pacotes
+        Estimativa
       </button>
       <button
         disabled
@@ -1757,6 +1833,7 @@ export default function App() {
 
   return (
     <ProtectedRoute onLogout={handleLogout} navContent={nav} settingsButton={settingsBtn}>
+      <ToastNotification />
       <GeradorEstimativaPDF page={page} setPage={setPage} openSettings={openSettings} setOpenSettings={setOpenSettings} />
     </ProtectedRoute>
   );

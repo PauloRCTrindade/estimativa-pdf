@@ -11,9 +11,9 @@ function isReleaseDeploymentDay(day: Date, releaseAlvoStr: string): boolean {
   return day.getDate() === dia && day.getMonth() === mes - 1 && day.getFullYear() === ano;
 }
 
-export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
+export function PdfPreview({ form, totalDias, calculo, timelineRows, hideTimeline = false, pdfId = "pdf-area", fullWidth = false }) {
   return (
-    <div id="pdf-area" style={pdfStyles.page}>
+    <div id={pdfId} style={{ ...pdfStyles.page, ...(fullWidth ? { width: "100%", minHeight: "unset" } : {}) }}>
       <div style={pdfStyles.header}>
         <div style={{ fontSize: "13px", fontWeight: 700 }}>ESTIMATIVA DE DESENVOLVIMENTO</div>
         <div style={pdfStyles.title}>{form.titulo}</div>
@@ -93,7 +93,8 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
         </tbody>
       </table>
 
-      <div style={{ ...pdfStyles.blackBar, marginTop: "20px" }}>LINHA DO TEMPO</div>
+      {!hideTimeline && <>
+      <div style={{ ...pdfStyles.blackBar, marginTop: "20px" }}>CALENDÁRIO DE ATIVIDADES</div>
       <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "12px" }}>
         {timelineRows.map((row, rowIndex) => {
           // Get months for this row
@@ -244,9 +245,9 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
           );
         })}
       </div>
+      </> }
 
-
-      <div style={pdfStyles.legendWrapper}>
+      {!hideTimeline && <div style={pdfStyles.legendWrapper}>
         <Legend color={COLORS.desenvolvimento} label="✓ Desenvolvimento" />
         <Legend color={COLORS.subida} label="✓ Subida em Pre Prod" />
         <Legend color={COLORS.testes} label="✓ QA Compass" />
@@ -258,7 +259,7 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
         <Legend color={COLORS.esteiraPreProd} label="▬ Esteira Pre Prod" type="border" />
         <Legend color={COLORS.chg} label="▬ Trâmite CHG" type="border" />
         <Legend color={COLORS.releaseDay} label="● Domingo da release" />
-      </div>
+      </div>}
       {form.observacoes && (
         <div style={{ marginTop: "20px" }}>
           <div style={pdfStyles.blackBar}>OBSERVAÇÕES</div>
