@@ -7,6 +7,11 @@ function camelToLowercase(obj) {
   const converted = {};
   for (const [key, value] of Object.entries(obj)) {
     const lowerKey = key.toLowerCase();
+    // pacotes is stored as JSONB and must preserve its internal camelCase structure
+    if (key === 'pacotes') {
+      converted[lowerKey] = value;
+      continue;
+    }
     if (Array.isArray(value)) {
       converted[lowerKey] = value.map(item => 
         typeof item === 'object' ? camelToLowercase(item) : item
@@ -36,7 +41,11 @@ function lowercaseToCamel(obj) {
   const converted = {};
   for (const [key, value] of Object.entries(obj)) {
     const camelKey = keyMap[key] || key;
-    
+    // pacotes is stored as JSONB with its internal camelCase already preserved
+    if (key === 'pacotes') {
+      converted[camelKey] = value;
+      continue;
+    }
     if (Array.isArray(value)) {
       converted[camelKey] = value.map(item => 
         typeof item === 'object' ? lowercaseToCamel(item) : item

@@ -55,14 +55,17 @@ import type { Pacote, PacoteAtividade } from "./components/estimativa-pacotes";
 
 if (typeof window !== "undefined") runSelfTests();
 
-function GeradorEstimativaPDF() {
+function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: {
+  page: "estimativa" | "estimativa-rapida" | "financeiro";
+  setPage: (p: "estimativa" | "estimativa-rapida" | "financeiro") => void;
+  openSettings: boolean;
+  setOpenSettings: (v: boolean) => void;
+}) {
   const { estimativas, listar, criar, deletar, buscarComFiltros } = useEstimativas();
   const [form, setForm] = useState(defaultForm);
   const [atividades, setAtividades] = useState(defaultAtividades);
   const [status, setStatus] = useState("");
-  const [openSettings, setOpenSettings] = useState(false);
   const [loadingHolidays, setLoadingHolidays] = useState(false);
-  const [page, setPage] = useState<"estimativa" | "estimativa-rapida" | "financeiro">("estimativa-rapida");
   const [tipoFiltro, setTipoFiltro] = useState<"arquiteto" | "demanda">("arquiteto");
   const [valorFiltro, setValorFiltro] = useState("");
   const [estimativaFinanceiro, setEstimativaFinanceiro] = useState<any | null>(null);
@@ -172,21 +175,23 @@ function GeradorEstimativaPDF() {
     return `${dia}/${mes}/${ano}`;
   }
 
-  async function salvarEstimativa() {
+  async function salvarEstimativa(tipo: 'estimativa-rapida' | 'estimativa-pacotes') {
     try {
       setStatus("Salvando estimativa...");
       
       const novaEstimativa = {
         titulo: form.titulo,
         arquiteto: form.arquiteto,
-        inicio: converterData(form.inicio),
-        releaseAlvo: converterData(form.releaseAlvo),
+        inicio: converterData(form.inicio) || converterData(dataInicioPacotes || "") || null,
+        releaseAlvo: converterData(form.releaseAlvo) || null,
         feriados: form.feriados,
         releases: form.releases,
         premissas: form.premissas,
         restricoes: form.restricoes,
         observacoes: form.observacoes,
         atividades,
+        pacotes,
+        tipo,
         pontos: form.pontos,
         chgDias: parseInt(form.chgDias) || 0,
         esteiraPreProd: form.esteiraPreProd,
@@ -203,24 +208,52 @@ function GeradorEstimativaPDF() {
   }
 
   function carregarEstimativa(item: any) {
-    setForm({ 
-      ...defaultForm(), 
-      titulo: item.titulo,
-      arquiteto: item.arquiteto,
-      inicio: converterDataDoBackend(item.inicio),
-      releaseAlvo: converterDataDoBackend(item.releaseAlvo),
-      feriados: item.feriados || "",
-      releases: item.releases || "",
-      premissas: item.premissas,
-      restricoes: item.restricoes,
-      observacoes: item.observacoes,
-      pontos: item.pontos,
-      chgDias: String(item.chgDias || 0),
-      esteiraPreProd: item.esteiraPreProd,
-      diasParados: item.diasParados,
-    });
-    setAtividades(normalizeAtividades(item.atividades || []));
-    setStatus("✅ Estimativa carregada.");
+    try {
+      setForm({ 
+        ...defaultForm(), 
+        titulo: item.titulo ?? "",
+        arquiteto: item.arquiteto ?? "",
+        inicio: converterDataDoBackend(item.inicio ?? ""),
+        releaseAlvo: converterDataDoBackend(item.releaseAlvo ?? ""),
+        feriados: item.feriados ?? "",
+        releases: item.releases ?? "",
+        premissas: item.premissas ?? "",
+        restricoes: item.restricoes ?? "",
+        observacoes: item.observacoes ?? "",
+        pontos: item.pontos ?? "",
+        chgDias: String(item.chgDias ?? 0),
+        esteiraPreProd: item.esteiraPreProd ?? "",
+        diasParados: item.diasParados ?? "",
+      });
+      setAtividades(normalizeAtividades(item.atividades ?? []));
+      if (Array.isArray(item.pacotes) && item.pacotes.length > 0) {
+        setPacotes(item.pacotes.map((p: any) => ({
+          ...p,
+          collapsed: false,
+          atividades: Array.isArray(p.atividades)
+            ? p.atividades.map((a: any) => ({
+                id: a.id ?? createId(),
+                demanda: a.demanda ?? "",
+                nome: a.nome ?? "",
+                horas: Number(a.horas ?? 0),
+                horasOvertime: Number(a.horasOvertime ?? 0),
+                tipo: a.tipo ?? "desenvolvimento",
+                etapa: a.etapa ?? "1",
+                inicio: a.inicio ?? "",
+                overtime: {
+                  tombamentoDates: Array.isArray(a.overtime?.tombamentoDates) ? a.overtime.tombamentoDates : [],
+                  feriadoDates: Array.isArray(a.overtime?.feriadoDates) ? a.overtime.feriadoDates : [],
+                  fimDeSemanaDates: Array.isArray(a.overtime?.fimDeSemanaDates) ? a.overtime.fimDeSemanaDates : [],
+                },
+              }))
+            : [],
+        })));
+      }
+      setStatus("✅ Estimativa carregada.");
+    } catch (err) {
+      console.error("Erro ao carregar estimativa:", err);
+      setStatus("❌ Erro ao carregar estimativa.");
+    }
   }
 
   async function excluirEstimativa(id: string) {
@@ -437,8 +470,8 @@ function GeradorEstimativaPDF() {
   }, [pacotes]);
 
   const totalDiasAtuacao = useMemo(() => {
-    return pacotes.reduce((acc, pacote) => acc + calcTotalDiasAtuacaoPacote(pacote, feriados, releases), 0);
-  }, [pacotes, feriados, releases]);
+    return pacotes.reduce((acc, pacote) => acc + calcTotalDiasAtuacaoPacote(pacote, feriados, releases, diasParados), 0);
+  }, [pacotes, feriados, releases, diasParados]);
 
   const totalHorasOvertime = useMemo(() => {
     return pacotes.reduce((acc, pacote) =>
@@ -468,7 +501,7 @@ function GeradorEstimativaPDF() {
     const terminos = pacotes.flatMap(p => p.atividades.map(a => {
       const ot = a.overtime ?? { tombamentoDates: [], feriadoDates: [], fimDeSemanaDates: [] };
       const horasOT = a.horasOvertime ?? 0;
-      return calcularTermino(a.inicio, a.horas, feriados, releases, ot, horasOT);
+      return calcularTermino(a.inicio, a.horas, feriados, releases, ot, horasOT, diasParados);
     })).filter(t => t && t !== '—');
     if (terminos.length === 0) return null;
     return terminos.reduce((max, d) => {
@@ -476,7 +509,7 @@ function GeradorEstimativaPDF() {
       const maxDate = parseDateBR(max)!;
       return date > maxDate ? d : max;
     });
-  }, [pacotes, feriados, releases]);
+  }, [pacotes, feriados, releases, diasParados]);
 
   // Mapa de datas especiais (feriado/fim-de-semana/tombamento) em que há atuação nos pacotes
   const specialWorkDatesPacotes = useMemo(() => {
@@ -981,7 +1014,7 @@ function GeradorEstimativaPDF() {
     const DEFAULT_OT = { tombamentoDates: [] as string[], feriadoDates: [] as string[], fimDeSemanaDates: [] as string[] };
     const atividadesCalculadas = pacotes.flatMap((pacote) =>
       pacote.atividades.map((a) => {
-        const terminoStr = calcularTermino(a.inicio, Number(a.horas || 0), feriados, releases, a.overtime || DEFAULT_OT, Number(a.horasOvertime || 0));
+        const terminoStr = calcularTermino(a.inicio, Number(a.horas || 0), feriados, releases, a.overtime || DEFAULT_OT, Number(a.horasOvertime || 0), diasParados);
         const dias = Math.max(1, Math.ceil(Number(a.horas || 0) / 8));
         return {
           id: a.id,
@@ -1096,45 +1129,6 @@ function GeradorEstimativaPDF() {
 
   return (
     <div className="min-h-screen bg-zinc-100 p-6">
-      {/* Navegação entre páginas */}
-      <div className="mx-auto max-w-7xl mb-4">
-        <div className="flex gap-1 bg-white border rounded-lg p-1 w-fit">
-          <button
-            onClick={() => setPage("estimativa-rapida")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              page === "estimativa-rapida"
-                ? "bg-zinc-900 text-white"
-                : "text-zinc-600 hover:bg-zinc-100"
-            }`}
-          >
-            <FileText className="h-4 w-4" />
-            Estimativa Rápida
-          </button>
-          <button
-            onClick={() => setPage("estimativa")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              page === "estimativa"
-                ? "bg-zinc-900 text-white"
-                : "text-zinc-600 hover:bg-zinc-100"
-            }`}
-          >
-            <FileText className="h-4 w-4" />
-            Estimativa
-          </button>
-          <button
-            onClick={() => setPage("financeiro")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              page === "financeiro"
-                ? "bg-zinc-900 text-white"
-                : "text-zinc-600 hover:bg-zinc-100"
-            }`}
-          >
-            <DollarSign className="h-4 w-4" />
-            Cálculo Financeiro
-          </button>
-        </div>
-      </div>
-
       {/* Página: Cálculo Financeiro */}
       {page === "financeiro" && (
         <div className="mx-auto max-w-2xl space-y-4">
@@ -1277,17 +1271,7 @@ function GeradorEstimativaPDF() {
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-[400px_1fr]">
         <Card className="print:hidden">
           <CardContent className="space-y-4 p-5">
-            <div className="flex items-center justify-between gap-2">
-              <h1 className="text-xl font-bold">Gerador de estimativa</h1>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setOpenSettings(true)}
-                className="h-8 w-8 p-0"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </div>
+            <h1 className="text-xl font-bold">Gerador de estimativa</h1>
             
             {/* Informações da Estimativa - Sempre visível */}
             <Card className="border-zinc-200">
@@ -1429,10 +1413,10 @@ function GeradorEstimativaPDF() {
             </div>
 
             <EstimativaHistorico
-              historico={estimativas}
+              historico={estimativas.filter(e => !e.tipo || e.tipo === 'estimativa-rapida')}
               onLoad={carregarEstimativa}
               onDelete={excluirEstimativa}
-              onSave={salvarEstimativa}
+              onSave={() => salvarEstimativa('estimativa-rapida')}
             />
 
             {status && (
@@ -1470,11 +1454,8 @@ function GeradorEstimativaPDF() {
         <div className="mx-auto max-w-[1800px] space-y-4 px-4">
 
           {/* Cabeçalho */}
-          <div className="flex items-center justify-between gap-2 pt-2">
+          <div className="pt-2">
             <h1 className="text-xl font-bold">Detalhamento de Estimativa</h1>
-            <Button variant="ghost" size="sm" onClick={() => setOpenSettings(true)} className="h-8 w-8 p-0">
-              <Settings className="h-4 w-4" />
-            </Button>
           </div>
 
           {/* Pacotes e Atividades — largura total */}
@@ -1492,6 +1473,7 @@ function GeradorEstimativaPDF() {
                 pacotes={pacotes}
                 feriados={feriados}
                 releases={releases}
+                diasParados={diasParados}
                 onUpdatePacote={updatePacote}
                 onTogglePacote={togglePacote}
                 onAddPacote={addPacote}
@@ -1624,10 +1606,10 @@ function GeradorEstimativaPDF() {
                 </Accordion>
 
                 <EstimativaHistorico
-                  historico={estimativas}
+                  historico={estimativas.filter(e => e.tipo === 'estimativa-pacotes')}
                   onLoad={carregarEstimativa}
                   onDelete={excluirEstimativa}
-                  onSave={salvarEstimativa}
+                  onSave={() => salvarEstimativa('estimativa-pacotes')}
                 />
 
                 {status && (
@@ -1700,6 +1682,8 @@ function GeradorEstimativaPDF() {
 // Wrapper com autenticação
 export default function App() {
   const { isAuthenticated, checkAuth, logout, loading } = useAuth();
+  const [page, setPage] = useState<"estimativa" | "estimativa-rapida" | "financeiro">("estimativa-rapida");
+  const [openSettings, setOpenSettings] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -1731,9 +1715,51 @@ export default function App() {
     window.location.reload();
   };
 
+  const nav = (
+    <div className="flex gap-1 bg-zinc-100 rounded-lg p-1">
+      <button
+        onClick={() => setPage("estimativa-rapida")}
+        className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+          page === "estimativa-rapida" ? "bg-white shadow text-zinc-900" : "text-zinc-500 hover:text-zinc-800"
+        }`}
+      >
+        <FileText className="h-4 w-4" />
+        Estimativa Rápida
+      </button>
+      <button
+        onClick={() => setPage("estimativa")}
+        className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+          page === "estimativa" ? "bg-white shadow text-zinc-900" : "text-zinc-500 hover:text-zinc-800"
+        }`}
+      >
+        <FileText className="h-4 w-4" />
+        Estimativa por Pacotes
+      </button>
+      <button
+        onClick={() => setPage("financeiro")}
+        className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+          page === "financeiro" ? "bg-white shadow text-zinc-900" : "text-zinc-500 hover:text-zinc-800"
+        }`}
+      >
+        <DollarSign className="h-4 w-4" />
+        Cálculo Financeiro
+      </button>
+    </div>
+  );
+
+  const settingsBtn = (
+    <button
+      onClick={() => setOpenSettings(true)}
+      className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
+      title="Configurações de feriados e releases"
+    >
+      <Settings className="h-5 w-5" />
+    </button>
+  );
+
   return (
-    <ProtectedRoute onLogout={handleLogout}>
-      <GeradorEstimativaPDF />
+    <ProtectedRoute onLogout={handleLogout} navContent={nav} settingsButton={settingsBtn}>
+      <GeradorEstimativaPDF page={page} setPage={setPage} openSettings={openSettings} setOpenSettings={setOpenSettings} />
     </ProtectedRoute>
   );
 }
