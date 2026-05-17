@@ -9,26 +9,40 @@ function isReleaseDeploymentDay(day: Date, releaseAlvoStr: string): boolean {
   return day.getDate() === dia && day.getMonth() === mes - 1 && day.getFullYear() === ano;
 }
 
-export function TimeLine({ form, timelineRows }) {
-  return (
-    <div
-      id="calendar-area"
-      style={{
-        position: "absolute",
+export function TimeLine({ form, timelineRows, visible = false }) {
+  const containerStyle = visible
+    ? {
+        width: "100%",
+        backgroundColor: COLORS.white,
+        fontFamily: "Arial, Helvetica, sans-serif",
+        overflowX: "auto" as const,
+      }
+    : {
+        position: "absolute" as const,
         left: "-9999px",
         top: 0,
         width: "1123px",
         backgroundColor: COLORS.white,
         padding: "32px",
         fontFamily: "Arial, Helvetica, sans-serif",
-      }}
+      };
+
+  return (
+    <div
+      id="calendar-area"
+      style={containerStyle}
     >
-      <div style={pdfStyles.header}>
-        <div style={{ fontSize: "13px", fontWeight: 700 }}>
-          LINHA DO TEMPO
-        </div>
+      {!visible && <div style={pdfStyles.header}>
+        <div style={{ fontSize: "13px", fontWeight: 700 }}>CALENDÁRIO DE ATIVIDADES</div>
         <div style={pdfStyles.title}>{form.titulo}</div>
-      </div>
+      </div>}
+
+      {visible && (
+        <div style={{ ...pdfStyles.blackBar, marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>CALENDÁRIO DE ATIVIDADES</span>
+          {form.titulo && <span style={{ fontSize: "12px", fontWeight: 400, opacity: 0.85 }}>{form.titulo}</span>}
+        </div>
+      )}
 
       <div style={{ marginTop: "20px" }}>
         {timelineRows.map((row, rowIndex) => {
