@@ -134,15 +134,20 @@ export function TimeLine({ form, timelineRows }) {
                         height: "40px",
                         backgroundColor: day.color,
                       };
+
+                      const workLabel = day.workBorderColor
+                        ? ` + Atuação`
+                        : "";
                       
                       if (day.isChg) {
                         return (
                           <td
                             key={`cal-color-${rowIndex}-${index}`}
-                            title={day.isEsteiraPreProd ? `${day.tipo} + Esteira Pre Prod + CHG` : `${day.tipo} + CHG`}
+                            title={day.isEsteiraPreProd ? `${day.tipo} + Esteira Pre Prod + CHG${workLabel}` : `${day.tipo} + CHG${workLabel}`}
                             style={{
                               ...baseStyle,
                               border: `3px solid ${COLORS.chg}`,
+                              ...(day.workBorderColor ? { outline: `2px solid ${day.workBorderColor}`, outlineOffset: "2px" } : {}),
                             }}
                           />
                         );
@@ -152,10 +157,24 @@ export function TimeLine({ form, timelineRows }) {
                         return (
                           <td
                             key={`cal-color-${rowIndex}-${index}`}
-                            title={`${day.tipo} + Esteira Pre Prod`}
+                            title={`${day.tipo} + Esteira Pre Prod${workLabel}`}
                             style={{
                               ...baseStyle,
                               border: `3px solid ${COLORS.esteiraPreProd}`,
+                              ...(day.workBorderColor ? { outline: `2px solid ${day.workBorderColor}`, outlineOffset: "2px" } : {}),
+                            }}
+                          />
+                        );
+                      }
+
+                      if (day.workBorderColor) {
+                        return (
+                          <td
+                            key={`cal-color-${rowIndex}-${index}`}
+                            title={`${day.tipo}${workLabel}`}
+                            style={{
+                              ...baseStyle,
+                              border: `3px solid ${day.workBorderColor}`,
                             }}
                           />
                         );

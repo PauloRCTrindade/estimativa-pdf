@@ -11,12 +11,15 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+import { isHoliday, isPostRelease } from "@/utils"
 
 interface DatePickerProps {
   value: string
   onChange: (date: string) => void
   placeholder?: string
   className?: string
+  feriados?: string[]
+  releases?: string[]
 }
 
 export function DatePicker({
@@ -24,6 +27,8 @@ export function DatePicker({
   onChange,
   placeholder = "Selecione uma data",
   className,
+  feriados,
+  releases,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -52,6 +57,22 @@ export function DatePicker({
     }
   }
 
+  const modifiers: Record<string, (date: Date) => boolean> = {}
+  if (feriados?.length) modifiers.feriado = (date: Date) => isHoliday(date, feriados)
+  if (releases?.length) {
+    modifiers.tombamento = (date: Date) => isPostRelease(date, releases)
+    modifiers.releaseSunday = (date: Date) => {
+      if (date.getDay() !== 0) return false
+      const nextDay = new Date(date.getTime())
+      nextDay.setDate(nextDay.getDate() + 1)
+      return isPostRelease(date, releases) || isPostRelease(nextDay, releases)
+    }
+  }
+
+  const isSelectedReleaseSunday = selectedDate
+    ? modifiers.releaseSunday?.(selectedDate) ?? false
+    : false
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -60,7 +81,8 @@ export function DatePicker({
           className={cn(
             "w-full justify-start text-left font-normal",
             !value && "text-muted-foreground",
-            className
+            className,
+            isSelectedReleaseSunday && "bg-blue-300 text-blue-900 border-blue-500 hover:bg-blue-400 hover:text-blue-900",
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -74,6 +96,7 @@ export function DatePicker({
           onSelect={handleDateSelect}
           locale={pt}
           disabled={(date) => date < new Date("1900-01-01")}
+          modifiers={modifiers}
         />
       </PopoverContent>
     </Popover>
