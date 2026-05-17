@@ -1736,10 +1736,8 @@ export default function App() {
         Estimativa por Pacotes
       </button>
       <button
-        onClick={() => setPage("financeiro")}
-        className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-          page === "financeiro" ? "bg-white shadow text-zinc-900" : "text-zinc-500 hover:text-zinc-800"
-        }`}
+        disabled
+        className="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium text-zinc-400 cursor-not-allowed opacity-50"
       >
         <DollarSign className="h-4 w-4" />
         Cálculo Financeiro
