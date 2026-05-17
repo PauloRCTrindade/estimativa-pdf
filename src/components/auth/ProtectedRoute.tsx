@@ -5,9 +5,11 @@ import { AuthPage } from './AuthPage';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   onLogout?: () => void;
+  navContent?: React.ReactNode;
+  settingsButton?: React.ReactNode;
 }
 
-export function ProtectedRoute({ children, onLogout }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, onLogout, navContent, settingsButton }: ProtectedRouteProps) {
   const { isAuthenticated, user, checkAuth, loading } = useAuth();
 
   useEffect(() => {
@@ -39,7 +41,8 @@ export function ProtectedRoute({ children, onLogout }: ProtectedRouteProps) {
     <div>
       {/* Header com informações do usuário */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-4 py-3 grid grid-cols-3 items-center">
+          {/* Esquerda: logo + nome */}
           <div className="flex items-center gap-3">
             <img 
               src="/chikamaru-thinking.svg" 
@@ -50,12 +53,22 @@ export function ProtectedRoute({ children, onLogout }: ProtectedRouteProps) {
               {user?.user_metadata?.full_name || user?.email || 'Usuário'}
             </h2>
           </div>
-          <button
-            onClick={onLogout}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
-          >
-            🚪 Sair
-          </button>
+
+          {/* Centro: navegação */}
+          <div className="flex justify-center">
+            {navContent}
+          </div>
+
+          {/* Direita: settings + logout */}
+          <div className="flex justify-end items-center gap-2">
+            {settingsButton}
+            <button
+              onClick={onLogout}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+            >
+              🚪 Sair
+            </button>
+          </div>
         </div>
       </header>
 

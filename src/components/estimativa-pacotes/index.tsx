@@ -16,7 +16,7 @@ import {
   Minus,
 } from "lucide-react";
 import { DatePicker } from "@/components/date-picker";
-import { parseDateBR, isValidDate, getWorkingDays, formatBR, isWeekend, isHoliday, isPostRelease, addDays } from "@/utils";
+import { parseDateBR, isValidDate, getWorkingDays, formatBR, isWeekend, isHoliday, isPostRelease, addDays, isParadoDay } from "@/utils";
 
 export type OvertimeFlags = {
   tombamentoDates: string[];   // datas de tombamento selecionadas (dd/mm/yyyy)
@@ -44,10 +44,13 @@ export type Pacote = {
   atividades: PacoteAtividade[];
 };
 
+type ParadoRange = { start: Date; end: Date };
+
 interface EstimativaPacotesTableProps {
   pacotes: Pacote[];
   feriados: string[];    // lista normalizada de feriados (dd/mm/yyyy)
   releases: string[];   // lista normalizada de releases (dd/mm/yyyy)
+  diasParados?: ParadoRange[];  // intervalos de dias impactados (projeto parado)
   onUpdatePacote: (id: string, field: string, value: string) => void;
   onTogglePacote: (id: string) => void;
   onAddPacote: () => void;
@@ -80,7 +83,8 @@ function calcWorkDays(
   numWorkDays: number,
   feriadosList: string[],
   releasesList: string[],
-  ot: OvertimeFlags
+  ot: OvertimeFlags,
+  paradoRanges: ParadoRange[] = []
 ): Date[] {
   const days: Date[] = [];
   let current = new Date(startDate);
@@ -89,7 +93,8 @@ function calcWorkDays(
     const blocked =
       ((current.getDay() === 6 || current.getDay() === 0) && !ot.fimDeSemanaDates.includes(formatBR(current))) ||
       (isPostRelease(current, releasesList) && !ot.tombamentoDates.includes(formatBR(current))) ||
-      (isHoliday(current, feriadosList) && !ot.feriadoDates.includes(formatBR(current)));
+      (isHoliday(current, feriadosList) && !ot.feriadoDates.includes(formatBR(current))) ||
+      isParadoDay(current, paradoRanges, feriadosList, releasesList);
     if (!blocked) days.push(new Date(current));
     current = addDays(current, 1);
     guard++;
@@ -145,7 +150,8 @@ function calcTombamentosWorkedCount(
 export function calcTotalDiasAtuacaoPacote(
   pacote: Pacote,
   feriadosList: string[],
-  releasesList: string[]
+  releasesList: string[],
+  paradoRanges: ParadoRange[] = []
 ): number {
   let gi = 0;
   let total = 0;
@@ -158,7 +164,7 @@ export function calcTotalDiasAtuacaoPacote(
     const gTerminos = groupAtivs.map(a => {
       const ot = a.overtime ?? DEFAULT_OVERTIME;
       const horasOT = a.horasOvertime ?? 0;
-      const t = calcularTermino(a.inicio, a.horas, feriadosList, releasesList, ot, horasOT);
+      const t = calcularTermino(a.inicio, a.horas, feriadosList, releasesList, ot, horasOT, paradoRanges);
       if (t === "—") return null;
       const d = parseDateBR(t);
       return isValidDate(d) ? d : null;
@@ -169,7 +175,7 @@ export function calcTotalDiasAtuacaoPacote(
       const maxEnd = gTerminos.reduce((max, d) => d > max ? d : max);
       const cur = new Date(minStart);
       while (cur <= maxEnd) {
-        if (!isWeekend(cur) && !isHoliday(cur, feriadosList) && !isPostRelease(cur, releasesList)) etapaTotalDiasNecessarios++;
+        if (!isWeekend(cur) && !isHoliday(cur, feriadosList) && !isPostRelease(cur, releasesList) && !isParadoDay(cur, paradoRanges, feriadosList, releasesList)) etapaTotalDiasNecessarios++;
         cur.setDate(cur.getDate() + 1);
       }
     } else {
@@ -264,13 +270,14 @@ export function calcularTermino(
   feriadosList: string[],
   releasesList: string[],
   ot: OvertimeFlags,
-  horasOvertime: number
+  horasOvertime: number,
+  paradoRanges: ParadoRange[] = []
 ): string {
   if (!inicio || horas <= 0) return "—";
   const startDate = parseDateBR(inicio);
   if (!isValidDate(startDate)) return "—";
   const numWorkDays = Math.max(1, Math.ceil(horas / 8) - Math.floor((horasOvertime || 0) / 8));
-  const workDays = calcWorkDays(startDate, numWorkDays, feriadosList, releasesList, ot);
+  const workDays = calcWorkDays(startDate, numWorkDays, feriadosList, releasesList, ot, paradoRanges);
   const termino = workDays[numWorkDays - 1];
   return termino ? formatBR(termino) : "—";
 }
@@ -281,13 +288,14 @@ function calcDiasAtuacaoTotal(
   horasOT: number,
   feriadosList: string[],
   releasesList: string[],
-  ot: OvertimeFlags
+  ot: OvertimeFlags,
+  paradoRanges: ParadoRange[] = []
 ): number {
   const baseDays = (horas + (horasOT || 0)) / 8;
   if (!inicio || horas <= 0) return baseDays;
   const startDate = parseDateBR(inicio);
   if (!isValidDate(startDate)) return baseDays;
-  const termino = calcularTermino(inicio, horas, feriadosList, releasesList, ot, horasOT);
+  const termino = calcularTermino(inicio, horas, feriadosList, releasesList, ot, horasOT, paradoRanges);
   if (termino === "—") return baseDays;
   const endDate = parseDateBR(termino);
   const allSelected = [...ot.feriadoDates, ...ot.fimDeSemanaDates, ...ot.tombamentoDates];
@@ -302,6 +310,7 @@ export function EstimativaPacotesTable({
   pacotes,
   feriados,
   releases,
+  diasParados = [],
   onUpdatePacote,
   onTogglePacote,
   onAddPacote,
@@ -313,6 +322,9 @@ export function EstimativaPacotesTable({
   const [focusedCell, setFocusedCell] = useState<string | null>(null);
   const onUpdateAtividadeRef = useRef(onUpdateAtividade);
   onUpdateAtividadeRef.current = onUpdateAtividade;
+  const pacotesRef = useRef(pacotes);
+  pacotesRef.current = pacotes;
+  const isMounted = useRef(false);
 
   // Auto-popula o início de cada atividade (índice > 0) como termino_anterior + 1 dia
   useEffect(() => {
@@ -326,7 +338,8 @@ export function EstimativaPacotesTable({
           feriados,
           releases,
           prev.overtime || DEFAULT_OVERTIME,
-          Number(prev.horasOvertime || 0)
+          Number(prev.horasOvertime || 0),
+          diasParados
         );
         if (prevTermino !== "—") {
           const prevTerminoDate = parseDateBR(prevTermino);
@@ -338,6 +351,37 @@ export function EstimativaPacotesTable({
       }
     });
   }, [pacotes, feriados, releases]);
+
+  // Recalcula a cascata de início quando diasParados muda
+  // Usa pacotesRef para evitar stale closure sem causar loop com pacotes
+  // isMounted evita sobrescrever datas explícitas salvas no carregamento inicial
+  useEffect(() => {
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return;
+    }
+    pacotesRef.current.forEach((pacote) => {
+      if (pacote.atividades.length < 2) return;
+      let prevInicio = pacote.atividades[0].inicio;
+      let prevHoras = Number(pacote.atividades[0].horas || 0);
+      let prevHorasOT = Number(pacote.atividades[0].horasOvertime || 0);
+      let prevOT = pacote.atividades[0].overtime || DEFAULT_OVERTIME;
+      for (let i = 1; i < pacote.atividades.length; i++) {
+        const prevTermino = calcularTermino(prevInicio, prevHoras, feriados, releases, prevOT, prevHorasOT, diasParados);
+        if (prevTermino === "—") break;
+        const prevTerminoDate = parseDateBR(prevTermino);
+        if (!isValidDate(prevTerminoDate)) break;
+        const nextInicio = formatBR(addDays(prevTerminoDate, 1));
+        const curr = pacote.atividades[i];
+        onUpdateAtividadeRef.current(pacote.id, curr.id, "inicio", nextInicio);
+        prevInicio = nextInicio;
+        prevHoras = Number(curr.horas || 0);
+        prevHorasOT = Number(curr.horasOvertime || 0);
+        prevOT = curr.overtime || DEFAULT_OVERTIME;
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diasParados, feriados, releases]);
 
   // Recalcula início de todas as atividades subsequentes ao índice informado.
   // `overrides` permite passar o novo valor da atividade âncora antes do estado atualizar.
@@ -351,7 +395,7 @@ export function EstimativaPacotesTable({
     let prevOT = base.overtime || DEFAULT_OVERTIME;
 
     for (let i = atividadeIdx + 1; i < atividades.length; i++) {
-      const prevTermino = calcularTermino(prevInicio, prevHoras, feriados, releases, prevOT, prevHorasOT);
+      const prevTermino = calcularTermino(prevInicio, prevHoras, feriados, releases, prevOT, prevHorasOT, diasParados);
       if (prevTermino === "\u2014") break;
       const prevTerminoDate = parseDateBR(prevTermino);
       if (!isValidDate(prevTerminoDate)) break;
@@ -431,8 +475,8 @@ export function EstimativaPacotesTable({
       const gTerminos = groupAtivs.map(a => {
         const ot = a.overtime ?? DEFAULT_OVERTIME;
         const horasOT = a.horasOvertime ?? 0;
-        const t = calcularTermino(a.inicio, a.horas, feriados, releases, ot, horasOT);
-        if (t === "\u2014") return null;
+        const t = calcularTermino(a.inicio, a.horas, feriados, releases, ot, horasOT, diasParados);
+        if (t === "—") return null;
         const d = parseDateBR(t);
         return isValidDate(d) ? d : null;
       }).filter((d): d is Date => d !== null);
@@ -442,7 +486,7 @@ export function EstimativaPacotesTable({
         const maxEnd = gTerminos.reduce((max, d) => d > max ? d : max);
         const cur = new Date(minStart);
         while (cur <= maxEnd) {
-          if (!isWeekend(cur) && !isHoliday(cur, feriados) && !isPostRelease(cur, releases)) etapaTotalDiasNecessarios++;
+          if (!isWeekend(cur) && !isHoliday(cur, feriados) && !isPostRelease(cur, releases) && !isParadoDay(cur, diasParados, feriados, releases)) etapaTotalDiasNecessarios++;
           cur.setDate(cur.getDate() + 1);
         }
       } else {
@@ -583,9 +627,9 @@ export function EstimativaPacotesTable({
                     activityRowIndex++;
                     const ot = ativ.overtime ?? DEFAULT_OVERTIME;
                     const horasOT = ativ.horasOvertime ?? 0;
-                    const diasCalc = calcDiasAtuacaoTotal(ativ.inicio, ativ.horas, horasOT, feriados, releases, ot);
+                    const diasCalc = calcDiasAtuacaoTotal(ativ.inicio, ativ.horas, horasOT, feriados, releases, ot, diasParados);
                     const diasOvertimeCalc = calcDiasOvertimeTotal(ativ.inicio, ativ.horas, horasOT, feriados, releases, ot);
-                    const terminoCalc = calcularTermino(ativ.inicio, ativ.horas, feriados, releases, ot, horasOT);
+                    const terminoCalc = calcularTermino(ativ.inicio, ativ.horas, feriados, releases, ot, horasOT, diasParados);
                     const groupInfo = ativGroupInfoList[idx];
 
                     return (
