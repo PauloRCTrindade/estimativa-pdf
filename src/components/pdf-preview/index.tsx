@@ -49,15 +49,47 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
           </tr>
         </thead>
         <tbody>
-          {calculo.atividadesCalculadas.map((atividade) => (
-            <tr key={atividade.id}>
-              <td style={pdfStyles.td}>{atividade.nome}</td>
-              <td style={pdfStyles.tdCenter}>{atividade.dias}</td>
-              <td style={pdfStyles.tdCenter}>{atividade.etapa}</td>
-              <td style={pdfStyles.tdCenter}>{formatBR(atividade.inicio)}</td>
-              <td style={pdfStyles.tdCenter}>{formatBR(atividade.termino)}</td>
-            </tr>
-          ))}
+          {calculo.atividadesCalculadas[0]?.pacoteId
+            ? (() => {
+                // Agrupar por pacote
+                const grupos: { pacoteId: string; pacoteNome: string; pacoteCodigo: string; atividades: typeof calculo.atividadesCalculadas }[] = [];
+                for (const a of calculo.atividadesCalculadas) {
+                  const last = grupos[grupos.length - 1];
+                  if (last && last.pacoteId === a.pacoteId) {
+                    last.atividades.push(a);
+                  } else {
+                    grupos.push({ pacoteId: a.pacoteId, pacoteNome: a.pacoteNome, pacoteCodigo: a.pacoteCodigo, atividades: [a] });
+                  }
+                }
+                return grupos.map((grupo) => (
+                  <>
+                    <tr key={`pkg-${grupo.pacoteId}`}>
+                      <td colSpan={5} style={{ ...pdfStyles.td, backgroundColor: "#1c1c1e", color: "#ffffff", fontWeight: 700, fontSize: "11px", padding: "6px 8px" }}>
+                        {grupo.pacoteCodigo ? `${grupo.pacoteCodigo} — ` : ""}{grupo.pacoteNome}
+                      </td>
+                    </tr>
+                    {grupo.atividades.map((atividade) => (
+                      <tr key={atividade.id}>
+                        <td style={{ ...pdfStyles.td, paddingLeft: "20px" }}>{atividade.nome}</td>
+                        <td style={pdfStyles.tdCenter}>{atividade.dias}</td>
+                        <td style={pdfStyles.tdCenter}>{atividade.etapa}</td>
+                        <td style={pdfStyles.tdCenter}>{formatBR(atividade.inicio)}</td>
+                        <td style={pdfStyles.tdCenter}>{formatBR(atividade.termino)}</td>
+                      </tr>
+                    ))}
+                  </>
+                ));
+              })()
+            : calculo.atividadesCalculadas.map((atividade) => (
+                <tr key={atividade.id}>
+                  <td style={pdfStyles.td}>{atividade.nome}</td>
+                  <td style={pdfStyles.tdCenter}>{atividade.dias}</td>
+                  <td style={pdfStyles.tdCenter}>{atividade.etapa}</td>
+                  <td style={pdfStyles.tdCenter}>{formatBR(atividade.inicio)}</td>
+                  <td style={pdfStyles.tdCenter}>{formatBR(atividade.termino)}</td>
+                </tr>
+              ))
+          }
         </tbody>
       </table>
 
@@ -153,15 +185,18 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
                         ...pdfStyles.timelineColorCell,
                         backgroundColor: day.color,
                       };
+
+                      const workLabel = day.workBorderColor ? ` + Atuação` : "";
                       
                       if (day.isChg) {
                         return (
                           <td
                             key={`color-${rowIndex}-${index}`}
-                            title={day.isEsteiraPreProd ? `${day.tipo} + Esteira Pre Prod + CHG` : `${day.tipo} + CHG`}
+                            title={day.isEsteiraPreProd ? `${day.tipo} + Esteira Pre Prod + CHG${workLabel}` : `${day.tipo} + CHG${workLabel}`}
                             style={{
                               ...baseStyle,
                               border: `3px solid ${COLORS.chg}`,
+                              ...(day.workBorderColor ? { outline: `2px solid ${day.workBorderColor}`, outlineOffset: "2px" } : {}),
                             }}
                           />
                         );
@@ -171,10 +206,24 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows }) {
                         return (
                           <td
                             key={`color-${rowIndex}-${index}`}
-                            title={`${day.tipo} + Esteira Pre Prod`}
+                            title={`${day.tipo} + Esteira Pre Prod${workLabel}`}
                             style={{
                               ...baseStyle,
                               border: `3px solid ${COLORS.esteiraPreProd}`,
+                              ...(day.workBorderColor ? { outline: `2px solid ${day.workBorderColor}`, outlineOffset: "2px" } : {}),
+                            }}
+                          />
+                        );
+                      }
+
+                      if (day.workBorderColor) {
+                        return (
+                          <td
+                            key={`color-${rowIndex}-${index}`}
+                            title={`${day.tipo}${workLabel}`}
+                            style={{
+                              ...baseStyle,
+                              border: `3px solid ${day.workBorderColor}`,
                             }}
                           />
                         );

@@ -49,6 +49,9 @@ import { useAuth } from "./hooks/useAuth";
 import { useEstimativas } from "./hooks/useEstimativas";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AuthPage } from "./components/auth/AuthPage";
+import { EstimativaPacotesTable, calcularTermino, calcDiasOvertimeTotal, calcTotalDiasAtuacaoPacote } from "./components/estimativa-pacotes";
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import type { Pacote, PacoteAtividade } from "./components/estimativa-pacotes";
 
 if (typeof window !== "undefined") runSelfTests();
 
@@ -65,6 +68,93 @@ function GeradorEstimativaPDF() {
   const [estimativaFinanceiro, setEstimativaFinanceiro] = useState<any | null>(null);
   const [estimativasFiltradas, setEstimativasFiltradas] = useState<any[]>([]);
   const [carregandoFiltro, setCarregandoFiltro] = useState(false);
+
+  // ── Estado de Pacotes (aba Estimativa detalhada) ──
+  const [pacotes, setPacotes] = useState<Pacote[]>(() => defaultPacotes());
+
+  function defaultPacotes(): Pacote[] {
+    return [
+      {
+        id: createId(),
+        codigo: "PTI-",
+        nome: "Novo pacote",
+        collapsed: false,
+        atividades: [
+          { id: createId(), demanda: "", nome: "Desenvolvimento Front-end", horas: 8, horasOvertime: 0, tipo: "desenvolvimento", etapa: "1", inicio: "", overtime: { tombamentoDates: [], feriadoDates: [], fimDeSemanaDates: [] } },
+          { id: createId(), demanda: "", nome: "Desenvolvimento Microserviço", horas: 8, horasOvertime: 0, tipo: "desenvolvimento", etapa: "1", inicio: "", overtime: { tombamentoDates: [], feriadoDates: [], fimDeSemanaDates: [] } },
+          { id: createId(), demanda: "", nome: "Subida dos repositórios em pre prod", horas: 8, horasOvertime: 0, tipo: "subida", etapa: "2", inicio: "", overtime: { tombamentoDates: [], feriadoDates: [], fimDeSemanaDates: [] } },
+          { id: createId(), demanda: "", nome: "Testes internos", horas: 8, horasOvertime: 0, tipo: "testes", etapa: "3", inicio: "", overtime: { tombamentoDates: [], feriadoDates: [], fimDeSemanaDates: [] } },
+        ],
+      },
+    ];
+  }
+
+  function addPacote() {
+    setPacotes((prev) => [
+      ...prev,
+      { id: createId(), codigo: "PTI-", nome: "Novo pacote", collapsed: false, atividades: [] },
+    ]);
+  }
+
+  function removePacote(id: string) {
+    setPacotes((prev) => prev.filter((p) => p.id !== id));
+  }
+
+  function updatePacote(id: string, field: string, value: string) {
+    setPacotes((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
+    );
+  }
+
+  function togglePacote(id: string) {
+    setPacotes((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, collapsed: !p.collapsed } : p))
+    );
+  }
+
+  function addAtividadePacote(pacoteId: string) {
+    const nova: PacoteAtividade = {
+      id: createId(),
+      demanda: "",
+      nome: "Nova atividade",
+      horas: 0,
+      horasOvertime: 0,
+      tipo: "desenvolvimento",
+      etapa: "1",
+      inicio: "",
+      overtime: { tombamentoDates: [], feriadoDates: [], fimDeSemanaDates: [] },
+    };
+    setPacotes((prev) =>
+      prev.map((p) =>
+        p.id === pacoteId ? { ...p, atividades: [...p.atividades, nova] } : p
+      )
+    );
+  }
+
+  function updateAtividadePacote(pacoteId: string, atividadeId: string, field: string, value: unknown) {
+    setPacotes((prev) =>
+      prev.map((p) =>
+        p.id === pacoteId
+          ? {
+              ...p,
+              atividades: p.atividades.map((a) =>
+                a.id === atividadeId ? { ...a, [field]: value } : a
+              ),
+            }
+          : p
+      )
+    );
+  }
+
+  function removeAtividadePacote(pacoteId: string, atividadeId: string) {
+    setPacotes((prev) =>
+      prev.map((p) =>
+        p.id === pacoteId
+          ? { ...p, atividades: p.atividades.filter((a) => a.id !== atividadeId) }
+          : p
+      )
+    );
+  }
   
   // Converter data de dd/mm/yyyy para yyyy-mm-dd (para enviar ao backend)
   function converterData(dataDDMMYYYY: string): string {
@@ -332,6 +422,197 @@ function GeradorEstimativaPDF() {
 
     return { validDays, atividadesCalculadas, timeline, endDate };
   }, [form.inicio, form.releaseAlvo, form.chgDias, totalDias, releases, feriados, diasParados, atividades, esteiraPreProdRanges]);
+
+  // ── Cálculo para aba Estimativa (baseado em pacotes) ──
+  const atividadesDePacotes = useMemo(() => {
+    return pacotes.flatMap((pacote) =>
+      pacote.atividades.map((a) => ({
+        id: a.id,
+        nome: a.nome,
+        dias: Math.max(1, Math.ceil(Number(a.horas || 0) / 8)),
+        tipo: a.tipo,
+        etapa: a.etapa,
+      }))
+    );
+  }, [pacotes]);
+
+  const totalDiasAtuacao = useMemo(() => {
+    return pacotes.reduce((acc, pacote) => acc + calcTotalDiasAtuacaoPacote(pacote, feriados, releases), 0);
+  }, [pacotes, feriados, releases]);
+
+  const totalHorasOvertime = useMemo(() => {
+    return pacotes.reduce((acc, pacote) =>
+      acc + pacote.atividades.reduce((sum, a) => {
+        const ot = a.overtime ?? { tombamentoDates: [], feriadoDates: [], fimDeSemanaDates: [] };
+        const horasOT = a.horasOvertime ?? 0;
+        return sum + calcDiasOvertimeTotal(a.inicio, a.horas, horasOT, feriados, releases, ot) * 8;
+      }, 0)
+    , 0);
+  }, [pacotes, feriados, releases]);
+
+  const dataInicioPacotes = useMemo(() => {
+    const dates = pacotes.flatMap(p => p.atividades.map(a => a.inicio)).filter(d => {
+      if (!d) return false;
+      const parsed = parseDateBR(d);
+      return isValidDate(parsed);
+    });
+    if (dates.length === 0) return null;
+    return dates.reduce((min, d) => {
+      const date = parseDateBR(d)!;
+      const minDate = parseDateBR(min)!;
+      return date < minDate ? d : min;
+    });
+  }, [pacotes]);
+
+  const dataTerminoPacotes = useMemo(() => {
+    const terminos = pacotes.flatMap(p => p.atividades.map(a => {
+      const ot = a.overtime ?? { tombamentoDates: [], feriadoDates: [], fimDeSemanaDates: [] };
+      const horasOT = a.horasOvertime ?? 0;
+      return calcularTermino(a.inicio, a.horas, feriados, releases, ot, horasOT);
+    })).filter(t => t && t !== '—');
+    if (terminos.length === 0) return null;
+    return terminos.reduce((max, d) => {
+      const date = parseDateBR(d)!;
+      const maxDate = parseDateBR(max)!;
+      return date > maxDate ? d : max;
+    });
+  }, [pacotes, feriados, releases]);
+
+  // Mapa de datas especiais (feriado/fim-de-semana/tombamento) em que há atuação nos pacotes
+  const specialWorkDatesPacotes = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const pacote of pacotes) {
+      for (const a of pacote.atividades) {
+        const color = getTimelineColor(a.tipo);
+
+        // 1. Datas de overtime explicitamente selecionadas
+        const ot = a.overtime;
+        if (ot) {
+          const allDates = [
+            ...(ot.feriadoDates || []),
+            ...(ot.fimDeSemanaDates || []),
+            ...(ot.tombamentoDates || []),
+          ];
+          for (const dateStr of allDates) {
+            const parsed = parseDateBR(dateStr);
+            if (!isValidDate(parsed)) continue;
+            const key = (parsed as Date).toISOString().split('T')[0];
+            if (!map[key]) map[key] = color;
+          }
+        }
+
+        // 2. Data de inicio quando cai em dia especial (FDS, feriado ou tombamento)
+        if (a.inicio) {
+          const inicioDate = parseDateBR(a.inicio);
+          if (isValidDate(inicioDate)) {
+            const isSpecial =
+              isWeekend(inicioDate) ||
+              isHoliday(inicioDate, feriados) ||
+              isPostRelease(inicioDate, releases);
+            if (isSpecial) {
+              const key = (inicioDate as Date).toISOString().split('T')[0];
+              if (!map[key]) map[key] = color;
+            }
+          }
+        }
+      }
+    }
+    return map;
+  }, [pacotes, feriados, releases]);
+
+  const totalDiasPacotes = useMemo(() => {
+    const etapas = new Map<string, number>();
+    atividadesDePacotes.forEach((a) => {
+      const etapa = String(a.etapa || "1");
+      etapas.set(etapa, Math.max(etapas.get(etapa) ?? 0, Number(a.dias || 0)));
+    });
+    return Array.from(etapas.values()).reduce((acc, d) => acc + d, 0);
+  }, [atividadesDePacotes]);
+
+  const calculoPacotes = useMemo(() => {
+    const startDate = parseDateBR(form.inicio);
+    const releaseTargetDate = parseDateBR(form.releaseAlvo);
+    if (!isValidDate(startDate) || !isValidDate(releaseTargetDate)) {
+      return { timeline: [], atividadesCalculadas: [], validDays: [], endDate: startDate };
+    }
+    const validDays = getWorkingDays(startDate, totalDiasPacotes, releases, feriados, diasParados);
+    const etapasOrdenadas = Array.from(
+      new Set(atividadesDePacotes.map((a) => String(a.etapa || "1")))
+    ).sort((a, b) => Number(a) - Number(b));
+
+    let cursor = 0;
+    const atividadesCalculadas: any[] = [];
+    etapasOrdenadas.forEach((etapa) => {
+      const daDaEtapa = atividadesDePacotes.filter((a) => String(a.etapa || "1") === etapa);
+      const maxDias = Math.max(...daDaEtapa.map((a) => Number(a.dias || 0)));
+      const inicioEtapa = validDays[cursor];
+      daDaEtapa.forEach((a) => {
+        const dias = Number(a.dias || 0);
+        atividadesCalculadas.push({ ...a, inicio: inicioEtapa, termino: validDays[cursor + dias - 1] });
+      });
+      cursor += maxDias;
+    });
+
+    const calculatedEndDate = validDays[validDays.length - 1];
+    const chgDates = getChgDates(releaseTargetDate, form.chgDias, feriados);
+    const endDate =
+      isValidDate(releaseTargetDate) && releaseTargetDate > calculatedEndDate
+        ? releaseTargetDate
+        : calculatedEndDate;
+
+    if (!isValidDate(endDate)) {
+      return { validDays: [], atividadesCalculadas, timeline: [], endDate: startDate };
+    }
+
+    const originalTimelineData: Record<string, { tipo: string; color: string; isReleaseDay: boolean; isEsteiraPreProd: boolean; isChg: boolean }> = {};
+    let currentOrig = startDate;
+    while (isValidDate(currentOrig) && currentOrig <= endDate) {
+      let tipo = "";
+      let color = COLORS.white;
+      if (sameDateBR(currentOrig, releaseTargetDate)) { tipo = "Release alvo"; color = COLORS.releaseTarget; }
+      else if (isParadoDay(currentOrig, diasParados, feriados, releases)) { tipo = "Projeto parado"; color = COLORS.blocked; }
+      else if (isWeekend(currentOrig)) { tipo = "Fim de semana"; color = COLORS.weekend; }
+      else if (isHoliday(currentOrig, feriados)) { tipo = "Feriado"; color = COLORS.holiday; }
+      else if (isPostRelease(currentOrig, releases)) { tipo = "Tombamento"; color = COLORS.postRelease; }
+      else {
+        const activity = atividadesCalculadas.find((item) =>
+          isValidDate(item.inicio) && isValidDate(item.termino) && currentOrig >= item.inicio && currentOrig <= item.termino
+        );
+        tipo = getTimelineLabel(activity?.tipo, activity?.nome);
+        color = getTimelineColor(activity?.tipo);
+      }
+      const dateKey = currentOrig.toISOString().split("T")[0];
+      originalTimelineData[dateKey] = {
+        tipo, color,
+        isReleaseDay: isReleaseDay(currentOrig, releases),
+        isEsteiraPreProd: isEsteiraPreProdDay(currentOrig, esteiraPreProdRanges),
+        isChg: chgDates.some((d) => isSameDay(d, currentOrig)),
+      };
+      currentOrig = addDays(currentOrig, 1);
+    }
+
+    const timeline: any[] = [];
+    let currentMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    const lastMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+    while (currentMonth <= lastMonth) {
+      const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+      for (let day = 1; day <= lastDay.getDate(); day++) {
+        const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+        const key = d.toISOString().split("T")[0];
+        const data = originalTimelineData[key];
+        timeline.push({
+          date: new Date(d),
+          tipo: data?.tipo || "",
+          color: data?.color || COLORS.white,
+          isReleaseDay: data?.isReleaseDay || false,
+          isEsteiraPreProd: data?.isEsteiraPreProd || false,
+          isChg: data?.isChg || false,
+        });
+      }
+      currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+    }
+    return { validDays, atividadesCalculadas, timeline, endDate };
+  }, [form.inicio, form.releaseAlvo, form.chgDias, totalDiasPacotes, releases, feriados, diasParados, atividadesDePacotes, esteiraPreProdRanges]);
 
   function updateForm(field: string, value: unknown) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -639,31 +920,179 @@ function GeradorEstimativaPDF() {
     const row = filteredTimeline.slice(startIdx, endIdx);
     
     if (row.length > 0) {
-      // Verificar se há pelo menos uma atividade (tipo não vazio ou cor diferente de branco)
       const hasActivity = row.some(day => day.tipo !== "" || day.color !== COLORS.white);
       
       if (hasActivity) {
         if (row.length < daysPerBlock) {
-          // Preencher com dias vazios até atingir daysPerBlock
           let currentDate = new Date(row[row.length - 1].date);
           for (let j = row.length; j < daysPerBlock; j++) {
             currentDate.setDate(currentDate.getDate() + 1);
-            
-            row.push({
-              date: new Date(currentDate),
-              tipo: "",
-              color: COLORS.white,
-              isReleaseDay: false,
-              isEsteiraPreProd: false,
-              isChg: false,
-            });
+            row.push({ date: new Date(currentDate), tipo: "", color: COLORS.white, isReleaseDay: false, isEsteiraPreProd: false, isChg: false });
           }
         }
-        
         timelineRows.push(row);
       }
     }
   }
+
+  // Timeline rows para aba Estimativa (pacotes)
+  let filteredTimelinePacotes = calculoPacotes.timeline;
+  if (isValidDate(releaseTargetDate)) {
+    filteredTimelinePacotes = calculoPacotes.timeline.filter((day: any) => day.date <= releaseTargetDate);
+  }
+  const daysCountP = filteredTimelinePacotes.length;
+  const numBlocksP = Math.ceil(daysCountP / baseBlockSize);
+  const daysPerBlockP = Math.ceil(daysCountP / Math.max(numBlocksP, 1));
+  const timelineRowsPacotes: any[][] = [];
+  for (let i = 0; i < numBlocksP; i++) {
+    const startIdx = i * daysPerBlockP;
+    const endIdx = Math.min(startIdx + daysPerBlockP, daysCountP);
+    const row = filteredTimelinePacotes.slice(startIdx, endIdx);
+    if (row.length > 0) {
+      const hasActivity = row.some((day: any) => day.tipo !== "" || day.color !== COLORS.white);
+      if (hasActivity) {
+        if (row.length < daysPerBlockP) {
+          let currentDate = new Date(row[row.length - 1].date);
+          for (let j = row.length; j < daysPerBlockP; j++) {
+            currentDate.setDate(currentDate.getDate() + 1);
+            row.push({ date: new Date(currentDate), tipo: "", color: COLORS.white, isReleaseDay: false, isEsteiraPreProd: false, isChg: false });
+          }
+        }
+        timelineRowsPacotes.push(row);
+      }
+    }
+  }
+
+  // Preview para aba Estimativa: usa o inicio da primeira atividade do primeiro pacote
+  const calculoPreviaPacotes = useMemo(() => {
+    const firstAtiv = pacotes[0]?.atividades[0];
+    const inicioPacote = firstAtiv?.inicio || "";
+
+    // startDate = menor inicio entre todas as atividades de todos os pacotes
+    const allInicioDates = pacotes
+      .flatMap(p => p.atividades.map(a => parseDateBR(a.inicio)))
+      .filter(isValidDate);
+    const startDate = allInicioDates.length > 0
+      ? new Date(Math.min(...allInicioDates.map((d: Date) => d.getTime())))
+      : parseDateBR(inicioPacote);
+
+    if (!isValidDate(startDate)) return { atividadesCalculadas: [], timeline: [], endDate: startDate, inicioPacote };
+
+    const DEFAULT_OT = { tombamentoDates: [] as string[], feriadoDates: [] as string[], fimDeSemanaDates: [] as string[] };
+    const atividadesCalculadas = pacotes.flatMap((pacote) =>
+      pacote.atividades.map((a) => {
+        const terminoStr = calcularTermino(a.inicio, Number(a.horas || 0), feriados, releases, a.overtime || DEFAULT_OT, Number(a.horasOvertime || 0));
+        const dias = Math.max(1, Math.ceil(Number(a.horas || 0) / 8));
+        return {
+          id: a.id,
+          nome: a.nome,
+          tipo: a.tipo,
+          dias,
+          etapa: a.etapa,
+          inicio: parseDateBR(a.inicio),
+          termino: parseDateBR(terminoStr),
+          pacoteId: pacote.id,
+          pacoteNome: pacote.nome,
+          pacoteCodigo: pacote.codigo,
+        };
+      }).filter((a) => isValidDate(a.inicio))
+    );
+
+    const terminoDates = atividadesCalculadas.map((a) => a.termino).filter(isValidDate);
+    const endDate = terminoDates.length ? new Date(Math.max(...terminoDates.map((d) => d.getTime()))) : startDate;
+
+    const releaseTargetDatePrevia = parseDateBR(form.releaseAlvo);
+    const chgDates = getChgDates(releaseTargetDatePrevia, form.chgDias, feriados);
+    const timelineEnd = isValidDate(releaseTargetDatePrevia) && releaseTargetDatePrevia > endDate ? releaseTargetDatePrevia : endDate;
+
+    const originalTimelineData: Record<string, { tipo: string; color: string; isReleaseDay: boolean; isEsteiraPreProd: boolean; isChg: boolean }> = {};
+    let currentOrig = new Date(startDate);
+    while (isValidDate(currentOrig) && currentOrig <= timelineEnd) {
+      let tipo = "";
+      let color = COLORS.white;
+      if (sameDateBR(currentOrig, releaseTargetDatePrevia)) { tipo = "Release alvo"; color = COLORS.releaseTarget; }
+      else if (isParadoDay(currentOrig, diasParados, feriados, releases)) { tipo = "Projeto parado"; color = COLORS.blocked; }
+      else if (isWeekend(currentOrig)) { tipo = "Fim de semana"; color = COLORS.weekend; }
+      else if (isHoliday(currentOrig, feriados)) { tipo = "Feriado"; color = COLORS.holiday; }
+      else if (isPostRelease(currentOrig, releases)) { tipo = "Tombamento"; color = COLORS.postRelease; }
+      else {
+        const activity = atividadesCalculadas.find((item) =>
+          isValidDate(item.inicio) && isValidDate(item.termino) && currentOrig >= item.inicio && currentOrig <= item.termino
+        );
+        tipo = getTimelineLabel(activity?.tipo, activity?.nome);
+        color = getTimelineColor(activity?.tipo);
+      }
+      const dateKey = currentOrig.toISOString().split("T")[0];
+      originalTimelineData[dateKey] = {
+        tipo, color,
+        isReleaseDay: isReleaseDay(currentOrig, releases),
+        isEsteiraPreProd: isEsteiraPreProdDay(currentOrig, esteiraPreProdRanges),
+        isChg: chgDates.some((d) => isSameDay(d, currentOrig)),
+      };
+      currentOrig = addDays(currentOrig, 1);
+    }
+
+    const timeline: any[] = [];
+    let currentMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    const lastMonth = new Date(timelineEnd.getFullYear(), timelineEnd.getMonth(), 1);
+    while (currentMonth <= lastMonth) {
+      const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+      for (let day = 1; day <= lastDay.getDate(); day++) {
+        const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+        const key = d.toISOString().split("T")[0];
+        const data = originalTimelineData[key];
+        timeline.push({
+          date: new Date(d),
+          tipo: data?.tipo || "",
+          color: data?.color || COLORS.white,
+          isReleaseDay: data?.isReleaseDay || false,
+          isEsteiraPreProd: data?.isEsteiraPreProd || false,
+          isChg: data?.isChg || false,
+        });
+      }
+      currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+    }
+
+    return { atividadesCalculadas, timeline, endDate, inicioPacote };
+  }, [pacotes, feriados, releases, form.releaseAlvo, form.chgDias, diasParados, esteiraPreProdRanges]);
+
+  // Timeline rows para o preview da aba Estimativa
+  const timelineRowsPreviaPacotes = useMemo(() => {
+    let filteredTimeline = calculoPreviaPacotes.timeline;
+    const releaseTargetDatePrevia = parseDateBR(form.releaseAlvo);
+    if (isValidDate(releaseTargetDatePrevia)) {
+      filteredTimeline = filteredTimeline.filter((day: any) => day.date <= releaseTargetDatePrevia);
+    }
+    const daysCountPrev = filteredTimeline.length;
+    if (daysCountPrev === 0) return [];
+    const baseBlock = 15;
+    const numBlocksPrev = Math.ceil(daysCountPrev / baseBlock);
+    const daysPerBlockPrev = Math.ceil(daysCountPrev / Math.max(numBlocksPrev, 1));
+    const rows: any[][] = [];
+    for (let i = 0; i < numBlocksPrev; i++) {
+      const startIdx = i * daysPerBlockPrev;
+      const endIdx = Math.min(startIdx + daysPerBlockPrev, daysCountPrev);
+      const row = filteredTimeline.slice(startIdx, endIdx);
+      if (row.length > 0) {
+        const hasActivity = row.some((day: any) => day.tipo !== "" || day.color !== COLORS.white);
+        if (hasActivity) {
+          if (row.length < daysPerBlockPrev) {
+            let currentDate = new Date(row[row.length - 1].date);
+            for (let j = row.length; j < daysPerBlockPrev; j++) {
+              currentDate.setDate(currentDate.getDate() + 1);
+              row.push({ date: new Date(currentDate), tipo: "", color: COLORS.white, isReleaseDay: false, isEsteiraPreProd: false, isChg: false });
+            }
+          }
+          rows.push(row.map((day: any) => {
+            const key = (day.date as Date).toISOString().split('T')[0];
+            const workBorderColor = specialWorkDatesPacotes[key];
+            return workBorderColor ? { ...day, workBorderColor } : day;
+          }));
+        }
+      }
+    }
+    return rows;
+  }, [calculoPreviaPacotes.timeline, form.releaseAlvo, specialWorkDatesPacotes]);
 
   return (
     <div className="min-h-screen bg-zinc-100 p-6">
@@ -1038,95 +1467,201 @@ function GeradorEstimativaPDF() {
 
       {/* Página: Estimativa */}
       {page === "estimativa" && (
-        <div className="mx-auto max-w-7xl space-y-4">
-          <Card>
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold mb-4">📊 Estimativas</h2>
-              <div className="space-y-4">
-                <p className="text-sm text-zinc-600 mb-4">
-                  Bem-vindo à página de Estimativas. Aqui você pode gerenciar todas as suas estimativas de projetos.
+        <div className="mx-auto max-w-[1800px] space-y-4 px-4">
+
+          {/* Cabeçalho */}
+          <div className="flex items-center justify-between gap-2 pt-2">
+            <h1 className="text-xl font-bold">Detalhamento de Estimativa</h1>
+            <Button variant="ghost" size="sm" onClick={() => setOpenSettings(true)} className="h-8 w-8 p-0">
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Pacotes e Atividades — largura total */}
+          <Card className="w-full">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-sm flex items-center gap-2">
+                  📦 Pacotes e Atividades
+                </h2>
+                <p className="text-xs text-zinc-500">
+                  Clique nas células para editar • Datas calculadas automaticamente
                 </p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card className="border-zinc-200">
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold mb-2">📝 Criar Nova Estimativa</h3>
-                      <p className="text-sm text-zinc-600 mb-3">
-                        Inicie uma nova estimativa com todas as ferramentas disponíveis.
-                      </p>
-                      <Button 
-                        className="w-full"
-                        onClick={() => setPage("estimativa-rapida")}
-                      >
-                        Ir para Estimativa Rápida
-                      </Button>
-                    </CardContent>
-                  </Card>
+              </div>
+              <EstimativaPacotesTable
+                pacotes={pacotes}
+                feriados={feriados}
+                releases={releases}
+                onUpdatePacote={updatePacote}
+                onTogglePacote={togglePacote}
+                onAddPacote={addPacote}
+                onRemovePacote={removePacote}
+                onAddAtividade={addAtividadePacote}
+                onUpdateAtividade={updateAtividadePacote}
+                onRemoveAtividade={removeAtividadePacote}
+              />
+            </CardContent>
+          </Card>
 
-                  <Card className="border-zinc-200">
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold mb-2">💰 Análise Financeira</h3>
-                      <p className="text-sm text-zinc-600 mb-3">
-                        Visualize e analise dados financeiros das estimativas.
-                      </p>
-                      <Button 
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => setPage("financeiro")}
-                      >
-                        Ir para Financeiro
-                      </Button>
-                    </CardContent>
-                  </Card>
+          {/* Resumo da Estimativa — largura total */}
+          <Card className="w-full">
+            <CardContent className="p-5">
+              <h2 className="font-semibold text-sm mb-4 flex items-center gap-2">
+                📊 Resumo da Estimativa
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-orange-700">{pacotes.length}</p>
+                  <p className="text-xs text-orange-600 mt-1">Pacotes</p>
                 </div>
-
-                <Card className="border-zinc-200 mt-6">
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold mb-3">📋 Estimativas Recentes</h3>
-                    {estimativas && estimativas.length > 0 ? (
-                      <div className="space-y-2 max-h-96 overflow-y-auto">
-                        {estimativas.slice().reverse().map((est: any) => (
-                          <div 
-                            key={est.id}
-                            className="p-3 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer"
-                            onClick={() => {
-                              carregarEstimativa(est);
-                              setPage("estimativa-rapida");
-                            }}
-                          >
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <h4 className="font-medium text-sm">{est.titulo || "Sem título"}</h4>
-                                <p className="text-xs text-zinc-600 mt-1">
-                                  Arquiteto: <span className="font-medium">{est.arquiteto}</span>
-                                </p>
-                                <p className="text-xs text-zinc-600">
-                                  {est.inicio ? converterDataDoBackend(est.inicio) : "—"} → {est.releaseAlvo ? converterDataDoBackend(est.releaseAlvo) : "—"}
-                                </p>
-                              </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  excluirEstimativa(est.id);
-                                }}
-                                className="ml-2 text-xs px-2 py-1 text-red-600 hover:bg-red-50 rounded border border-red-200"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-zinc-500 text-center py-8">
-                        Nenhuma estimativa salva ainda. Crie a primeira!
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-blue-700">
+                    {pacotes.reduce((acc, p) => acc + p.atividades.length, 0)}
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">Atividades</p>
+                </div>
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-purple-700">
+                    {pacotes.reduce((acc, p) => acc + p.atividades.reduce((a, b) => a + Number(b.horas || 0), 0), 0)}h
+                  </p>
+                  <p className="text-xs text-purple-600 mt-1">Horas totais</p>
+                </div>
+                <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-rose-700">
+                    {(() => {
+                      const dias = Math.floor(totalHorasOvertime / 8);
+                      const horas = totalHorasOvertime % 8;
+                      if (dias === 0 && horas === 0) return "—";
+                      if (dias === 0) return `${horas}h`;
+                      if (horas === 0) return `${dias}d`;
+                      return `${dias}d ${horas}h`;
+                    })()}
+                  </p>
+                  <p className="text-xs text-rose-600 mt-1">Horas de Overtime</p>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-green-700">{Math.round(totalDiasAtuacao)}</p>
+                  <p className="text-xs text-green-600 mt-1">Dias de Atuação</p>
+                </div>
+                <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-cyan-700 tabular-nums">{dataInicioPacotes ?? "—"}</p>
+                  <p className="text-xs text-cyan-600 mt-1">Início</p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-slate-700 tabular-nums">{dataTerminoPacotes ?? "—"}</p>
+                  <p className="text-xs text-slate-600 mt-1">Término</p>
+                </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* Seção Preview */}
+          <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-4 items-start">
+            {/* Coluna esquerda: Informações da Estimativa */}
+            <Card className="print:hidden">
+              <CardContent className="space-y-4 p-5">
+                <h2 className="font-semibold text-base flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Preview
+                </h2>
+
+                <Card className="border-zinc-200">
+                  <div className="p-4">
+                    <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                      Informações da Estimativa
+                    </h3>
+                    <div className="space-y-3">
+                      <FormField label="Título da estimativa" required>
+                        <Input value={form.titulo} onChange={(e) => updateForm("titulo", e.target.value)} placeholder="Ex: PTI-123" />
+                      </FormField>
+                      <FormField label="Arquiteto" required>
+                        <Input value={form.arquiteto} onChange={(e) => updateForm("arquiteto", e.target.value)} placeholder="Nome do arquiteto" />
+                      </FormField>
+                      <FormField label="Subida em Produção" required hint="Data prevista de release">
+                        <DatePicker value={form.releaseAlvo || ""} onChange={(date) => updateForm("releaseAlvo", date)} placeholder="Release alvo (dd/mm/aaaa)" />
+                      </FormField>
+                    </div>
+                  </div>
+                </Card>
+
+                <Accordion type="single" collapsible className="w-full space-y-2">
+                  <div className="border rounded-lg overflow-hidden">
+                    <AccordionItem value="impact-view-prev" className="border-0">
+                      <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">🎯 Visualização de Impacto</AccordionTrigger>
+                      <AccordionContent className="space-y-4 pt-4 px-4 pb-4 border-t">
+                        <FormField label="Dias de trâmite CHG" hint="Número de dias de processamento">
+                          <Input type="number" min="0" value={form.chgDias || ""} onChange={(e) => updateForm("chgDias", e.target.value)} placeholder="Ex: 3" />
+                        </FormField>
+                        <FormField label="Dias impactados" hint="Períodos em que o projeto está parado">
+                          <DateRangeList value={form.diasParados || ""} onChange={(v) => updateForm("diasParados", v)} placeholder="Clique para adicionar dias" />
+                        </FormField>
+                        <FormField label="Período de esteira preprod" hint="Tempo em pré-produção">
+                          <DateRangeList value={form.esteiraPreProd || ""} onChange={(v) => updateForm("esteiraPreProd", v)} placeholder="Clique para adicionar períodos" />
+                        </FormField>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </div>
+
+                  <div className="border rounded-lg overflow-hidden">
+                    <AccordionItem value="observations-prev" className="border-0">
+                      <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">📝 Observações</AccordionTrigger>
+                      <AccordionContent className="space-y-4 pt-4 px-4 pb-4 border-t">
+                        <FormField label="Pontos de atenção">
+                          <Textarea value={form.pontos} onChange={(e) => updateForm("pontos", e.target.value)} placeholder="Liste os pontos de atenção" className="min-h-20" />
+                        </FormField>
+                        <FormField label="Premissas">
+                          <Textarea value={form.premissas} onChange={(e) => updateForm("premissas", e.target.value)} placeholder="Liste as premissas do projeto" className="min-h-20" />
+                        </FormField>
+                        <FormField label="Restrições">
+                          <Textarea value={form.restricoes} onChange={(e) => updateForm("restricoes", e.target.value)} placeholder="Liste as restrições" className="min-h-20" />
+                        </FormField>
+                        <FormField label="Observações">
+                          <Textarea value={form.observacoes} onChange={(e) => updateForm("observacoes", e.target.value)} placeholder="Observações gerais" className="min-h-20" />
+                        </FormField>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </div>
+                </Accordion>
+
+                <EstimativaHistorico
+                  historico={estimativas}
+                  onLoad={carregarEstimativa}
+                  onDelete={excluirEstimativa}
+                  onSave={salvarEstimativa}
+                />
+
+                {status && (
+                  <div className="rounded-lg bg-blue-50 border border-blue-200 p-2 text-xs text-blue-700">
+                    {status}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Button className="w-full" onClick={abrirPDF}>Abrir PDF</Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button className="w-full" onClick={gerarPDF} variant="default">Baixar PDF</Button>
+                    <Button className="w-full" onClick={gerarPDFCalendario} variant="outline">📅 Calendário</Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Coluna direita: PDF Preview */}
+            <div>
+              <PdfPreview
+                form={{ ...form, inicio: calculoPreviaPacotes.inicioPacote }}
+                totalDias={totalDiasPacotes}
+                calculo={calculoPreviaPacotes}
+                timelineRows={timelineRowsPreviaPacotes}
+              />
+            </div>
+          </div>
+
+          {/* Calendário da Preview */}
+          <TimeLine
+            form={{ ...form, inicio: calculoPreviaPacotes.inicioPacote }}
+            timelineRows={timelineRowsPreviaPacotes}
+          />
         </div>
       )}
 
