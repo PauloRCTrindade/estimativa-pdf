@@ -137,3 +137,106 @@
   color: white;
   padding: 40px;
 }
+
+/* ── Dark mode overrides para componentes com inline styles ─────────────── */
+/* !important sobrescreve inline styles no modo escuro.                      */
+/* Os elementos #pdf-area e #calendar-area usados pelo html2canvas ficam     */
+/* fora da tela (left:-9999px) e o html sem .dark — PDFs não são afetados.  */
+
+.dark #pdf-area-screen {
+  background-color: #18181b !important;
+  color: #f4f4f5 !important;
+}
+
+/* Células de dados */
+.dark #pdf-area-screen table td {
+  background-color: #27272a !important;
+  color: #f4f4f5 !important;
+  border-color: #3f3f46 !important;
+}
+
+/* Cabeçalho da tabela: fundo mais escuro + texto e borda-inferior laranja */
+.dark #pdf-area-screen table th {
+  background-color: #1a1a1d !important;
+  color: #fb923c !important;   /* orange-400 */
+  border-bottom-color: #f97316 !important; /* orange-500 — preserva destaque */
+}
+
+.dark #pdf-area-screen table tbody tr:nth-child(even) td {
+  background-color: #1f1f23 !important;
+}
+
+/* Linha de pacote na tabela (fundo #1c1c1e): borda esquerda laranja */
+.dark #pdf-area-screen [style*="1c1c1e"] td,
+.dark #pdf-area-screen td[style*="1c1c1e"] {
+  background-color: #1a1a1d !important;
+  color: #fb923c !important;
+  border-color: #3f3f46 !important;
+  border-left-color: #f97316 !important;
+}
+
+/* Divs com fundo claro (infoCell, sectionContent, legendWrapper) */
+.dark #pdf-area-screen div[style]:not([style*="1f2937"]):not([style*="1c1c1e"]) {
+  background-color: #27272a !important;
+  color: #f4f4f5 !important;
+  border-color: #3f3f46 !important;
+}
+
+/* Barras de título escuras (#1f2937): borda esquerda laranja como acento */
+.dark #pdf-area-screen [style*="1f2937"] {
+  background-color: revert !important;
+  color: #f4f4f5 !important;
+  border-left: 4px solid #f97316 !important;
+}
+
+/* Header principal: preservar borda laranja inline, ajustar fundo */
+.dark #pdf-area-screen > div[style*="1f2937"]:first-child {
+  border-left: 4px solid #f97316 !important;
+}
+
+/* ── TimeLine visível ──────────────────────────────────────────────────── */
+.dark #calendar-area {
+  background-color: #18181b !important;
+  color: #f4f4f5 !important;
+}
+
+.dark #calendar-area td:not([data-color-cell]) {
+  background-color: #27272a !important;
+  color: #f4f4f5 !important;
+  border-color: #3f3f46 !important;
+}
+
+/* Fundo da tabela (remove o branco/cinza claro que vaza pelas quinas arredondadas) */
+.dark #calendar-area table {
+  background-color: #27272a !important;
+}
+
+/* Células coloridas: tirar o border-radius no dark para não vazar fundo */
+.dark #calendar-area td[data-color-cell] {
+  border-radius: 0 !important;
+}
+
+/* Preserve border colors for special cell types in dark mode */
+.dark #calendar-area td[data-chg-border="true"] {
+  border-color: #06b6d4 !important;
+}
+
+.dark #calendar-area td[data-esteira-border="true"] {
+  border-color: #f59e0b !important;
+}
+
+.dark #calendar-area td[data-work-border="true"] {
+  border-color: inherit !important;
+}
+
+.dark #calendar-area div[style]:not([data-legend-color]) {
+  background-color: #27272a !important;
+  color: #f4f4f5 !important;
+  border-color: #3f3f46 !important;
+}
+
+.dark #calendar-area [style*="1f2937"] {
+  background-color: revert !important;
+  color: #f4f4f5 !important;
+}
+/* ────────────────────────────────────────────────────────────────────────── */

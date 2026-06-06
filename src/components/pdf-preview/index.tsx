@@ -247,18 +247,51 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows, hideTimelin
       </div>
       </> }
 
-      {!hideTimeline && <div style={pdfStyles.legendWrapper}>
-        <Legend color={COLORS.desenvolvimento} label="✓ Desenvolvimento" />
-        <Legend color={COLORS.subida} label="✓ Subida em Pre Prod" />
-        <Legend color={COLORS.testes} label="✓ QA Compass" />
-        <Legend color={COLORS.weekend} label="✗ Fim de semana" />
-        <Legend color={COLORS.postRelease} label="✗ Tombamento" />
-        <Legend color={COLORS.holiday} label="✗ Feriado" />
-        <Legend color={COLORS.blocked} label="✗ Projeto Impactado" />
-        <Legend color={COLORS.releaseTarget} label="🚀 Subida em Produção" />
-        <Legend color={COLORS.esteiraPreProd} label="▬ Esteira Pre Prod" type="border" />
-        <Legend color={COLORS.chg} label="▬ Trâmite CHG" type="border" />
-        <Legend color={COLORS.releaseDay} label="● Domingo da release" />
+      {!hideTimeline && <div style={{ marginTop: "24px", backgroundColor: "#f9fafb", padding: "16px", borderRadius: "4px", border: "1px solid #e5e7eb", fontSize: "11px" }}>
+        {(() => {
+          const items = [
+            { color: COLORS.desenvolvimento, label: "✓ Desenvolvimento", type: "fill" },
+            { color: COLORS.subida, label: "✓ Subida em Pre Prod", type: "fill" },
+            { color: COLORS.testes, label: "✓ QA Compass", type: "fill" },
+            { color: COLORS.weekend, label: "✗ Fim de semana", type: "fill" },
+            { color: COLORS.postRelease, label: "✗ Tombamento", type: "fill" },
+            { color: COLORS.holiday, label: "✗ Feriado", type: "fill" },
+            { color: COLORS.blocked, label: "✗ Projeto Impactado", type: "fill" },
+            { color: COLORS.releaseTarget, label: "🚀 Subida em Produção", type: "fill" },
+            { color: COLORS.esteiraPreProd, label: "▬ Esteira Pre Prod", type: "border" },
+            { color: COLORS.chg, label: "▬ Trâmite CHG", type: "border" },
+            { color: COLORS.releaseDay, label: "● Domingo da release", type: "fill" },
+          ];
+          const rows: typeof items[] = [];
+          for (let i = 0; i < items.length; i += 2) rows.push(items.slice(i, i + 2));
+          return (
+            <table style={{ borderCollapse: "collapse", width: "100%" }}>
+              <tbody>
+                {rows.map((row, ri) => (
+                  <tr key={ri}>
+                    {row.map((item, ci) => (
+                      <td key={ci} style={{ width: "50%", padding: "4px 8px", verticalAlign: "middle" }}>
+                        <table style={{ borderCollapse: "collapse" }}>
+                          <tbody>
+                            <tr>
+                              <td style={{ width: "1px", paddingRight: "6px", verticalAlign: "middle" }}>
+                                <div data-legend-color="true" style={{ width: "13px", height: "13px", borderRadius: "3px", backgroundColor: item.type === "fill" ? item.color : "transparent", border: `3px solid ${item.color}`, boxSizing: "border-box" }} />
+                              </td>
+                              <td style={{ verticalAlign: "middle", fontFamily: "Arial, Helvetica, sans-serif", color: item.color, whiteSpace: "nowrap" }}>
+                                {item.label}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </td>
+                    ))}
+                    {row.length === 1 && <td style={{ width: "50%" }} />}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          );
+        })()}
       </div>}
       {form.observacoes && (
         <div style={{ marginTop: "20px" }}>

@@ -1,4 +1,3 @@
-import { Legend } from '../legend'
 import { pdfStyles } from '../../styles'
 import { weekLabels } from '../../data'
 import { COLORS } from '../../styles'
@@ -14,6 +13,7 @@ export function TimeLine({ form, timelineRows, visible = false }) {
     ? {
         width: "100%",
         backgroundColor: COLORS.white,
+        color: COLORS.text,
         fontFamily: "Arial, Helvetica, sans-serif",
         overflowX: "auto" as const,
       }
@@ -23,6 +23,7 @@ export function TimeLine({ form, timelineRows, visible = false }) {
         top: 0,
         width: "1123px",
         backgroundColor: COLORS.white,
+        color: COLORS.text,
         padding: "32px",
         fontFamily: "Arial, Helvetica, sans-serif",
       };
@@ -153,11 +154,17 @@ export function TimeLine({ form, timelineRows, visible = false }) {
                         ? ` + Atuação`
                         : "";
                       
+                      // data-color-cell preserva a cor nos overrides CSS do dark mode
+                      const isColored = day.color !== COLORS.white;
+                      const colorAttr = isColored ? { "data-color-cell": "true" } : {};
+
                       if (day.isChg) {
                         return (
                           <td
                             key={`cal-color-${rowIndex}-${index}`}
                             title={day.isEsteiraPreProd ? `${day.tipo} + Esteira Pre Prod + CHG${workLabel}` : `${day.tipo} + CHG${workLabel}`}
+                            data-chg-border="true"
+                            {...colorAttr}
                             style={{
                               ...baseStyle,
                               border: `3px solid ${COLORS.chg}`,
@@ -172,6 +179,8 @@ export function TimeLine({ form, timelineRows, visible = false }) {
                           <td
                             key={`cal-color-${rowIndex}-${index}`}
                             title={`${day.tipo} + Esteira Pre Prod${workLabel}`}
+                            data-esteira-border="true"
+                            {...colorAttr}
                             style={{
                               ...baseStyle,
                               border: `3px solid ${COLORS.esteiraPreProd}`,
@@ -186,6 +195,8 @@ export function TimeLine({ form, timelineRows, visible = false }) {
                           <td
                             key={`cal-color-${rowIndex}-${index}`}
                             title={`${day.tipo}${workLabel}`}
+                            data-work-border="true"
+                            {...colorAttr}
                             style={{
                               ...baseStyle,
                               border: `3px solid ${day.workBorderColor}`,
@@ -198,6 +209,7 @@ export function TimeLine({ form, timelineRows, visible = false }) {
                         <td
                           key={`cal-color-${rowIndex}-${index}`}
                           title={day.tipo}
+                          {...colorAttr}
                           style={baseStyle}
                         />
                       );
@@ -210,19 +222,6 @@ export function TimeLine({ form, timelineRows, visible = false }) {
         })}
       </div>
 
-      <div style={pdfStyles.legendWrapper}>
-        <Legend color={COLORS.desenvolvimento} label="✓ Desenvolvimento" />
-        <Legend color={COLORS.subida} label="✓ Subida em Pre Prod" />
-        <Legend color={COLORS.testes} label="✓ QA Compass" />
-        <Legend color={COLORS.weekend} label="✗ Fim de semana" />
-        <Legend color={COLORS.postRelease} label="✗ Tombamento" />
-        <Legend color={COLORS.holiday} label="✗ Feriado" />
-        <Legend color={COLORS.blocked} label="✗ Projeto Impactado" />
-        <Legend color={COLORS.releaseTarget} label="🚀 Subida em Produção" />
-        <Legend color={COLORS.esteiraPreProd} label="▬ Esteira Pre Prod" type="border" />
-        <Legend color={COLORS.chg} label="▬ Trâmite CHG" type="border" />
-        <Legend color={COLORS.releaseDay} label="● Domingo da release" />
-      </div>
       {form.observacoes && (
         <div style={{ marginTop: "20px" }}>
           <div style={pdfStyles.blackBar}>OBSERVAÇÕES</div>

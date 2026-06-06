@@ -74,6 +74,27 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
   const [estimativaFinanceiro, setEstimativaFinanceiro] = useState<any | null>(null);
   const [estimativasFiltradas, setEstimativasFiltradas] = useState<any[]>([]);
   const [carregandoFiltro, setCarregandoFiltro] = useState(false);
+  const [subTab, setSubTab] = useState<"informacoes" | "detalhamento" | "gerar-documento" | "visualizacao-impacto" | "salvar-estimativa">("informacoes");
+  const [viewMode, setViewMode] = useState<"abas" | "pagina-unica">(() => {
+    return (localStorage.getItem("estimativa-view-mode") as "abas" | "pagina-unica") || "abas";
+  });
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    return (localStorage.getItem("estimativa-theme") as "light" | "dark") || "light";
+  });
+
+  useEffect(() => {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem("estimativa-theme", theme);
+  }, [theme]);
+
+  function toggleViewMode(mode: "abas" | "pagina-unica") {
+    setViewMode(mode);
+    localStorage.setItem("estimativa-view-mode", mode);
+  }
 
   // ── Estado de Pacotes (aba Estimativa detalhada) ──
   const [pacotes, setPacotes] = useState<Pacote[]>(() => defaultPacotes());
@@ -1181,7 +1202,7 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
   }, [calculoPreviaPacotes.timeline, form.releaseAlvo, specialWorkDatesPacotes]);
 
   return (
-    <div className="min-h-screen bg-zinc-100 p-6">
+    <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950 p-6">
       {/* Página: Cálculo Financeiro */}
       {page === "financeiro" && (
         <div className="mx-auto max-w-2xl space-y-4">
@@ -1501,13 +1522,60 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
 
       {/* Página: Estimativa */}
       {page === "estimativa" && (
-        <div className="mx-auto max-w-[1800px] space-y-4 px-4">
+        <div className={`mx-auto max-w-[1800px] px-4 ${viewMode === "pagina-unica" ? "space-y-4" : ""}`}>
 
-          {/* Seção: Informações */}
-          <div className="pt-2">
-            <h1 className="text-xl font-bold">Informações</h1>
+          {/* Sub-navegação das seções — apenas no modo Abas */}
+          {viewMode === "abas" && (
+          <div className="sticky top-0 z-10 bg-zinc-100 dark:bg-zinc-950 py-3 mb-4 -mx-4 px-4 border-b border-zinc-200 dark:border-zinc-700">
+            <div className="flex gap-1 bg-white dark:bg-zinc-800 rounded-lg p-1 shadow-sm border border-zinc-200 dark:border-zinc-700 overflow-x-auto">
+              <button
+                onClick={() => setSubTab("informacoes")}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "informacoes" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
+              >
+                📋 Informações
+              </button>
+              <button
+                onClick={() => setSubTab("detalhamento")}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "detalhamento" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
+              >
+                🔍 Detalhamento
+              </button>
+              <button
+                onClick={() => setSubTab("gerar-documento")}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "gerar-documento" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
+              >
+                📄 Gerar Documento
+              </button>
+              <button
+                onClick={() => setSubTab("visualizacao-impacto")}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "visualizacao-impacto" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
+              >
+                📊 Visualização de Impacto
+              </button>
+              <button
+                onClick={() => setSubTab("salvar-estimativa")}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "salvar-estimativa" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
+              >
+                💾 Salvar Estimativa
+              </button>
+            </div>
+          </div>
+          )}
+
+          {/* PdfPreview oculto com linha do tempo — sempre renderizado para html2canvas */}
+          <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
+            <PdfPreview
+              form={{ ...form, inicio: calculoPreviaPacotes.inicioPacote }}
+              totalDias={totalDiasPacotes}
+              calculo={calculoPreviaPacotes}
+              timelineRows={timelineRowsPreviaPacotes}
+            />
           </div>
 
+          {/* Aba: Informações */}
+          {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Informações</h1></div>}
+          {(viewMode === "pagina-unica" || subTab === "informacoes") && (
+          <div className="space-y-4 pt-2">
           {/* Campos de Informações — largura total */}
           <Card className="w-full print:hidden">
             <CardContent className="p-5">
@@ -1524,12 +1592,13 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
               </div>
             </CardContent>
           </Card>
-
-          {/* Cabeçalho */}
-          <div className="pt-2">
-            <h1 className="text-xl font-bold">Detalhamento</h1>
           </div>
+          )}
 
+          {/* Aba: Detalhamento */}
+          {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Detalhamento</h1></div>}
+          {(viewMode === "pagina-unica" || subTab === "detalhamento") && (
+          <div className="space-y-4 pt-2">
           {/* Pacotes e Atividades — largura total */}
           <Card className="w-full">
             <CardContent className="p-4">
@@ -1609,21 +1678,13 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
             </CardContent>
           </Card>
 
-          {/* Seção: Gerar Documento */}
-          <div className="pt-2">
-            <h1 className="text-xl font-bold">Gerar Documento</h1>
           </div>
+          )}
 
-          {/* PdfPreview oculto com linha do tempo — usado pelo html2canvas para gerar PDF */}
-          <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
-            <PdfPreview
-              form={{ ...form, inicio: calculoPreviaPacotes.inicioPacote }}
-              totalDias={totalDiasPacotes}
-              calculo={calculoPreviaPacotes}
-              timelineRows={timelineRowsPreviaPacotes}
-            />
-          </div>
-
+          {/* Aba: Gerar Documento */}
+          {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Gerar Documento</h1></div>}
+          {(viewMode === "pagina-unica" || subTab === "gerar-documento") && (
+          <div className="space-y-4 pt-2">
           <Card className="w-full print:hidden">
             <CardContent className="p-5 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1657,11 +1718,13 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
             </CardContent>
           </Card>
 
-          {/* Seção: Visualização de Impacto */}
-          <div className="pt-2">
-            <h1 className="text-xl font-bold">Visualização de Impacto</h1>
           </div>
+          )}
 
+          {/* Aba: Visualização de Impacto */}
+          {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Visualização de Impacto</h1></div>}
+          {(viewMode === "pagina-unica" || subTab === "visualizacao-impacto") && (
+          <div className="space-y-4 pt-2">
           <Card className="w-full print:hidden">
             <CardContent className="p-5">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1703,11 +1766,13 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
             </CardContent>
           </Card>
 
-          {/* Seção: Salvar Estimativa */}
-          <div className="pt-2">
-            <h1 className="text-xl font-bold">Salvar Estimativa</h1>
           </div>
+          )}
 
+          {/* Aba: Salvar Estimativa */}
+          {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Salvar Estimativa</h1></div>}
+          {(viewMode === "pagina-unica" || subTab === "salvar-estimativa") && (
+          <div className="space-y-4 pt-2">
           <Card className="w-full print:hidden">
             <CardContent className="p-5 space-y-4">
               <EstimativaHistorico
@@ -1729,15 +1794,82 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
               </div>
             </CardContent>
           </Card>
+          </div>
+          )}
         </div>
       )}
 
       <Dialog open={openSettings} onOpenChange={setOpenSettings}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>⚙️ Releases e Feriados</DialogTitle>
+            <DialogTitle>⚙️ Configurações</DialogTitle>
           </DialogHeader>
           <div className="space-y-6">
+
+            {/* Modo de Visualização */}
+            <div>
+              <span className="text-xs font-medium text-zinc-600 block mb-2">Modo de Visualização</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => toggleViewMode("abas")}
+                  className={`flex-1 flex flex-col items-center gap-1.5 px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
+                    viewMode === "abas"
+                      ? "bg-zinc-900 text-white border-zinc-900"
+                      : "bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700"
+                  }`}
+                >
+                  <span className="text-lg">🗂️</span>
+                  <span>Navegação por Abas</span>
+                  <span className={`text-xs font-normal ${viewMode === "abas" ? "text-zinc-300" : "text-zinc-400"}`}>Cada seção em uma aba separada</span>
+                </button>
+                <button
+                  onClick={() => toggleViewMode("pagina-unica")}
+                  className={`flex-1 flex flex-col items-center gap-1.5 px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
+                    viewMode === "pagina-unica"
+                      ? "bg-zinc-900 text-white border-zinc-900"
+                      : "bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700"
+                  }`}
+                >
+                  <span className="text-lg">📜</span>
+                  <span>Página Única</span>
+                  <span className={`text-xs font-normal ${viewMode === "pagina-unica" ? "text-zinc-300" : "text-zinc-400"}`}>Todas as seções em uma página</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="border-t border-zinc-200" />
+
+            {/* Tema */}
+            <div>
+              <span className="text-xs font-medium text-zinc-600 block mb-2">Tema</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setTheme("light")}
+                  className={`flex-1 flex flex-col items-center gap-1.5 px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
+                    theme === "light"
+                      ? "bg-zinc-900 text-white border-zinc-900"
+                      : "bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700"
+                  }`}
+                >
+                  <span className="text-lg">☀️</span>
+                  <span>Modo Claro</span>
+                </button>
+                <button
+                  onClick={() => setTheme("dark")}
+                  className={`flex-1 flex flex-col items-center gap-1.5 px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
+                    theme === "dark"
+                      ? "bg-zinc-900 text-white border-zinc-900"
+                      : "bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700"
+                  }`}
+                >
+                  <span className="text-lg">🌙</span>
+                  <span>Modo Escuro</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="border-t border-zinc-200" />
+
             <div>
               <span className="text-xs font-medium text-zinc-600">Releases do Ano</span>
               <Textarea className="min-h-40 mt-2" value={form.releases} onChange={(event) => updateForm("releases", event.target.value)} placeholder="Releases, uma por linha" />
@@ -1801,11 +1933,11 @@ export default function App() {
   };
 
   const nav = (
-    <div className="flex gap-1 bg-zinc-100 rounded-lg p-1">
+    <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
       <button
         onClick={() => setPage("estimativa")}
         className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-          page === "estimativa" ? "bg-white shadow text-zinc-900" : "text-zinc-500 hover:text-zinc-800"
+          page === "estimativa" ? "bg-white dark:bg-zinc-600 shadow text-zinc-900 dark:text-white" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100"
         }`}
       >
         <FileText className="h-4 w-4" />
@@ -1824,8 +1956,8 @@ export default function App() {
   const settingsBtn = (
     <button
       onClick={() => setOpenSettings(true)}
-      className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
-      title="Configurações de feriados e releases"
+      className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-lg transition"
+      title="Configurações"
     >
       <Settings className="h-5 w-5" />
     </button>
