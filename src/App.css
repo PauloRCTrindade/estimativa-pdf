@@ -1,3 +1,75 @@
+/* ── Dark mode overrides para componentes com inline styles ─────────────── */
+/* !important é necessário para sobrescrever inline styles.                  */
+/* Os elementos de geração de PDF (#pdf-area, #calendar-area em modo oculto) */
+/* ficam fora da tela (left: -9999px) e não são afetados por esses seletores */
+/* quando não possuem a classe .dark no ancestral html.                       */
+
+/* Preview de documento na tela (screen) */
+.dark #pdf-area-screen {
+  background-color: #18181b !important; /* zinc-900 */
+  color: #f4f4f5 !important;
+}
+
+/* Todas as células da tabela de informações/atividades no preview */
+.dark #pdf-area-screen table td,
+.dark #pdf-area-screen table th {
+  background-color: #27272a !important; /* zinc-800 */
+  color: #f4f4f5 !important;
+  border-color: #3f3f46 !important;
+}
+
+/* Linhas alternadas levemente diferentes */
+.dark #pdf-area-screen table tbody tr:nth-child(even) td {
+  background-color: #1f1f23 !important;
+}
+
+/* Divs com fundo branco/claro dentro do preview (sections, legenda, etc.) */
+.dark #pdf-area-screen div[style] {
+  background-color: #27272a !important;
+  color: #f4f4f5 !important;
+  border-color: #3f3f46 !important;
+}
+
+/* Barras de título escuras (blackBar, header) — já são escuras, restaurar cor */
+.dark #pdf-area-screen [style*="1f2937"],
+.dark #pdf-area-screen [style*="1c1c1e"] {
+  background-color: revert !important;
+  color: #f4f4f5 !important;
+}
+
+/* ── TimeLine / Calendário visível ────────────────────────────────────────── */
+.dark #calendar-area {
+  background-color: #18181b !important;
+  color: #f4f4f5 !important;
+}
+
+/* Células de número/dia-da-semana (branco/cinza claro) */
+.dark #calendar-area td:not([data-color-cell]) {
+  background-color: #27272a !important;
+  color: #f4f4f5 !important;
+  border-color: #3f3f46 !important;
+}
+
+/* Wrapper da legenda e outros divs com fundo claro */
+.dark #calendar-area div[style] {
+  background-color: #27272a !important;
+  color: #f4f4f5 !important;
+  border-color: #3f3f46 !important;
+}
+
+/* Barras de cabeçalho escuras — já são escuras, não sobrescrever */
+.dark #calendar-area [style*="1f2937"] {
+  background-color: revert !important;
+  color: #f4f4f5 !important;
+}
+
+/* Rótulos de mês (cor hardcoded #666) */
+.dark #calendar-area div[style*="color: rgb(102"] {
+  color: #a1a1aa !important; /* zinc-400 */
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+
 .counter {
   font-size: 16px;
   padding: 5px 10px;

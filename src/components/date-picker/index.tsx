@@ -82,7 +82,7 @@ export function DatePicker({
             "w-full justify-start text-left font-normal",
             !value && "text-muted-foreground",
             className,
-            isSelectedReleaseSunday && "bg-blue-300 text-blue-900 border-blue-500 hover:bg-blue-400 hover:text-blue-900",
+            isSelectedReleaseSunday && "bg-blue-600 text-blue-100 border-blue-500 hover:bg-blue-700 hover:text-blue-50 dark:bg-blue-600 dark:text-blue-100 dark:border-blue-400 dark:hover:bg-blue-700 dark:hover:text-blue-50",
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />

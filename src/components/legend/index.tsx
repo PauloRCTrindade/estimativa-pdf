@@ -8,32 +8,27 @@ interface LegendProps {
 
 export function Legend({ color, label, type = "fill" }: LegendProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-      }}
-    >
-      <div
-        style={{
-          width: "16px",
-          height: "16px",
-          borderRadius: "4px",
-          backgroundColor: type === "fill" ? color : "transparent",
-          border: `3px solid ${color}`,
-          boxSizing: "border-box",
-          flexShrink: 0,
-        }}
-      />
-      <span
-        style={{
-          fontSize: "14px",
-          fontFamily: "Arial, Helvetica, sans-serif",
-        }}
-      >
-        {label}
-      </span>
-    </div>
+    <table style={{ borderCollapse: "collapse", borderSpacing: 0, margin: 0, padding: 0, width: "auto" }}>
+      <tbody>
+        <tr>
+          <td style={{ width: "1px", padding: "0 6px 0 0", verticalAlign: "middle" }}>
+            <div
+              data-legend-color="true"
+              style={{
+                width: "13px",
+                height: "13px",
+                borderRadius: "3px",
+                backgroundColor: type === "fill" ? color : "transparent",
+                border: `3px solid ${color}`,
+                boxSizing: "border-box",
+              }}
+            />
+          </td>
+          <td style={{ verticalAlign: "middle", fontFamily: "Arial, Helvetica, sans-serif", color: color, whiteSpace: "nowrap", padding: 0 }}>
+            {label}
+          </td>
+        </tr>
+      </tbody>
+    </table>
   );
 }

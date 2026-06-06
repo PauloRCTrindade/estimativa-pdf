@@ -40,16 +40,16 @@ export function ProtectedRoute({ children, onLogout, navContent, settingsButton 
   return (
     <div>
       {/* Header com informações do usuário */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <header className="bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-700 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-3 grid grid-cols-3 items-center">
           {/* Esquerda: logo + nome */}
           <div className="flex items-center gap-3">
             <img 
               src="/chikamaru-thinking.svg" 
               alt="Chikamaru pensando" 
-              className="w-10 h-10 rounded-full bg-gray-100 p-1"
+              className="w-10 h-10 rounded-full bg-gray-100 dark:bg-zinc-700 p-1"
             />
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {user?.user_metadata?.full_name || user?.email || 'Usuário'}
             </h2>
           </div>
@@ -64,7 +64,7 @@ export function ProtectedRoute({ children, onLogout, navContent, settingsButton 
             {settingsButton}
             <button
               onClick={onLogout}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 rounded-lg transition"
             >
               🚪 Sair
             </button>
