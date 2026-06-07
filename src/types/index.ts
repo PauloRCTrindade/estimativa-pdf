@@ -1,3 +1,19 @@
+export type AppForm = {
+  titulo: string;
+  arquiteto: string;
+  inicio: string;
+  releaseAlvo: string;
+  diasParados: string;
+  esteiraPreProd: string;
+  chgDias: string;
+  releases: string;
+  feriados: string;
+  pontos: string;
+  premissas: string;
+  restricoes: string;
+  observacoes: string;
+};
+
 export type Estimativa = {
   id?: string;
   titulo: string;

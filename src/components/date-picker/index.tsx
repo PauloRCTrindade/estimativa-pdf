@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { isHoliday, isPostRelease } from "@/utils"
+import { Legend } from "@/components/legend"
 
 interface DatePickerProps {
   value: string
@@ -89,7 +90,7 @@ export function DatePicker({
           {value ? value : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto" align="start">
         <Calendar
           mode="single"
           selected={selectedDate}
@@ -98,6 +99,17 @@ export function DatePicker({
           disabled={(date) => date < new Date("1900-01-01")}
           modifiers={modifiers}
         />
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-col gap-2">
+          {feriados && feriados.length > 0 && (
+            <Legend color="#b91c1c" label="Feriado" />
+          )}
+          {releases && releases.length > 0 && (
+            <>
+              <Legend color="#ea580c" label="Tombamento (Pós-Release)" />
+              <Legend color="#1e40af" label="Domingo com Release Próximo" />
+            </>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   )
