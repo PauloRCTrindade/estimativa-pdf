@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Calendar, Download } from "@phosphor-icons/react";
 import { EstimativaHistorico } from "@/components/estimativa-historico";
 import { TimeLine } from "@/components/time-line";
 import type { AppForm } from "@/types";
@@ -46,8 +47,14 @@ export function SavePage({
               <Button className="w-full" onClick={onGerarPDF} variant="default">Baixar Estimativa</Button>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <Button className="w-full" onClick={onAbrirCalendario} variant="default">🗓️ Abrir Calendário</Button>
-              <Button className="w-full" onClick={onGerarPDFCalendario} variant="default">📅 Baixar Calendário</Button>
+              <Button className="w-full" onClick={onAbrirCalendario} variant="default">
+                <Calendar className="mr-2 h-4 w-4" />
+                Abrir Calendário
+              </Button>
+              <Button className="w-full" onClick={onGerarPDFCalendario} variant="default">
+                <Download className="mr-2 h-4 w-4" />
+                Baixar Calendário
+              </Button>
             </div>
           </div>
         </CardContent>

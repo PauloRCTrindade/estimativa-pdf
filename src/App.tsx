@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Gear, StackSimple, ChartBar, Sliders, Info, Stack, FileText, HardDrive, Tabs, Sun, Moon, Rocket, CalendarBlank } from "@phosphor-icons/react";
+import { Gear, StackSimple, ChartBar, Sliders, Info, Stack, FileText, HardDrive, Tabs, Sun, Moon, Rocket, CalendarBlank, CheckCircle, XCircle, Hourglass } from "@phosphor-icons/react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { COLORS } from './styles';
@@ -1366,7 +1366,10 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
       <Dialog open={openSettings} onOpenChange={setOpenSettings}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>⚙️ Configurações</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Gear className="h-5 w-5" />
+              Configurações
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-6">
 
@@ -1442,9 +1445,19 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
                   variant="outline"
                   onClick={buscarFeriadosDoAno}
                   disabled={loadingHolidays}
-                  className="h-7 px-2 text-xs"
+                  className="h-7 px-2 text-xs flex items-center gap-1.5"
                 >
-                  {loadingHolidays ? "⏳ Buscando..." : "📅 Carregar Feriados"}
+                  {loadingHolidays ? (
+                    <>
+                      <Hourglass className="h-3.5 w-3.5 animate-spin" />
+                      Buscando...
+                    </>
+                  ) : (
+                    <>
+                      <CalendarBlank className="h-3.5 w-3.5" />
+                      Carregar Feriados
+                    </>
+                  )}
                 </Button>
               </div>
               <Textarea className="min-h-56 mt-2" value={form.feriados} onChange={(event) => updateForm("feriados", event.target.value)} placeholder="Feriados, um por linha. Ex: 01/01/2026 - Nome do feriado" />

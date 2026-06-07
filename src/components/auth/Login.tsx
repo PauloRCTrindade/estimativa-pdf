@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Hourglass, EnvelopeSimple } from '@phosphor-icons/react';
 
 interface LoginProps {
   onLoginSuccess?: () => void;
@@ -74,7 +75,7 @@ export function Login({ onLoginSuccess, onSwitchToSignup }: LoginProps) {
 
           {resetSuccess && (
             <div className="p-3 rounded bg-green-50 text-green-700 text-sm">
-              ✅ Email enviado! Verifique sua caixa de entrada
+              Email enviado! Verifique sua caixa de entrada
             </div>
           )}
 
@@ -82,9 +83,19 @@ export function Login({ onLoginSuccess, onSwitchToSignup }: LoginProps) {
             <Button
               type="submit"
               disabled={loading}
-              className="flex-1"
+              className="flex-1 flex items-center justify-center gap-2"
             >
-              {loading ? '⏳ Enviando...' : '📧 Enviar Link'}
+              {loading ? (
+                <>
+                  <Hourglass className="h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <EnvelopeSimple className="h-4 w-4" />
+                  Enviar Link
+                </>
+              )}
             </Button>
             <Button
               type="button"
@@ -142,16 +153,25 @@ export function Login({ onLoginSuccess, onSwitchToSignup }: LoginProps) {
 
         {error && (
           <div className="p-3 rounded bg-red-50 text-red-700 text-sm">
-            ❌ {error}
+            {error}
           </div>
         )}
 
         <Button
           type="submit"
           disabled={loading}
-          className="w-full"
+          className="w-full flex items-center justify-center gap-2"
         >
-          {loading ? '⏳ Fazendo login...' : '🔓 Entrar'}
+          {loading ? (
+            <>
+              <Hourglass className="h-4 w-4 animate-spin" />
+              Fazendo login...
+            </>
+          ) : (
+            <>
+              <span>Entrar</span>
+            </>
+          )}
         </Button>
       </form>
 

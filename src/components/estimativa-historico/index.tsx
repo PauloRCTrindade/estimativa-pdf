@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Download, Trash } from "@phosphor-icons/react"
+import { Download, Trash, ClipboardText } from "@phosphor-icons/react"
 
 interface EstimativaItemProps {
   item: any
@@ -58,7 +58,10 @@ export function EstimativaHistorico({ historico, onLoad, onDelete, onSave }: Est
     <Card className="border-zinc-200">
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-sm">📋 Histórico</h3>
+          <div className="flex items-center gap-2">
+            <ClipboardText className="h-4 w-4 text-zinc-600" />
+            <h3 className="font-semibold text-sm">Histórico</h3>
+          </div>
           <Button size="sm" onClick={onSave} className="h-7 text-xs">
             Salvar estimativa
           </Button>
