@@ -1,6 +1,6 @@
 import * as React from "react"
 import { pt } from "date-fns/locale"
-import { CalendarIcon, X } from "lucide-react"
+import { Calendar as CalendarIcon, X } from "@phosphor-icons/react"
 import type { DateRange } from "react-day-picker"
 
 import { Button } from "@/components/ui/button"

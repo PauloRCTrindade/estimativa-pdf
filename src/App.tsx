@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Settings, SquareStack, BarChart3, SlidersHorizontal, Info, Layers, FileText, HardDrive, Tabs, Sun, Moon, Rocket, Calendar } from "lucide-react";
+import { Gear, StackSimple, ChartBar, Sliders, Info, Stack, FileText, HardDrive, Tabs, Sun, Moon, Rocket, CalendarBlank } from "@phosphor-icons/react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { COLORS } from './styles';
@@ -1259,7 +1259,7 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
                 onClick={() => setSubTab("detalhamento")}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "detalhamento" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
               >
-                <Layers className="h-4 w-4" /> Detalhamento
+                <Stack className="h-4 w-4" /> Detalhamento
               </button>
               <button
                 onClick={() => setSubTab("gerar-documento")}
@@ -1271,7 +1271,7 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
                 onClick={() => setSubTab("visualizacao-impacto")}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "visualizacao-impacto" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
               >
-                <BarChart3 className="h-4 w-4" /> Visão Geral
+                <ChartBar className="h-4 w-4" /> Visão Geral
               </button>
               <button
                 onClick={() => setSubTab("salvar-estimativa")}
@@ -1434,7 +1434,7 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-green-500" />
+                  <CalendarBlank className="h-4 w-4 text-green-500" />
                   <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Feriados</span>
                 </div>
                 <Button
@@ -1500,14 +1500,14 @@ export default function App() {
           page === "estimativa" ? "bg-white dark:bg-zinc-600 shadow text-zinc-900 dark:text-white" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100"
         }`}
       >
-        <SquareStack className="h-4 w-4" />
+        <StackSimple className="h-4 w-4" />
         Estimativa
       </button>
       <button
         disabled
         className="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium text-zinc-400 cursor-not-allowed opacity-50"
       >
-        <BarChart3 className="h-4 w-4" />
+        <ChartBar className="h-4 w-4" />
         Cálculo Financeiro
       </button>
     </div>
@@ -1519,7 +1519,7 @@ export default function App() {
       className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-lg transition"
       title="Configurações"
     >
-      <SlidersHorizontal className="h-5 w-5" />
+      <Sliders className="h-5 w-5" />
     </button>
   );
 

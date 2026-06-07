@@ -8,13 +8,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  ChevronDown,
-  ChevronRight,
+  CaretDown,
+  CaretRight,
   Plus,
-  Trash2,
+  Trash,
   Package,
   Minus,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import { DatePicker } from "@/components/date-picker";
 import { parseDateBR, isValidDate, getWorkingDays, formatBR, isWeekend, isHoliday, isPostRelease, addDays, isParadoDay } from "@/utils";
 
@@ -557,7 +557,7 @@ export function EstimativaPacotesTable({
                 <td className="px-2 py-1.5 border-r border-zinc-600">
                   <div className="flex items-center gap-1">
                     <button onClick={() => onTogglePacote(pacote.id)} className="hover:opacity-80 transition-opacity flex-shrink-0">
-                      {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                      {collapsed ? <CaretRight className="h-3.5 w-3.5" /> : <CaretDown className="h-3.5 w-3.5" />}
                     </button>
                     <input
                       className="bg-transparent text-zinc-100 placeholder-zinc-400 font-semibold w-full outline-none focus:bg-zinc-600 rounded px-1"
@@ -622,7 +622,7 @@ export function EstimativaPacotesTable({
                       <Plus className="h-3.5 w-3.5" />
                     </button>
                     <button onClick={() => onRemovePacote(pacote.id)} title="Remover pacote" className="p-1 hover:bg-red-700/60 rounded transition-colors">
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </td>
@@ -938,7 +938,7 @@ export function EstimativaPacotesTable({
                             title="Remover atividade"
                             className="p-1 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash className="h-3.5 w-3.5" />
                           </button>
                         </td>
                       </tr>

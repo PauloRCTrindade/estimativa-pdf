@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Download, Trash2 } from "lucide-react"
+import { Download, Trash } from "@phosphor-icons/react"
 
 interface EstimativaItemProps {
   item: any
@@ -37,7 +37,7 @@ export function EstimativaHistoricoItem({ item, onLoad, onDelete }: EstimativaIt
             onClick={onDelete}
             className="flex-1 h-7 text-xs text-red-600 hover:text-red-700"
           >
-            <Trash2 className="h-3 w-3 mr-1" />
+            <Trash className="h-3 w-3 mr-1" />
             Remover
           </Button>
         </div>
