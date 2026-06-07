@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ChevronUp, ChevronDown, Trash2, Plus } from "lucide-react"
+import { CaretUp, CaretDown, Trash, Plus } from "@phosphor-icons/react"
 
 interface AtividadeItemProps {
   atividade: any
@@ -84,7 +84,7 @@ export function AtividadeItem({
             onClick={() => onMove(atividade.id, -1)}
             className="flex-1 h-8"
           >
-            <ChevronUp className="h-3 w-3" />
+            <CaretUp className="h-3 w-3" />
           </Button>
           <Button
             variant="outline"
@@ -93,7 +93,7 @@ export function AtividadeItem({
             onClick={() => onMove(atividade.id, 1)}
             className="flex-1 h-8"
           >
-            <ChevronDown className="h-3 w-3" />
+            <CaretDown className="h-3 w-3" />
           </Button>
           <Button
             variant="outline"
@@ -101,7 +101,7 @@ export function AtividadeItem({
             onClick={() => onRemove(atividade.id)}
             className="flex-1 h-8 text-red-600 hover:text-red-700"
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash className="h-3 w-3" />
           </Button>
         </div>
       </div>

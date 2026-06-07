@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
-import { FileText } from "lucide-react";
+import { FileText } from "@phosphor-icons/react";
 import { FormField } from "@/components/form-field";
 import { DatePicker } from "@/components/date-picker";
 import { DateRangeList } from "@/components/date-range-list";

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle, XCircle, Loader2, X } from "lucide-react";
+import { CheckCircle, XCircle, CircleNotch, X } from "@phosphor-icons/react";
 
 type ToastType = "success" | "error" | "loading" | "info";
 
@@ -19,7 +19,7 @@ function getType(message: string): ToastType {
 const STYLES: Record<ToastType, { bg: string; border: string; text: string; icon: React.ReactNode }> = {
   success: { bg: "bg-green-50", border: "border-green-300", text: "text-green-800", icon: <CheckCircle className="h-4 w-4 text-green-600 shrink-0" /> },
   error:   { bg: "bg-red-50",   border: "border-red-300",   text: "text-red-800",   icon: <XCircle   className="h-4 w-4 text-red-600   shrink-0" /> },
-  loading: { bg: "bg-blue-50",  border: "border-blue-300",  text: "text-blue-800",  icon: <Loader2   className="h-4 w-4 text-blue-600  shrink-0 animate-spin" /> },
+  loading: { bg: "bg-blue-50",  border: "border-blue-300",  text: "text-blue-800",  icon: <CircleNotch   className="h-4 w-4 text-blue-600  shrink-0 animate-spin" /> },
   info:    { bg: "bg-zinc-50",  border: "border-zinc-300",  text: "text-zinc-800",  icon: null },
 };
 

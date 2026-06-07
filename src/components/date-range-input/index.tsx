@@ -1,6 +1,6 @@
 import * as React from "react"
 import { pt } from "date-fns/locale"
-import { CalendarIcon } from "lucide-react"
+import { Calendar as CalendarIcon } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { DollarSign, Calendar, AlertCircle } from "lucide-react"
+import { CurrencyDollar as CurrencyDollarIcon, CalendarBlank as CalendarBlankIcon, Warning } from "@phosphor-icons/react"
 import { parseDateBR, isValidDate, isWeekend, addDays, isSameDay } from "@/utils"
 
 interface Atividade {
@@ -159,7 +159,7 @@ export function CalculoFinanceiro({ atividades, dataInicio = "", dataFim = "", f
             <Card className="p-3 bg-slate-50 border-slate-200">
               <div className="space-y-2">
                 <div className="flex items-center gap-2 mb-2">
-                  <Calendar className="h-4 w-4 text-slate-600" />
+                  <CalendarBlankIcon className="h-4 w-4 text-slate-600" />
                   <p className="text-xs font-semibold text-slate-700">Período do Projeto</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
@@ -189,7 +189,7 @@ export function CalculoFinanceiro({ atividades, dataInicio = "", dataFim = "", f
                 {diasUteis.feriados.length > 0 && (
                   <div className="pt-2 border-t border-slate-200">
                     <div className="flex items-center gap-1.5 mb-1.5">
-                      <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+                      <Warning className="h-3.5 w-3.5 text-amber-600" />
                       <p className="text-xs font-semibold text-amber-700">{diasUteis.feriados.length} Feriado{diasUteis.feriados.length !== 1 ? "s" : ""}</p>
                     </div>
                     <div className="space-y-1">
@@ -241,7 +241,7 @@ export function CalculoFinanceiro({ atividades, dataInicio = "", dataFim = "", f
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
-                      <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                      <CurrencyDollarIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                       <Input
                         placeholder="0,00"
                         value={valoresDia[key]}
