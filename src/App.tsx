@@ -3,19 +3,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Settings, FileText, DollarSign } from "lucide-react";
+import { Settings, SquareStack, BarChart3, SlidersHorizontal, Info, Layers, FileText, HardDrive, Tabs, Sun, Moon, Rocket, Calendar } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { COLORS } from './styles';
 import { STORAGE_KEY } from './data';
 import { PdfPreview } from "./components/pdf-preview";
-import { DatePicker } from "./components/date-picker";
-import { DateRangeList } from "./components/date-range-list";
-import { FormField } from "./components/form-field";
-import { AtividadesList } from "./components/atividades-list";
-import { EstimativaHistorico } from "./components/estimativa-historico";
 import {
   addDays,
   createId,
@@ -28,7 +22,6 @@ import {
   getTimelineColor,
   getTimelineLabel,
   getWorkingDays,
-  isBlockedDay,
   isEsteiraPreProdDay,
   isHoliday,
   isPostRelease,
@@ -43,17 +36,19 @@ import {
   defaultForm,
   isReleaseDay
 } from './utils';
-import { TimeLine } from "./components/time-line";
-import { Legend } from "./components/legend";
 import { ToastNotification, notify } from "./components/ui/toast-notification";
-import { CalculoFinanceiro } from "./components/calculo-financeiro";
 import { useAuth } from "./hooks/useAuth";
 import { useEstimativas } from "./hooks/useEstimativas";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AuthPage } from "./components/auth/AuthPage";
-import { EstimativaPacotesTable, calcularTermino, calcDiasOvertimeTotal, calcTotalDiasAtuacaoPacote } from "./components/estimativa-pacotes";
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-import type { Pacote, PacoteAtividade } from "./components/estimativa-pacotes";
+import { calcularTermino, calcDiasOvertimeTotal, calcTotalDiasAtuacaoPacote, type Pacote, type PacoteAtividade } from "./components/estimativa-pacotes";
+import { InformationPage } from "./pages/information";
+import { DetailsPage } from "./pages/details";
+import { DocumentPage } from "./pages/document";
+import { OverviewPage } from "./pages/overview";
+import { SavePage } from "./pages/save";
+import { FinancialPage } from "./pages/financial";
+import { QuickEstimatePage } from "./pages/quick-estimate";
 
 if (typeof window !== "undefined") runSelfTests();
 
@@ -1205,319 +1200,45 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
     <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950 p-6">
       {/* Página: Cálculo Financeiro */}
       {page === "financeiro" && (
-        <div className="mx-auto max-w-2xl space-y-4">
-          {/* Filtro por arquiteto */}
-          <Card>
-            <CardContent className="p-4">
-              <h2 className="text-lg font-bold mb-3">💰 Cálculo Financeiro</h2>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-medium text-zinc-700 block mb-2">
-                    Tipo de Filtro
-                  </label>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setTipoFiltro("arquiteto")}
-                      className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
-                        tipoFiltro === "arquiteto"
-                          ? "bg-zinc-900 text-white border-zinc-900"
-                          : "bg-white hover:bg-zinc-50 border-zinc-200"
-                      }`}
-                    >
-                      👤 Arquiteto
-                    </button>
-                    <button
-                      onClick={() => setTipoFiltro("demanda")}
-                      className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
-                        tipoFiltro === "demanda"
-                          ? "bg-zinc-900 text-white border-zinc-900"
-                          : "bg-white hover:bg-zinc-50 border-zinc-200"
-                      }`}
-                    >
-                      📋 Demanda
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-zinc-700 block mb-1">
-                    {tipoFiltro === "arquiteto" ? "Nome do Arquiteto" : "Título ou Código da Demanda"}
-                  </label>
-                  <Input
-                    placeholder={tipoFiltro === "arquiteto" ? "Digite o nome do arquiteto..." : "Digite o título ou código..."}
-                    value={valorFiltro}
-                    onChange={(e) => setValorFiltro(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        executarBusca();
-                      }
-                    }}
-                  />
-                </div>
-                <Button
-                  onClick={executarBusca}
-                  disabled={carregandoFiltro || !valorFiltro.trim()}
-                  className="w-full"
-                  size="sm"
-                >
-                  {carregandoFiltro ? "🔍 Buscando..." : "🔍 Buscar"}
-                </Button>
-
-                {/* Lista de estimativas filtradas */}
-                {estimativasFiltradas.length > 0 && (
-                  <div className="space-y-1 max-h-48 overflow-y-auto">
-                    <p className="text-xs text-muted-foreground mb-1">
-                      {estimativasFiltradas.length} estimativa{estimativasFiltradas.length !== 1 ? "s" : ""} encontrada{estimativasFiltradas.length !== 1 ? "s" : ""}
-                    </p>
-                    {estimativasFiltradas.map((est) => (
-                      <button
-                        key={est.id}
-                        onClick={() => setEstimativaFinanceiro(est)}
-                        className={`w-full text-left px-3 py-2 rounded-md border text-sm transition-colors ${
-                          estimativaFinanceiro?.id === est.id
-                            ? "bg-zinc-900 text-white border-zinc-900"
-                            : "bg-white hover:bg-zinc-50 border-zinc-200"
-                        }`}
-                      >
-                        <div className="font-medium">{est.titulo || "Sem título"}</div>
-                        <div className={`text-xs ${estimativaFinanceiro?.id === est.id ? "text-zinc-300" : "text-muted-foreground"}`}>
-                          {est.arquiteto} · {est.inicio ? converterDataDoBackend(est.inicio) : "—"} → {est.releaseAlvo ? converterDataDoBackend(est.releaseAlvo) : "—"}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Sem filtro: mostrar estimativa atual */}
-                {estimativasFiltradas.length === 0 && !carregandoFiltro && (
-                  <p className="text-xs text-muted-foreground">
-                    Selecione o tipo de filtro ({tipoFiltro === "arquiteto" ? "Arquiteto" : "Demanda"}) e clique em "Buscar" para selecionar uma estimativa, ou veja abaixo os dados da estimativa atual:{" "}
-                    <span className="font-medium text-foreground">{form.titulo || "sem título"}</span>
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Cálculo financeiro da estimativa selecionada */}
-          {estimativaFinanceiro ? (
-            <Card>
-              <CardContent className="p-6">
-                <div className="mb-4">
-                  <h3 className="font-semibold text-sm">{estimativaFinanceiro.titulo}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Arquiteto: <span className="font-medium text-foreground">{estimativaFinanceiro.arquiteto}</span>
-                  </p>
-                  {estimativaFinanceiro.esteiraPreProd && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Esteira Preprod: <span className="font-medium text-foreground">{estimativaFinanceiro.esteiraPreProd}</span>
-                    </p>
-                  )}
-                </div>
-                <CalculoFinanceiro
-                  atividades={estimativaFinanceiro.atividades || []}
-                  dataInicio={converterDataDoBackend(estimativaFinanceiro.inicio)}
-                  dataFim={converterDataDoBackend(estimativaFinanceiro.releaseAlvo)}
-                  feriados={estimativaFinanceiro.feriados || ""}
-                />
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-xs text-muted-foreground mb-4">
-                  Baseado nas atividades da estimativa atual:{" "}
-                  <span className="font-medium text-foreground">{form.titulo || "sem título"}</span>
-                </p>
-                <CalculoFinanceiro
-                  atividades={atividades}
-                  dataInicio={form.inicio}
-                  dataFim={form.releaseAlvo}
-                  feriados={form.feriados}
-                />
-              </CardContent>
-            </Card>
-          )}
-        </div>
+        <FinancialPage
+          tipoFiltro={tipoFiltro}
+          setTipoFiltro={setTipoFiltro}
+          valorFiltro={valorFiltro}
+          setValorFiltro={setValorFiltro}
+          estimativasFiltradas={estimativasFiltradas}
+          carregandoFiltro={carregandoFiltro}
+          executarBusca={executarBusca}
+          estimativaFinanceiro={estimativaFinanceiro}
+          setEstimativaFinanceiro={setEstimativaFinanceiro}
+          form={form}
+          atividades={atividades}
+        />
       )}
 
       {/* Página: Estimativa Rápida */}
       {page === "estimativa-rapida" && (
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-[400px_1fr]">
-        <Card className="print:hidden">
-          <CardContent className="space-y-4 p-5">
-            <h1 className="text-xl font-bold">Gerador de estimativa</h1>
-            
-            {/* Informações da Estimativa - Sempre visível */}
-            <Card className="border-zinc-200">
-              <div className="p-4">
-                <h2 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Informações da Estimativa
-                </h2>
-                <div className="space-y-3">
-                  <FormField label="Título da estimativa" required>
-                    <Input 
-                      value={form.titulo} 
-                      onChange={(event) => updateForm("titulo", event.target.value)} 
-                      placeholder="Ex: PTI-123"
-                    />
-                  </FormField>
-                  <FormField label="Arquiteto" required>
-                    <Input 
-                      value={form.arquiteto} 
-                      onChange={(event) => updateForm("arquiteto", event.target.value)} 
-                      placeholder="Nome do arquiteto"
-                    />
-                  </FormField>
-                  <FormField label="Início" required hint="Primeiro dia útil do projeto">
-                    <DatePicker 
-                      value={form.inicio} 
-                      onChange={(date) => updateForm("inicio", date)} 
-                      placeholder="Data de início (dd/mm/aaaa)" 
-                    />
-                  </FormField>
-                  <FormField label="Subida em Produção" required hint="Data prevista de release">
-                    <DatePicker 
-                      value={form.releaseAlvo || ""} 
-                      onChange={(date) => updateForm("releaseAlvo", date)} 
-                      placeholder="Release alvo (dd/mm/aaaa)" 
-                    />
-                  </FormField>
-                </div>
-              </div>
-            </Card>
-
-            {/* Accordion Sections */}
-            <Accordion type="single" collapsible className="w-full space-y-2">
-              
-              {/* Visualização de Impacto */}
-              <div className="border rounded-lg overflow-hidden">
-                <AccordionItem value="impact-view" className="border-0">
-                  <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">🎯 Visualização de Impacto</AccordionTrigger>
-                  <AccordionContent className="space-y-4 pt-4 px-4 pb-4 border-t">
-                    <FormField label="Dias de trâmite CHG" hint="Número de dias de processamento">
-                      <Input 
-                        type="number" 
-                        min="0" 
-                        value={form.chgDias || ""} 
-                        onChange={(event) => updateForm("chgDias", event.target.value)} 
-                        placeholder="Ex: 3" 
-                      />
-                    </FormField>
-                    <FormField label="Dias impactados" hint="Períodos em que o projeto está parado">
-                      <DateRangeList 
-                        value={form.diasParados || ""} 
-                        onChange={(value) => updateForm("diasParados", value)} 
-                        placeholder="Clique para adicionar dias" 
-                      />
-                    </FormField>
-                    <FormField label="Período de esteira preprod" hint="Tempo em pré-produção">
-                      <DateRangeList 
-                        value={form.esteiraPreProd || ""} 
-                        onChange={(value) => updateForm("esteiraPreProd", value)} 
-                        placeholder="Clique para adicionar períodos" 
-                      />
-                    </FormField>
-                  </AccordionContent>
-                </AccordionItem>
-              </div>
-
-              {/* Observações */}
-              <div className="border rounded-lg overflow-hidden">
-                <AccordionItem value="observations" className="border-0">
-                  <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">📝 Observações</AccordionTrigger>
-                  <AccordionContent className="space-y-4 pt-4 px-4 pb-4 border-t">
-                    <FormField label="Pontos de atenção">
-                      <Textarea 
-                        value={form.pontos} 
-                        onChange={(event) => updateForm("pontos", event.target.value)} 
-                        placeholder="Listee os pontos de atenção" 
-                        className="min-h-24"
-                      />
-                    </FormField>
-                    <FormField label="Premissas">
-                      <Textarea 
-                        value={form.premissas} 
-                        onChange={(event) => updateForm("premissas", event.target.value)} 
-                        placeholder="Listee as premissas do projeto" 
-                        className="min-h-24"
-                      />
-                    </FormField>
-                    <FormField label="Restrições">
-                      <Textarea 
-                        value={form.restricoes} 
-                        onChange={(event) => updateForm("restricoes", event.target.value)} 
-                        placeholder="Listee as restrições" 
-                        className="min-h-24"
-                      />
-                    </FormField>
-                    <FormField label="Observações">
-                      <Textarea 
-                        value={form.observacoes} 
-                        onChange={(event) => updateForm("observacoes", event.target.value)} 
-                        placeholder="Observações gerais" 
-                        className="min-h-24"
-                      />
-                    </FormField>
-                  </AccordionContent>
-                </AccordionItem>
-              </div>
-
-              {/* Atividades */}
-              <div className="border rounded-lg overflow-hidden">
-                <AccordionItem value="activities" className="border-0">
-                  <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">✓ Atividades</AccordionTrigger>
-                  <AccordionContent className="space-y-3 pt-4 px-4 pb-4 border-t">
-                    <AtividadesList
-                      atividades={atividades}
-                      onUpdate={updateAtividade}
-                      onMove={moveAtividade}
-                      onRemove={removeAtividade}
-                      onAdd={addAtividade}
-                    />
-                  </AccordionContent>
-                </AccordionItem>
-              </div>
-            </Accordion>
-
-
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" onClick={salvarTemplate} size="sm">Salvar template</Button>
-              <Button variant="outline" onClick={restaurarPadrao} size="sm">Restaurar padrão</Button>
-            </div>
-
-            <EstimativaHistorico
-              historico={estimativas.filter(e => !e.tipo || e.tipo === 'estimativa-rapida')}
-              onLoad={carregarEstimativa}
-              onDelete={excluirEstimativa}
-              onSave={() => salvarEstimativa('estimativa-rapida')}
-            />
-
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                <Button className="w-full" onClick={abrirPDF} variant="default">Abrir Estimativa</Button>
-                <Button className="w-full" onClick={gerarPDF} variant="default">Baixar Estimativa</Button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button className="w-full" onClick={abrirCalendario} variant="default">🗓️ Abrir Calendário</Button>
-                <Button className="w-full" onClick={gerarPDFCalendario} variant="default">📅 Baixar Calendário</Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <PdfPreview
+        <QuickEstimatePage
           form={form}
+          updateForm={updateForm}
+          atividades={atividades}
+          updateAtividade={updateAtividade}
+          moveAtividade={moveAtividade}
+          removeAtividade={removeAtividade}
+          addAtividade={addAtividade}
+          salvarTemplate={salvarTemplate}
+          restaurarPadrao={restaurarPadrao}
+          estimativas={estimativas}
+          onLoad={carregarEstimativa}
+          onDelete={excluirEstimativa}
+          onSave={() => salvarEstimativa('estimativa-rapida')}
+          onAbrirPDF={abrirPDF}
+          onGerarPDF={gerarPDF}
+          onAbrirCalendario={abrirCalendario}
+          onGerarPDFCalendario={gerarPDFCalendario}
           totalDias={totalDias}
           calculo={calculo}
           timelineRows={timelineRows}
         />
-        <TimeLine
-          form={form}
-          timelineRows={timelineRows}
-        />
-
-      </div>
       )}
 
       {/* Página: Estimativa */}
@@ -1532,31 +1253,31 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
                 onClick={() => setSubTab("informacoes")}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "informacoes" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
               >
-                📋 Informações
+                <Info className="h-4 w-4" /> Informações
               </button>
               <button
                 onClick={() => setSubTab("detalhamento")}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "detalhamento" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
               >
-                🔍 Detalhamento
+                <Layers className="h-4 w-4" /> Detalhamento
               </button>
               <button
                 onClick={() => setSubTab("gerar-documento")}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "gerar-documento" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
               >
-                📄 Gerar Documento
+                <FileText className="h-4 w-4" /> Documento
               </button>
               <button
                 onClick={() => setSubTab("visualizacao-impacto")}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "visualizacao-impacto" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
               >
-                📊 Visualização de Impacto
+                <BarChart3 className="h-4 w-4" /> Visão Geral
               </button>
               <button
                 onClick={() => setSubTab("salvar-estimativa")}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "salvar-estimativa" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
               >
-                💾 Salvar Estimativa
+                <HardDrive className="h-4 w-4" /> Salvar Informações
               </button>
             </div>
           </div>
@@ -1575,226 +1296,69 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
           {/* Aba: Informações */}
           {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Informações</h1></div>}
           {(viewMode === "pagina-unica" || subTab === "informacoes") && (
-          <div className="space-y-4 pt-2">
-          {/* Campos de Informações — largura total */}
-          <Card className="w-full print:hidden">
-            <CardContent className="p-5">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField label="Título da estimativa" required>
-                  <Input value={form.titulo} onChange={(e) => updateForm("titulo", e.target.value)} placeholder="Ex: PTI-123" />
-                </FormField>
-                <FormField label="Arquiteto" required>
-                  <Input value={form.arquiteto} onChange={(e) => updateForm("arquiteto", e.target.value)} placeholder="Nome do arquiteto" />
-                </FormField>
-                <FormField label="Subida em Produção" hint="Data prevista">
-                  <DatePicker value={form.releaseAlvo || ""} onChange={(date) => updateForm("releaseAlvo", date)} placeholder="dd/mm/aaaa" feriados={feriados} releases={releases} />
-                </FormField>
-              </div>
-            </CardContent>
-          </Card>
-          </div>
+            <InformationPage form={form} updateForm={updateForm} feriados={feriados} releases={releases} />
           )}
 
           {/* Aba: Detalhamento */}
           {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Detalhamento</h1></div>}
           {(viewMode === "pagina-unica" || subTab === "detalhamento") && (
-          <div className="space-y-4 pt-2">
-          {/* Pacotes e Atividades — largura total */}
-          <Card className="w-full">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-sm flex items-center gap-2">
-                  📦 Pacotes e Atividades
-                </h2>
-                <p className="text-xs text-zinc-500">
-                  Clique nas células para editar • Datas calculadas automaticamente
-                </p>
-              </div>
-              <EstimativaPacotesTable
-                pacotes={pacotes}
-                feriados={feriados}
-                releases={releases}
-                diasParados={diasParados}
-                onUpdatePacote={updatePacote}
-                onTogglePacote={togglePacote}
-                onAddPacote={addPacote}
-                onRemovePacote={removePacote}
-                onAddAtividade={addAtividadePacote}
-                onUpdateAtividade={updateAtividadePacote}
-                onRemoveAtividade={removeAtividadePacote}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Resumo da Estimativa — largura total */}
-          <Card className="w-full">
-            <CardContent className="p-5">
-              <h2 className="font-semibold text-sm mb-4 flex items-center gap-2">
-                📊 Resumo da Estimativa
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-orange-700">{pacotes.length}</p>
-                  <p className="text-xs text-orange-600 mt-1">Pacotes</p>
-                </div>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-blue-700">
-                    {pacotes.reduce((acc, p) => acc + p.atividades.length, 0)}
-                  </p>
-                  <p className="text-xs text-blue-600 mt-1">Atividades</p>
-                </div>
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-purple-700">
-                    {pacotes.reduce((acc, p) => acc + p.atividades.reduce((a, b) => a + Number(b.horas || 0), 0), 0)}h
-                  </p>
-                  <p className="text-xs text-purple-600 mt-1">Horas totais</p>
-                </div>
-                <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-rose-700">
-                    {(() => {
-                      const dias = Math.floor(totalHorasOvertime / 8);
-                      const horas = totalHorasOvertime % 8;
-                      if (dias === 0 && horas === 0) return "—";
-                      if (dias === 0) return `${horas}h`;
-                      if (horas === 0) return `${dias}d`;
-                      return `${dias}d ${horas}h`;
-                    })()}
-                  </p>
-                  <p className="text-xs text-rose-600 mt-1">Horas de Overtime</p>
-                </div>
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-green-700">{Math.round(totalDiasAtuacao)}</p>
-                  <p className="text-xs text-green-600 mt-1">Dias de Atuação</p>
-                </div>
-                <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 text-center">
-                  <p className="text-lg font-bold text-cyan-700 tabular-nums">{dataInicioPacotes ?? "—"}</p>
-                  <p className="text-xs text-cyan-600 mt-1">Início</p>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-center">
-                  <p className="text-lg font-bold text-slate-700 tabular-nums">{dataTerminoPacotes ?? "—"}</p>
-                  <p className="text-xs text-slate-600 mt-1">Término</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          </div>
+            <DetailsPage
+              pacotes={pacotes}
+              feriados={feriados}
+              releases={releases}
+              diasParados={diasParados}
+              onUpdatePacote={updatePacote}
+              onTogglePacote={togglePacote}
+              onAddPacote={addPacote}
+              onRemovePacote={removePacote}
+              onAddAtividade={addAtividadePacote}
+              onUpdateAtividade={updateAtividadePacote}
+              onRemoveAtividade={removeAtividadePacote}
+              totalHorasOvertime={totalHorasOvertime}
+              totalDiasAtuacao={totalDiasAtuacao}
+              dataInicioPacotes={dataInicioPacotes}
+              dataTerminoPacotes={dataTerminoPacotes}
+            />
           )}
 
-          {/* Aba: Gerar Documento */}
-          {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Gerar Documento</h1></div>}
+          {/* Aba: Documento */}
+          {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Documento</h1></div>}
           {(viewMode === "pagina-unica" || subTab === "gerar-documento") && (
-          <div className="space-y-4 pt-2">
-          <Card className="w-full print:hidden">
-            <CardContent className="p-5 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField label="Pontos de atenção">
-                  <Textarea value={form.pontos} onChange={(e) => updateForm("pontos", e.target.value)} placeholder="Liste os pontos de atenção" className="min-h-20" />
-                </FormField>
-                <FormField label="Premissas">
-                  <Textarea value={form.premissas} onChange={(e) => updateForm("premissas", e.target.value)} placeholder="Liste as premissas do projeto" className="min-h-20" />
-                </FormField>
-                <FormField label="Restrições">
-                  <Textarea value={form.restricoes} onChange={(e) => updateForm("restricoes", e.target.value)} placeholder="Liste as restrições" className="min-h-20" />
-                </FormField>
-                <FormField label="Observações">
-                  <Textarea value={form.observacoes} onChange={(e) => updateForm("observacoes", e.target.value)} placeholder="Observações gerais" className="min-h-20" />
-                </FormField>
-              </div>
-
-              {/* Preview da Estimativa de Desenvolvimento */}
-              <div className="w-full rounded-lg border border-zinc-200 overflow-hidden">
-                <PdfPreview
-                  form={{ ...form, inicio: calculoPreviaPacotes.inicioPacote }}
-                  totalDias={totalDiasPacotes}
-                  calculo={calculoPreviaPacotes}
-                  timelineRows={timelineRowsPreviaPacotes}
-                  hideTimeline={true}
-                  pdfId="pdf-area-screen"
-                  fullWidth={true}
-                />
-              </div>
-
-            </CardContent>
-          </Card>
-
-          </div>
+            <DocumentPage
+              form={form}
+              updateForm={updateForm}
+              calculoPreviaPacotes={calculoPreviaPacotes}
+              totalDiasPacotes={totalDiasPacotes}
+              timelineRowsPreviaPacotes={timelineRowsPreviaPacotes}
+            />
           )}
 
-          {/* Aba: Visualização de Impacto */}
-          {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Visualização de Impacto</h1></div>}
+          {/* Aba: Visão Geral */}
+          {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Visão Geral</h1></div>}
           {(viewMode === "pagina-unica" || subTab === "visualizacao-impacto") && (
-          <div className="space-y-4 pt-2">
-          <Card className="w-full print:hidden">
-            <CardContent className="p-5">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField label="Dias de trâmite CHG" hint="Número de dias de processamento">
-                  <Input type="number" min="0" value={form.chgDias || ""} onChange={(e) => updateForm("chgDias", e.target.value)} placeholder="Ex: 3" />
-                </FormField>
-                <FormField label="Dias impactados" hint="Períodos em que o projeto está parado">
-                  <DateRangeList value={form.diasParados || ""} onChange={(v) => updateForm("diasParados", v)} placeholder="Clique para adicionar dias" />
-                </FormField>
-                <FormField label="Período de esteira preprod" hint="Tempo em pré-produção">
-                  <DateRangeList value={form.esteiraPreProd || ""} onChange={(v) => updateForm("esteiraPreProd", v)} placeholder="Clique para adicionar períodos" />
-                </FormField>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Seção dedicada: Linha do Tempo - Largura total */}
-          <Card className="w-full">
-            <CardContent className="p-5">
-              <TimeLine
-                form={{ ...form, inicio: calculoPreviaPacotes.inicioPacote }}
-                timelineRows={timelineRowsPreviaPacotes}
-                visible={true}
-              />
-              {/* Legenda abaixo da linha do tempo */}
-              <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 pt-4 border-t">
-                <Legend color={COLORS.desenvolvimento} label="✓ Desenvolvimento" />
-                <Legend color={COLORS.subida} label="✓ Subida em Pre Prod" />
-                <Legend color={COLORS.testes} label="✓ QA Compass" />
-                <Legend color={COLORS.weekend} label="✗ Fim de semana" />
-                <Legend color={COLORS.postRelease} label="✗ Tombamento" />
-                <Legend color={COLORS.holiday} label="✗ Feriado" />
-                <Legend color={COLORS.blocked} label="✗ Projeto Impactado" />
-                <Legend color={COLORS.releaseTarget} label="🚀 Subida em Produção" />
-                <Legend color={COLORS.esteiraPreProd} label="▬ Esteira Pre Prod" type="border" />
-                <Legend color={COLORS.chg} label="▬ Trâmite CHG" type="border" />
-                <Legend color={COLORS.releaseDay} label="● Domingo da release" />
-              </div>
-            </CardContent>
-          </Card>
-
-          </div>
+            <OverviewPage
+              form={form}
+              updateForm={updateForm}
+              calculoPreviaPacotes={calculoPreviaPacotes}
+              timelineRowsPreviaPacotes={timelineRowsPreviaPacotes}
+            />
           )}
 
-          {/* Aba: Salvar Estimativa */}
-          {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Salvar Estimativa</h1></div>}
+          {/* Aba: Salvar Informações */}
+          {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Salvar Informações</h1></div>}
           {(viewMode === "pagina-unica" || subTab === "salvar-estimativa") && (
-          <div className="space-y-4 pt-2">
-          <Card className="w-full print:hidden">
-            <CardContent className="p-5 space-y-4">
-              <EstimativaHistorico
-                historico={estimativas.filter(e => e.tipo === 'estimativa-pacotes')}
-                onLoad={carregarEstimativa}
-                onDelete={excluirEstimativa}
-                onSave={() => salvarEstimativa('estimativa-pacotes')}
-              />
-
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <Button className="w-full" onClick={abrirPDF} variant="default">Abrir Estimativa</Button>
-                  <Button className="w-full" onClick={gerarPDF} variant="default">Baixar Estimativa</Button>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button className="w-full" onClick={abrirCalendario} variant="default">🗓️ Abrir Calendário</Button>
-                  <Button className="w-full" onClick={gerarPDFCalendario} variant="default">📅 Baixar Calendário</Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          </div>
+            <SavePage
+              estimativas={estimativas}
+              onLoad={carregarEstimativa}
+              onDelete={excluirEstimativa}
+              onSave={() => salvarEstimativa('estimativa-pacotes')}
+              onAbrirPDF={abrirPDF}
+              onGerarPDF={gerarPDF}
+              onAbrirCalendario={abrirCalendario}
+              onGerarPDFCalendario={gerarPDFCalendario}
+              form={form}
+              timelineRows={timelineRowsPreviaPacotes}
+            />
           )}
         </div>
       )}
@@ -1808,75 +1372,71 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
 
             {/* Modo de Visualização */}
             <div>
-              <span className="text-xs font-medium text-zinc-600 block mb-2">Modo de Visualização</span>
-              <div className="flex gap-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Tabs className="h-4 w-4 text-blue-500" />
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Navegação por Abas</span>
+                </div>
                 <button
-                  onClick={() => toggleViewMode("abas")}
-                  className={`flex-1 flex flex-col items-center gap-1.5 px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
-                    viewMode === "abas"
-                      ? "bg-zinc-900 text-white border-zinc-900"
-                      : "bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700"
+                  onClick={() => toggleViewMode(viewMode === "abas" ? "pagina-unica" : "abas")}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+                    viewMode === "abas" ? "bg-blue-500" : "bg-zinc-300 dark:bg-zinc-600"
                   }`}
                 >
-                  <span className="text-lg">🗂️</span>
-                  <span>Navegação por Abas</span>
-                  <span className={`text-xs font-normal ${viewMode === "abas" ? "text-zinc-300" : "text-zinc-400"}`}>Cada seção em uma aba separada</span>
-                </button>
-                <button
-                  onClick={() => toggleViewMode("pagina-unica")}
-                  className={`flex-1 flex flex-col items-center gap-1.5 px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
-                    viewMode === "pagina-unica"
-                      ? "bg-zinc-900 text-white border-zinc-900"
-                      : "bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700"
-                  }`}
-                >
-                  <span className="text-lg">📜</span>
-                  <span>Página Única</span>
-                  <span className={`text-xs font-normal ${viewMode === "pagina-unica" ? "text-zinc-300" : "text-zinc-400"}`}>Todas as seções em uma página</span>
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                      viewMode === "abas" ? "translate-x-1" : "translate-x-6"
+                    }`}
+                  />
                 </button>
               </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                {viewMode === "abas" ? "Cada seção em uma aba separada" : "Todas as seções em uma página"}
+              </p>
             </div>
 
-            <div className="border-t border-zinc-200" />
+            <div className="border-t border-zinc-200 dark:border-zinc-700" />
 
             {/* Tema */}
             <div>
-              <span className="text-xs font-medium text-zinc-600 block mb-2">Tema</span>
-              <div className="flex gap-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {theme === "dark" ? <Moon className="h-4 w-4 text-yellow-500" /> : <Sun className="h-4 w-4 text-yellow-500" />}
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Modo Escuro</span>
+                </div>
                 <button
-                  onClick={() => setTheme("light")}
-                  className={`flex-1 flex flex-col items-center gap-1.5 px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
-                    theme === "light"
-                      ? "bg-zinc-900 text-white border-zinc-900"
-                      : "bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+                    theme === "dark" ? "bg-blue-500" : "bg-zinc-300 dark:bg-zinc-600"
                   }`}
                 >
-                  <span className="text-lg">☀️</span>
-                  <span>Modo Claro</span>
-                </button>
-                <button
-                  onClick={() => setTheme("dark")}
-                  className={`flex-1 flex flex-col items-center gap-1.5 px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
-                    theme === "dark"
-                      ? "bg-zinc-900 text-white border-zinc-900"
-                      : "bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700"
-                  }`}
-                >
-                  <span className="text-lg">🌙</span>
-                  <span>Modo Escuro</span>
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                      theme === "dark" ? "translate-x-1" : "translate-x-6"
+                    }`}
+                  />
                 </button>
               </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                {theme === "dark" ? "Tema escuro ativado" : "Tema claro ativado"}
+              </p>
             </div>
 
-            <div className="border-t border-zinc-200" />
+            <div className="border-t border-zinc-200 dark:border-zinc-700" />
 
             <div>
-              <span className="text-xs font-medium text-zinc-600">Releases do Ano</span>
+              <div className="flex items-center gap-2 mb-2">
+                <Rocket className="h-4 w-4 text-red-500" />
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Releases do Ano</span>
+              </div>
               <Textarea className="min-h-40 mt-2" value={form.releases} onChange={(event) => updateForm("releases", event.target.value)} placeholder="Releases, uma por linha" />
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-zinc-600">Feriados</span>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-green-500" />
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Feriados</span>
+                </div>
                 <Button
                   size="sm"
                   variant="outline"
@@ -1940,14 +1500,14 @@ export default function App() {
           page === "estimativa" ? "bg-white dark:bg-zinc-600 shadow text-zinc-900 dark:text-white" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100"
         }`}
       >
-        <FileText className="h-4 w-4" />
+        <SquareStack className="h-4 w-4" />
         Estimativa
       </button>
       <button
         disabled
         className="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium text-zinc-400 cursor-not-allowed opacity-50"
       >
-        <DollarSign className="h-4 w-4" />
+        <BarChart3 className="h-4 w-4" />
         Cálculo Financeiro
       </button>
     </div>
@@ -1959,7 +1519,7 @@ export default function App() {
       className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-lg transition"
       title="Configurações"
     >
-      <Settings className="h-5 w-5" />
+      <SlidersHorizontal className="h-5 w-5" />
     </button>
   );
 

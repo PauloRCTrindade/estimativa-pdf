@@ -238,6 +238,5 @@ export function TimeLine({ form, timelineRows, visible = false }) {
         </div>
       )}
     </div>
-
   );
 }

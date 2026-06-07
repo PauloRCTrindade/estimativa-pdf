@@ -66,8 +66,12 @@ const corsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = [
       'http://localhost:5173',     // Vite dev
+      'http://localhost:5174',     // Vite dev (port 2)
+      'http://localhost:5175',     // Vite dev (port 3)
       'http://localhost:3000',      // Local
       'http://127.0.0.1:5173',
+      'http://127.0.0.1:5174',
+      'http://127.0.0.1:5175',
       'http://127.0.0.1:3000',
       process.env.FRONTEND_URL,     // Produção (Vercel)
     ].filter(Boolean);
