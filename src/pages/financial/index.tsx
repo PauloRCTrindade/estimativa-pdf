@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { User, ClipboardText, MagnifyingGlass, CurrencyDollar } from "@phosphor-icons/react";
 import { CalculoFinanceiro } from "@/components/calculo-financeiro";
 import type { AppForm } from "@/types";
 
@@ -43,7 +44,10 @@ export function FinancialPage({
       {/* Filtro por arquiteto */}
       <Card>
         <CardContent className="p-4">
-          <h2 className="text-lg font-bold mb-3">💰 Cálculo Financeiro</h2>
+          <div className="flex items-center gap-2 mb-3">
+            <CurrencyDollar className="h-5 w-5 text-green-600" />
+            <h2 className="text-lg font-bold">Cálculo Financeiro</h2>
+          </div>
           <div className="space-y-3">
             <div>
               <label className="text-xs font-medium text-zinc-700 block mb-2">
@@ -52,23 +56,25 @@ export function FinancialPage({
               <div className="flex gap-2">
                 <button
                   onClick={() => setTipoFiltro("arquiteto")}
-                  className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
+                  className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                     tipoFiltro === "arquiteto"
                       ? "bg-zinc-900 text-white border-zinc-900"
                       : "bg-white hover:bg-zinc-50 border-zinc-200"
                   }`}
                 >
-                  👤 Arquiteto
+                  <User className="h-4 w-4" />
+                  Arquiteto
                 </button>
                 <button
                   onClick={() => setTipoFiltro("demanda")}
-                  className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
+                  className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                     tipoFiltro === "demanda"
                       ? "bg-zinc-900 text-white border-zinc-900"
                       : "bg-white hover:bg-zinc-50 border-zinc-200"
                   }`}
                 >
-                  📋 Demanda
+                  <ClipboardText className="h-4 w-4" />
+                  Demanda
                 </button>
               </div>
             </div>
@@ -90,10 +96,11 @@ export function FinancialPage({
             <Button
               onClick={executarBusca}
               disabled={carregandoFiltro || !valorFiltro.trim()}
-              className="w-full"
+              className="w-full flex items-center justify-center gap-2"
               size="sm"
             >
-              {carregandoFiltro ? "🔍 Buscando..." : "🔍 Buscar"}
+              <MagnifyingGlass className="h-4 w-4" />
+              {carregandoFiltro ? "Buscando..." : "Buscar"}
             </Button>
 
             {/* Lista de estimativas filtradas */}

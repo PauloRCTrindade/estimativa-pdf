@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { CheckCircle, Hourglass } from '@phosphor-icons/react';
 
 interface SignupProps {
   onSignupSuccess?: () => void;
@@ -26,17 +27,17 @@ export function Signup({ onSignupSuccess, onSwitchToLogin }: SignupProps) {
 
     // Validações
     if (password !== confirmPassword) {
-      alert('❌ As senhas não conferem');
+      alert('As senhas não conferem');
       return;
     }
 
     if (password.length < 6) {
-      alert('❌ A senha deve ter pelo menos 6 caracteres');
+      alert('A senha deve ter pelo menos 6 caracteres');
       return;
     }
 
     if (!agreedToTerms) {
-      alert('❌ Você deve aceitar os termos de serviço');
+      alert('Você deve aceitar os termos de serviço');
       return;
     }
 
@@ -53,7 +54,7 @@ export function Signup({ onSignupSuccess, onSwitchToLogin }: SignupProps) {
     return (
       <Card className="w-full max-w-md mx-auto p-6 space-y-6 text-center">
         <div className="space-y-4">
-          <div className="text-4xl">✅</div>
+          <CheckCircle className="h-16 w-16 text-green-600 mx-auto" />
           <h1 className="text-2xl font-bold">Conta Criada com Sucesso!</h1>
           <p className="text-gray-600">
             Verifique seu email ({email}) para confirmar sua conta.
@@ -163,16 +164,23 @@ export function Signup({ onSignupSuccess, onSwitchToLogin }: SignupProps) {
 
         {error && (
           <div className="p-3 rounded bg-red-50 text-red-700 text-sm">
-            ❌ {error}
+            {error}
           </div>
         )}
 
         <Button
           type="submit"
           disabled={loading}
-          className="w-full"
+          className="w-full flex items-center justify-center gap-2"
         >
-          {loading ? '⏳ Criando conta...' : '✨ Criar Conta'}
+          {loading ? (
+            <>
+              <Hourglass className="h-4 w-4 animate-spin" />
+              Criando conta...
+            </>
+          ) : (
+            <span>Criar Conta</span>
+          )}
         </Button>
       </form>
 

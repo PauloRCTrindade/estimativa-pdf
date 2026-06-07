@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card"
 
 interface FormSectionProps {
   title: string
-  icon?: string
+  icon?: ReactNode
   children: ReactNode
   collapsible?: boolean
   expanded?: boolean
@@ -14,7 +14,7 @@ export function FormSection({ title, icon, children, collapsible }: FormSectionP
     <Card className="border-zinc-200">
       <div className="p-4">
         <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-          {icon && <span className="text-lg">{icon}</span>}
+          {icon && <div className="flex items-center text-base">{icon}</div>}
           {title}
         </h3>
         <div className="space-y-3">

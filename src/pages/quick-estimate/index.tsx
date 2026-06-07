@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
-import { FileText } from "@phosphor-icons/react";
+import { FileText, Target, Note, CheckCircle, Calendar, Download } from "@phosphor-icons/react";
 import { FormField } from "@/components/form-field";
 import { DatePicker } from "@/components/date-picker";
 import { DateRangeList } from "@/components/date-range-list";
@@ -110,7 +110,10 @@ export function QuickEstimatePage({
             {/* Visão Geral */}
             <div className="border rounded-lg overflow-hidden">
               <AccordionItem value="impact-view" className="border-0">
-                <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">🎯 Visão Geral</AccordionTrigger>
+                <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4 flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  Visão Geral
+                </AccordionTrigger>
                 <AccordionContent className="space-y-4 pt-4 px-4 pb-4 border-t">
                   <FormField label="Dias de trâmite CHG" hint="Número de dias de processamento">
                     <Input
@@ -142,7 +145,10 @@ export function QuickEstimatePage({
             {/* Observações */}
             <div className="border rounded-lg overflow-hidden">
               <AccordionItem value="observations" className="border-0">
-                <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">📝 Observações</AccordionTrigger>
+                <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4 flex items-center gap-2">
+                  <Note className="h-4 w-4" />
+                  Observações
+                </AccordionTrigger>
                 <AccordionContent className="space-y-4 pt-4 px-4 pb-4 border-t">
                   <FormField label="Pontos de atenção">
                     <Textarea
@@ -183,7 +189,10 @@ export function QuickEstimatePage({
             {/* Atividades */}
             <div className="border rounded-lg overflow-hidden">
               <AccordionItem value="activities" className="border-0">
-                <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4">✓ Atividades</AccordionTrigger>
+                <AccordionTrigger className="hover:no-underline hover:bg-zinc-50 px-4 flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Atividades
+                </AccordionTrigger>
                 <AccordionContent className="space-y-3 pt-4 px-4 pb-4 border-t">
                   <AtividadesList
                     atividades={atividades}
@@ -215,8 +224,14 @@ export function QuickEstimatePage({
               <Button className="w-full" onClick={onGerarPDF} variant="default">Baixar Estimativa</Button>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <Button className="w-full" onClick={onAbrirCalendario} variant="default">🗓️ Abrir Calendário</Button>
-              <Button className="w-full" onClick={onGerarPDFCalendario} variant="default">📅 Baixar Calendário</Button>
+              <Button className="w-full" onClick={onAbrirCalendario} variant="default">
+                <Calendar className="mr-2 h-4 w-4" />
+                Abrir Calendário
+              </Button>
+              <Button className="w-full" onClick={onGerarPDFCalendario} variant="default">
+                <Download className="mr-2 h-4 w-4" />
+                Baixar Calendário
+              </Button>
             </div>
           </div>
         </CardContent>

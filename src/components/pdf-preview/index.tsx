@@ -22,13 +22,13 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows, hideTimelin
       <table style={{ ...pdfStyles.table, marginTop: "16px" }}>
         <tbody>
           <tr>
-            <td style={pdfStyles.infoCell}><b>👤 ARQUITETO:</b> <br/> {form.arquiteto}</td>
-            <td style={pdfStyles.infoCell}><b>📅 INÍCIO:</b> <br/> {form.inicio}</td>
-            <td style={pdfStyles.infoCell}><b>📅 TÉRMINO:</b> <br/> {formatBR(calculo.endDate)}</td>
+            <td style={pdfStyles.infoCell}><b>ARQUITETO:</b> <br/> {form.arquiteto}</td>
+            <td style={pdfStyles.infoCell}><b>INÍCIO:</b> <br/> {form.inicio}</td>
+            <td style={pdfStyles.infoCell}><b>TÉRMINO:</b> <br/> {formatBR(calculo.endDate)}</td>
           </tr>
           <tr>
-            <td style={pdfStyles.infoCell}><b>⏱️ ESFORÇO:</b> <br/> {totalDias} dias úteis</td>
-            <td style={pdfStyles.infoCell} colSpan={2}><b>🚀 SUBIDA EM PRODUÇÃO:</b> <br/> {form.releaseAlvo || "-"}</td>
+            <td style={pdfStyles.infoCell}><b>ESFORÇO:</b> <br/> {totalDias} dias úteis</td>
+            <td style={pdfStyles.infoCell} colSpan={2}><b>SUBIDA EM PRODUÇÃO:</b> <br/> {form.releaseAlvo || "-"}</td>
           </tr>
         </tbody>
       </table>
