@@ -42,7 +42,7 @@ export function ProtectedRoute({ children, onLogout, navContent, settingsButton 
   const initials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col min-h-screen bg-background">
       {/* Header moderno */}
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex h-14 max-w-[1800px] items-center justify-between px-4 lg:px-8">
@@ -77,7 +77,7 @@ export function ProtectedRoute({ children, onLogout, navContent, settingsButton 
       </header>
 
       {/* Conteúdo protegido */}
-      <main className="mx-auto max-w-[1800px] px-4 py-6 lg:px-8">
+      <main className="mx-auto max-w-[1800px] flex-1 min-w-0 w-full px-4 py-6 lg:px-8">
         {children}
       </main>
     </div>

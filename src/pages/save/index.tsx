@@ -16,6 +16,7 @@ interface SavePageProps {
   onGerarPDFCalendario: () => void;
   onFavorite: (item: any) => void;
   favoriteIds: string[];
+  isAddingFavorite?: (id: string) => boolean;
   form: AppForm;
   timelineRows: any[][];
 }
@@ -31,6 +32,7 @@ export function SavePage({
   onGerarPDFCalendario,
   onFavorite,
   favoriteIds,
+  isAddingFavorite,
   form,
   timelineRows,
 }: SavePageProps) {
@@ -45,6 +47,7 @@ export function SavePage({
             onSave={onSave}
             onFavorite={onFavorite}
             favoriteIds={favoriteIds}
+            isAddingFavorite={isAddingFavorite}
           />
 
           <div className="space-y-4">

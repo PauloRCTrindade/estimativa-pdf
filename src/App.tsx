@@ -11,25 +11,6 @@ import { COLORS } from './styles';
 import { STORAGE_KEY } from './data';
 import { PdfPreview } from "./components/pdf-preview";
 
-type KanbanColumn = { id: string; title: string };
-type KanbanCustomTask = {
-  id: string;
-  title: string;
-  description?: string;
-  inicio?: string;
-  termino?: string;
-  completed?: boolean;
-  subtasks?: KanbanCustomTask[];
-};
-type KanbanCard = {
-  id: string;
-  estimateId: string;
-  title: string;
-  columnId: string;
-  notes?: string;
-  tasks?: KanbanCustomTask[];
-};
-const KANBAN_STORAGE_KEY = "kanban-state-v1";
 import {
   addDays,
   createId,
@@ -59,6 +40,7 @@ import {
 import { ToastNotification, notify } from "./components/ui/toast-notification";
 import { useAuth } from "./hooks/useAuth";
 import { useEstimativas } from "./hooks/useEstimativas";
+import { useKanban } from "./hooks/useKanban";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AuthPage } from "./components/auth/AuthPage";
 import { calcularTermino, calcDiasOvertimeTotal, calcTotalDiasAtuacaoPacote, type Pacote, type PacoteAtividade } from "./components/estimativa-pacotes";
@@ -96,200 +78,45 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     return (localStorage.getItem("estimativa-theme") as "light" | "dark") || "light";
   });
-  const [kanbanColumns, setKanbanColumns] = useState<KanbanColumn[]>([]);
-  const [kanbanCards, setKanbanCards] = useState<KanbanCard[]>([]);
-  const favoriteIds = useMemo(() => kanbanCards.map((card) => card.estimateId), [kanbanCards]);
 
   useEffect(() => {
+    localStorage.setItem("estimativa-theme", theme);
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
     }
-    localStorage.setItem("estimativa-theme", theme);
   }, [theme]);
 
-  useEffect(() => {
-    try {
-      const savedKanban = localStorage.getItem(KANBAN_STORAGE_KEY);
-      if (!savedKanban) return;
-      const parsedKanban = JSON.parse(savedKanban);
-      if (Array.isArray(parsedKanban.columns)) setKanbanColumns(parsedKanban.columns);
-      if (Array.isArray(parsedKanban.cards)) setKanbanCards(parsedKanban.cards);
-    } catch {
-      // ignore invalid saved state
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(KANBAN_STORAGE_KEY, JSON.stringify({ columns: kanbanColumns, cards: kanbanCards }));
-    } catch {
-      // ignore write errors
-    }
-  }, [kanbanColumns, kanbanCards]);
+  const {
+    columns: kanbanColumns,
+    cards: kanbanCards,
+    loading: kanbanLoading,
+    favoriteIds,
+    isAddingFavorite,
+    addColumn: addKanbanColumn,
+    updateColumnTitle: updateKanbanColumnTitle,
+    removeColumn: removeKanbanColumn,
+    reorderColumn: reorderKanbanColumn,
+    moveCard: moveKanbanCard,
+    reorderCard: reorderKanbanCard,
+    updateCard: updateKanbanCard,
+    updateCardNotes: updateKanbanCardNotes,
+    addCardTask: addKanbanCardTask,
+    updateCardTask: updateKanbanCardTask,
+    toggleCardTaskCompleted: toggleKanbanCardTaskCompleted,
+    removeCardTask: removeKanbanCardTask,
+    removeCard: removeKanbanCard,
+    toggleCardTemplate,
+    setDefaultTemplate,
+    createTemplateCard,
+    addCard: addKanbanCard,
+    favoriteEstimativa,
+  } = useKanban(estimativas);
 
   function toggleViewMode(mode: "abas" | "pagina-unica") {
     setViewMode(mode);
     localStorage.setItem("estimativa-view-mode", mode);
-  }
-
-  function addKanbanColumn(title: string) {
-    if (!title.trim()) return;
-    setKanbanColumns((prev) => [...prev, { id: createId(), title: title.trim() }]);
-  }
-
-  function updateKanbanColumnTitle(id: string, title: string) {
-    setKanbanColumns((prev) => prev.map((column) => (column.id === id ? { ...column, title } : column)));
-  }
-
-  function moveKanbanCard(cardId: string, columnId: string) {
-    setKanbanCards((prev) => prev.map((card) => (card.id === cardId ? { ...card, columnId } : card)));
-  }
-
-  function updateTaskTree(tasks: KanbanCustomTask[] | undefined, taskId: string, updater: (task: KanbanCustomTask) => KanbanCustomTask | null): KanbanCustomTask[] | undefined {
-    if (!tasks) return tasks;
-
-    return tasks
-      .map((task) => {
-        if (task.id === taskId) {
-          return updater(task);
-        }
-
-        const updatedSubtasks = updateTaskTree(task.subtasks, taskId, updater);
-        if (updatedSubtasks !== task.subtasks) {
-          return { ...task, subtasks: updatedSubtasks };
-        }
-
-        return task;
-      })
-      .filter(Boolean) as KanbanCustomTask[];
-  }
-
-  function addTaskToTree(tasks: KanbanCustomTask[] | undefined, parentTaskId: string, newTask: KanbanCustomTask): KanbanCustomTask[] {
-    if (!tasks) return [];
-
-    return tasks.map((task) => {
-      if (task.id === parentTaskId) {
-        return {
-          ...task,
-          subtasks: [...(task.subtasks ?? []), newTask],
-        };
-      }
-
-      return {
-        ...task,
-        subtasks: addTaskToTree(task.subtasks, parentTaskId, newTask),
-      };
-    });
-  }
-
-  function updateKanbanCardNotes(cardId: string, notes: string) {
-    setKanbanCards((prev) =>
-      prev.map((card) => (card.id === cardId ? { ...card, notes } : card))
-    );
-  }
-
-  function addKanbanCardTask(cardId: string, task: Omit<KanbanCustomTask, "id" | "completed" | "subtasks">, parentTaskId?: string) {
-    const newTask: KanbanCustomTask = {
-      id: createId(),
-      completed: false,
-      subtasks: [],
-      ...task,
-    };
-
-    setKanbanCards((prev) =>
-      prev.map((card) => {
-        if (card.id !== cardId) return card;
-
-        if (!parentTaskId) {
-          return { ...card, tasks: [...(card.tasks ?? []), newTask] };
-        }
-
-        return {
-          ...card,
-          tasks: addTaskToTree(card.tasks, parentTaskId, newTask),
-        };
-      })
-    );
-  }
-
-  function updateKanbanCardTask(cardId: string, taskId: string, patch: Partial<Omit<KanbanCustomTask, "id" | "subtasks">>) {
-    setKanbanCards((prev) =>
-      prev.map((card) =>
-        card.id === cardId
-          ? {
-              ...card,
-              tasks: updateTaskTree(card.tasks, taskId, (task) => ({ ...task, ...patch })),
-            }
-          : card
-      )
-    );
-  }
-
-  function toggleKanbanCardTaskCompleted(cardId: string, taskId: string) {
-    setKanbanCards((prev) =>
-      prev.map((card) =>
-        card.id === cardId
-          ? {
-              ...card,
-              tasks: updateTaskTree(card.tasks, taskId, (task) => ({ ...task, completed: !task.completed })),
-            }
-          : card
-      )
-    );
-  }
-
-  function removeKanbanCardTask(cardId: string, taskId: string) {
-    function removeFromTree(tasks: KanbanCustomTask[] | undefined): KanbanCustomTask[] | undefined {
-      if (!tasks) return tasks;
-      return tasks
-        .flatMap((task) => {
-          if (task.id === taskId) return [];
-          return [{ ...task, subtasks: removeFromTree(task.subtasks) }];
-        })
-        .filter(Boolean) as KanbanCustomTask[];
-    }
-
-    setKanbanCards((prev) =>
-      prev.map((card) =>
-        card.id === cardId
-          ? { ...card, tasks: removeFromTree(card.tasks) ?? [] }
-          : card
-      )
-    );
-  }
-
-  function favoriteEstimativa(item: any) {
-    if (!item?.id) {
-      notify("Estimativa inválida.");
-      return;
-    }
-
-    if (kanbanCards.some((card) => card.estimateId === item.id)) {
-      notify("Esta estimativa já está no Kanban.");
-      return;
-    }
-
-    let targetColumnId = kanbanColumns[0]?.id;
-    if (!targetColumnId) {
-      const defaultColumn = { id: createId(), title: "Backlog" };
-      setKanbanColumns((prev) => [...prev, defaultColumn]);
-      targetColumnId = defaultColumn.id;
-    }
-
-    setKanbanCards((prev) => [
-      ...prev,
-      {
-        id: createId(),
-        estimateId: item.id,
-        title: item.titulo || item.nome || "Estimativa sem título",
-        columnId: targetColumnId,
-        tasks: [],
-      },
-    ]);
-
-    notify("Estimativa favoritada e adicionada ao Kanban.");
   }
 
   // ── Estado de Pacotes (aba Estimativa detalhada) ──
@@ -1548,6 +1375,7 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
               onDelete={excluirEstimativa}
               onFavorite={favoriteEstimativa}
               favoriteIds={favoriteIds}
+              isAddingFavorite={isAddingFavorite}
               onSave={() => salvarEstimativa('estimativa-pacotes')}
               onAbrirPDF={abrirPDF}
               onGerarPDF={gerarPDF}
@@ -1565,14 +1393,24 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
           columns={kanbanColumns}
           cards={kanbanCards}
           estimativas={estimativas}
+          loading={kanbanLoading}
           onAddColumn={addKanbanColumn}
           onUpdateColumnTitle={updateKanbanColumnTitle}
+          onRemoveColumn={removeKanbanColumn}
+          onReorderColumn={reorderKanbanColumn}
           onMoveCard={moveKanbanCard}
+          onReorderCard={reorderKanbanCard}
+          onUpdateCard={updateKanbanCard}
           onUpdateCardNotes={updateKanbanCardNotes}
           onAddCardTask={addKanbanCardTask}
           onUpdateCardTask={updateKanbanCardTask}
           onToggleCardTaskCompleted={toggleKanbanCardTaskCompleted}
           onRemoveCardTask={removeKanbanCardTask}
+          onRemoveCard={removeKanbanCard}
+          onToggleCardTemplate={toggleCardTemplate}
+          onSetDefaultTemplate={setDefaultTemplate}
+          onCreateTemplateCard={createTemplateCard}
+          onAddCard={addKanbanCard}
         />
       )}
 

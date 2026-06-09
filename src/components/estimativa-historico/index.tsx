@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Download, Trash, ClipboardText, Star } from "@phosphor-icons/react"
+import { Download, Trash, ClipboardText, Star, Spinner } from "@phosphor-icons/react"
 
 interface EstimativaItemProps {
   item: any
@@ -8,9 +8,10 @@ interface EstimativaItemProps {
   onDelete: () => void
   onFavorite: () => void
   isFavorited?: boolean
+  isAdding?: boolean
 }
 
-export function EstimativaHistoricoItem({ item, onLoad, onDelete, onFavorite, isFavorited }: EstimativaItemProps) {
+export function EstimativaHistoricoItem({ item, onLoad, onDelete, onFavorite, isFavorited, isAdding }: EstimativaItemProps) {
   const titulo = item.titulo || "Estimativa sem título";
   const criado = item.created_at 
     ? new Date(item.created_at).toLocaleString("pt-BR")
@@ -46,11 +47,15 @@ export function EstimativaHistoricoItem({ item, onLoad, onDelete, onFavorite, is
             size="sm"
             variant={isFavorited ? "outline" : "default"}
             onClick={onFavorite}
-            disabled={isFavorited}
+            disabled={isFavorited || isAdding}
             className="flex-1 h-7 text-xs"
           >
-            <Star className="h-3 w-3 mr-1" />
-            {isFavorited ? "Favoritado" : "Favoritar"}
+            {isAdding ? (
+              <Spinner className="h-3 w-3 mr-1 animate-spin" />
+            ) : (
+              <Star className="h-3 w-3 mr-1" />
+            )}
+            {isFavorited ? "No Kanban" : isAdding ? "Adicionando..." : "Incluir no Kanban"}
           </Button>
         </div>
       </div>
@@ -65,9 +70,10 @@ interface EstimativaHistoricoProps {
   onSave: () => void
   onFavorite: (item: any) => void
   favoriteIds?: string[]
+  isAddingFavorite?: (id: string) => boolean
 }
 
-export function EstimativaHistorico({ historico, onLoad, onDelete, onSave, onFavorite, favoriteIds }: EstimativaHistoricoProps) {
+export function EstimativaHistorico({ historico, onLoad, onDelete, onSave, onFavorite, favoriteIds, isAddingFavorite }: EstimativaHistoricoProps) {
   return (
     <Card className="border-border/60 bg-card shadow-sm">
       <div className="p-4">
@@ -95,6 +101,7 @@ export function EstimativaHistorico({ historico, onLoad, onDelete, onSave, onFav
                 onDelete={() => onDelete(item.id)}
                 onFavorite={() => onFavorite(item)}
                 isFavorited={favoriteIds?.includes(item.id)}
+                isAdding={isAddingFavorite?.(item.id)}
               />
             ))}
           </div>

@@ -87,37 +87,37 @@
 }
 
 .dark {
-    --background: oklch(0.08 0 0);
+    --background: oklch(0.16 0 0);
     --foreground: oklch(0.97 0 0);
-    --card: oklch(0.11 0 0);
+    --card: oklch(0.2 0 0);
     --card-foreground: oklch(0.97 0 0);
-    --popover: oklch(0.11 0 0);
+    --popover: oklch(0.2 0 0);
     --popover-foreground: oklch(0.97 0 0);
     --primary: oklch(0.92 0 0);
     --primary-foreground: oklch(0.1 0 0);
-    --secondary: oklch(0.18 0 0);
+    --secondary: oklch(0.26 0 0);
     --secondary-foreground: oklch(0.97 0 0);
-    --muted: oklch(0.18 0 0);
-    --muted-foreground: oklch(0.6 0 0);
-    --accent: oklch(0.18 0 0);
+    --muted: oklch(0.26 0 0);
+    --muted-foreground: oklch(0.65 0 0);
+    --accent: oklch(0.26 0 0);
     --accent-foreground: oklch(0.97 0 0);
     --destructive: oklch(0.65 0.2 22);
-    --border: oklch(1 0 0 / 8%);
-    --input: oklch(1 0 0 / 12%);
-    --ring: oklch(0.5 0 0);
+    --border: oklch(1 0 0 / 15%);
+    --input: oklch(1 0 0 / 20%);
+    --ring: oklch(0.55 0 0);
     --chart-1: oklch(0.7 0.18 260);
     --chart-2: oklch(0.65 0.18 145);
     --chart-3: oklch(0.6 0.18 45);
     --chart-4: oklch(0.55 0.18 15);
     --chart-5: oklch(0.5 0.18 290);
-    --sidebar: oklch(0.11 0 0);
+    --sidebar: oklch(0.2 0 0);
     --sidebar-foreground: oklch(0.97 0 0);
     --sidebar-primary: oklch(0.92 0 0);
     --sidebar-primary-foreground: oklch(0.1 0 0);
-    --sidebar-accent: oklch(0.18 0 0);
+    --sidebar-accent: oklch(0.26 0 0);
     --sidebar-accent-foreground: oklch(0.97 0 0);
-    --sidebar-border: oklch(1 0 0 / 8%);
-    --sidebar-ring: oklch(0.5 0 0);
+    --sidebar-border: oklch(1 0 0 / 15%);
+    --sidebar-ring: oklch(0.55 0 0);
 }
 
 @layer base {
@@ -160,38 +160,38 @@
 /* ── Dark mode overrides para componentes com inline styles ─────────────── */
 
 .dark #pdf-area-screen {
-  background-color: #0a0a0a !important;
+  background-color: #121212 !important;
   color: #fafafa !important;
 }
 
 .dark #pdf-area-screen table td {
-  background-color: #141414 !important;
+  background-color: #1e1e1e !important;
   color: #fafafa !important;
-  border-color: #262626 !important;
+  border-color: #333333 !important;
 }
 
 .dark #pdf-area-screen table th {
-  background-color: #0f0f0f !important;
+  background-color: #171717 !important;
   color: #fb923c !important;
   border-bottom-color: #f97316 !important;
 }
 
 .dark #pdf-area-screen table tbody tr:nth-child(even) td {
-  background-color: #171717 !important;
+  background-color: #222222 !important;
 }
 
 .dark #pdf-area-screen [style*="1c1c1e"] td,
 .dark #pdf-area-screen td[style*="1c1c1e"] {
-  background-color: #0f0f0f !important;
+  background-color: #171717 !important;
   color: #fb923c !important;
-  border-color: #262626 !important;
+  border-color: #333333 !important;
   border-left-color: #f97316 !important;
 }
 
 .dark #pdf-area-screen div[style]:not([style*="1f2937"]):not([style*="1c1c1e"]) {
-  background-color: #141414 !important;
+  background-color: #1e1e1e !important;
   color: #fafafa !important;
-  border-color: #262626 !important;
+  border-color: #333333 !important;
 }
 
 .dark #pdf-area-screen [style*="1f2937"] {
@@ -205,18 +205,18 @@
 }
 
 .dark #calendar-area {
-  background-color: #0a0a0a !important;
+  background-color: #121212 !important;
   color: #fafafa !important;
 }
 
 .dark #calendar-area td:not([data-color-cell]) {
-  background-color: #141414 !important;
+  background-color: #1e1e1e !important;
   color: #fafafa !important;
-  border-color: #262626 !important;
+  border-color: #333333 !important;
 }
 
 .dark #calendar-area table {
-  background-color: #141414 !important;
+  background-color: #1e1e1e !important;
 }
 
 .dark #calendar-area td[data-color-cell] {
@@ -236,9 +236,9 @@
 }
 
 .dark #calendar-area div[style]:not([data-legend-color]) {
-  background-color: #141414 !important;
+  background-color: #1e1e1e !important;
   color: #fafafa !important;
-  border-color: #262626 !important;
+  border-color: #333333 !important;
 }
 
 .dark #calendar-area [style*="1f2937"] {

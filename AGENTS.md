@@ -1,0 +1,326 @@
+# AGENTS.md — Guia para Agentes de Código
+
+Este documento descreve a arquitetura, convenções e fluxos do projeto `estimativa-pdf`.
+A linguagem principal do projeto é o **português brasileiro** (nomenclatura de domínio, documentação e comentários).
+
+---
+
+## Visão Geral do Projeto
+
+`estimativa-pdf` é uma aplicação web para criar, gerenciar e exportar estimativas de projetos de desenvolvimento em PDF.
+
+Funcionalidades principais:
+- Formulário de estimativa com datas, releases, feriados, atividades e pacotes de trabalho.
+- Cálculo automático de dias úteis e timeline visual colorida.
+- Histórico de estimativas com busca por arquiteto/título.
+- Exportação do documento em PDF via `html2canvas` + `jsPDF`.
+- Quadro Kanban para acompanhamento de tarefas vinculado às estimativas.
+- Autenticação por email/senha via Supabase Auth.
+
+---
+
+## Stack Tecnológico
+
+| Camada | Tecnologia |
+|--------|-----------|
+| Frontend | React 19 + TypeScript |
+| Build Tool | Vite 8 |
+| Estilos | Tailwind CSS 4.2 + PostCSS |
+| Componentes UI | shadcn/ui (style: `radix-nova`, baseColor: `neutral`) |
+| Ícones | Phosphor Icons (`@phosphor-icons/react`) e Lucide React |
+| Fonte | Geist Variable (`@fontsource-variable/geist`) |
+| Backend local | Express em `dev-server.js` |
+| Backend produção | Vercel Serverless Functions na pasta `api/` |
+| Banco de dados | Supabase PostgreSQL |
+| Auth | Supabase Auth (`@supabase/supabase-js`) |
+| PDF | `html2canvas` + `jspdf` |
+
+Node.js requerido: **22.22.2** (definido em `.nvmrc`).
+
+---
+
+## Estrutura de Diretórios
+
+```
+├── api/                        # Vercel Serverless Functions (backend em produção)
+│   ├── lib/supabase.js         # Cliente Supabase para funções serverless
+│   ├── estimativas.js          # GET/POST /api/estimativas
+│   ├── estimativas/[id].js     # GET/PUT/DELETE /api/estimativas/:id
+│   ├── kanban/
+│   │   ├── board.js            # GET /api/kanban/board
+│   │   ├── cards.js            # GET/POST /api/kanban/cards
+│   │   ├── columns.js          # GET/POST /api/kanban/columns
+│   │   └── tasks.js            # GET/POST /api/kanban/tasks
+│   └── kanban/cards/           # Rotas dinâmicas adicionais do Kanban
+│   └── kanban/columns/
+│   └── kanban/tasks/
+├── src/                        # Código-fonte do frontend
+│   ├── components/             # Componentes React
+│   │   ├── ui/                 # Componentes shadcn/ui (Button, Card, Dialog, etc.)
+│   │   ├── auth/               # Login, Signup, AuthPage, ProtectedRoute
+│   │   ├── atividades-list/
+│   │   ├── calculo-financeiro/
+│   │   ├── date-picker/
+│   │   ├── date-range-input/
+│   │   ├── date-range-list/
+│   │   ├── estimativa-historico/
+│   │   ├── estimativa-pacotes/
+│   │   ├── form-field/
+│   │   ├── form-section/
+│   │   ├── legend/
+│   │   ├── pdf-preview/
+│   │   ├── section/
+│   │   └── time-line/
+│   ├── pages/                  # Páginas/aba da aplicação
+│   │   ├── details/
+│   │   ├── document/
+│   │   ├── financial/
+│   │   ├── information/
+│   │   ├── kanban/
+│   │   ├── overview/
+│   │   └── save/
+│   ├── hooks/                  # Hooks customizados
+│   │   ├── useAuth.ts
+│   │   ├── useEstimativas.ts
+│   │   └── useKanban.ts
+│   ├── services/               # Clientes HTTP
+│   │   ├── api.ts              # API de estimativas
+│   │   └── kanbanApi.ts        # API do Kanban
+│   ├── types/                  # Tipos TypeScript globais
+│   │   └── index.ts
+│   ├── utils/                  # Funções utilitárias
+│   │   └── index.ts
+│   ├── styles/                 # Cores e estilos inline para PDF
+│   │   └── index.ts
+│   ├── data/                   # Dados estáticos (releases, feriados)
+│   │   └── index.ts
+│   ├── lib/utils.ts            # `cn()` do shadcn/ui
+│   ├── App.tsx                 # Componente raiz com estado global
+│   ├── main.tsx                # Entry point do React
+│   └── index.css               # Tailwind + variáveis CSS + dark mode
+├── dev-server.js               # Servidor Express local (porta 3003)
+├── database.sql                # Schema PostgreSQL completo
+├── vercel.json                 # Configuração do deploy na Vercel
+├── vite.config.ts              # Configuração do Vite + proxy /api
+├── tsconfig.json               # Projeto TypeScript com referências
+├── tsconfig.app.json           # Config do app (strict: false)
+├── eslint.config.js            # ESLint flat config
+├── tailwind.config.js          # Tailwind v4 compat config
+├── postcss.config.js           # PostCSS com @tailwindcss/postcss
+└── components.json             # Configuração do shadcn/ui
+```
+
+---
+
+## Comandos de Build, Teste e Desenvolvimento
+
+Instalação:
+```bash
+npm install
+```
+
+Desenvolvimento:
+```bash
+npm run dev              # Vite frontend (porta padrão 5177)
+npm run dev:api          # Servidor Express API na porta 3003
+npm run dev:all          # Frontend + API simultâneos
+```
+
+Build e qualidade:
+```bash
+npm run build            # tsc -b && vite build (gera dist/)
+npm run preview          # Preview da build de produção
+npm run lint             # ESLint (App.tsx tem regras relaxadas)
+```
+
+Testes:
+```bash
+npm run test:backend        # node test-save-backend.js
+npm run test:backend:ts     # npx tsx test-backend-integration.ts
+```
+
+Setup:
+```bash
+npm run setup:db         # Valida conexão e schema no Supabase
+```
+
+---
+
+## Convenções de Código
+
+### Idioma
+- **Português brasileiro** para nomes de domínio, variáveis e tipos relacionados ao negócio:
+  - `titulo`, `arquiteto`, `inicio`, `releaseAlvo`, `feriados`, `premissas`, `atividades`, `pacotes`.
+- **Inglês** para termos técnicos: `handler`, `handler`, `loading`, `error`, `token`, `columns`, `cards`, `tasks`.
+
+### Nomenclatura
+- Componentes React: `PascalCase`.
+- Hooks customizados: prefixo `use` (ex: `useAuth`, `useEstimativas`).
+- Funções de serviço: verbos em português (`listarEstimativas`, `criarEstimativa`, `obterEstimativa`, `atualizarEstimativa`, `deletarEstimativa`).
+- Tipos/interfaces: `PascalCase`, preferencialmente com prefixo do domínio (`KanbanCard`, `Estimativa`, `AppForm`).
+
+### Imports
+- Use o alias `@/` para tudo dentro de `src/`.
+- Exemplos: `import { Button } from "@/components/ui/button";`, `import { cn } from "@/lib/utils";`.
+- Configurado em `tsconfig.json` e `vite.config.ts`.
+
+### TypeScript
+- O projeto usa `strict: false` e `noImplicitAny: false` em `tsconfig.app.json`.
+- Arquivos legados misturam JS sem tipagem. Novos arquivos devem usar tipos.
+- `App.tsx` é parcialmente ignorado pelo ESLint com regras reduzidas.
+
+### Estilos
+- UI geral: Tailwind CSS + classes shadcn/ui.
+- Área de preview do PDF: mantém estilos inline (`CSSProperties` em `src/styles/index.ts`) para compatibilidade com `html2canvas`/`jsPDF`.
+- Cores no PDF devem ser HEX (ex: `#10b981`) — `oklch` causa erro no `html2canvas`. A função `assertHexColor` valida isso em `src/utils/index.ts`.
+
+---
+
+## Banco de Dados e Convenções de Schema
+
+### Tabelas principais
+- `estimativas` — dados das estimativas.
+- `kanban_columns` — colunas do quadro Kanban.
+- `kanban_cards` — cards do quadro Kanban.
+- `kanban_tasks` — tarefas aninhadas dos cards.
+
+### Regra crítica: lowercase vs camelCase
+O PostgreSQL do Supabase usa **colunas em lowercase sem separadores**:
+- `releasealvo`, `chgdias`, `esteirapreprod`, `diasparados`, `criadoem`, `atualizadoem`, `columnid`, `estimateid`, `parentid`, `cardid`, `duedate`.
+
+O frontend trabalha em **camelCase**:
+- `releaseAlvo`, `chgDias`, `esteiraPreProd`, `diasParados`, `criadoEm`, `atualizadoEm`, `columnId`, `estimateId`, `parentId`, `cardId`, `dueDate`.
+
+**Sempre mantenha a conversão nos handlers de API.** Cada rota em `api/` possui funções `camelToLowercase` e/ou `lowercaseToCamel` para garantir essa tradução.
+
+- Campo especial: `pacotes` é armazenado como JSONB e deve preservar sua estrutura interna em camelCase — não converter recursivamente.
+
+### Schema SQL
+O schema completo está em `database.sql`. Ele inclui:
+- Triggers `BEFORE UPDATE` para atualizar `atualizado_em`.
+- Índices para `criado_em`, `release_alvo`, `column_id`, `card_id`, `parent_id`.
+- RLS (Row Level Security) habilitado com políticas abertas (`"Allow all"`) no momento.
+
+---
+
+## Arquitetura da API
+
+### Ambiente de desenvolvimento local
+- O frontend (`npm run dev`) roda em uma porta Vite (ex: `5177`).
+- A API local (`npm run dev:api`) roda na porta `3003`.
+- `vite.config.ts` faz proxy de `/api` para `http://localhost:3003`.
+- `src/services/api.ts` monta a URL base a partir de `VITE_API_URL`;
+  se vazio, usa `/api`; se terminar com `/api`, usa como está; senão, concatena `/api`.
+
+### Ambiente de produção (Vercel)
+- O frontend é servido pelo Vercel a partir de `dist/`.
+- As rotas serverless ficam em `api/` e são acessadas em `/api/*`.
+- **NÃO configure `VITE_API_URL=/api` no Vercel.** Deixe a variável vazia ou não a defina, para evitar URLs duplicadas como `/api/api/estimativas`.
+
+### Endpoints disponíveis
+```
+GET    /api/estimativas                listar com filtros opcionais (?arquiteto=&titulo=)
+POST   /api/estimativas                criar
+GET    /api/estimativas/:id            obter uma
+PUT    /api/estimativas/:id            atualizar
+DELETE /api/estimat
+```
+
+### Autenticação nas requisições
+- Os serviços em `src/services/*.ts` aceitam um `token?: string` opcional.
+- O token é obtido via `useAuth().getToken()`, que recupera o `access_token` da sessão Supabase.
+- Enviado no header `Authorization: Bearer <token>`.
+- Nos handlers serverless, o CORS está configurado para permitir origins locais e `process.env.FRONTEND_URL`.
+
+---
+
+## Autenticação
+
+A autenticação é feita via **Supabase Auth** com provedor Email/Password.
+
+Componentes:
+- `src/hooks/useAuth.ts` — hook com `login`, `signup`, `logout`, `resetPassword`, `checkAuth`, `getToken`.
+- `src/components/auth/Login.tsx` — tela de login.
+- `src/components/auth/Signup.tsx` — tela de criação de conta.
+- `src/components/auth/AuthPage.tsx` — alternador entre login/signup.
+- `src/components/auth/ProtectedRoute.tsx` — envolve rotas protegidas e exibe header com logout.
+
+Variáveis de ambiente necessárias:
+```env
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_ANON_KEY=sua-chave-publica
+```
+
+Para associar estimativas a um usuário no futuro, adicione `user_id` à tabela `estimativas` e atualize as RLS policies.
+
+---
+
+## Testes
+
+### Testes automatizados de backend
+- `test-save-backend.js` — cria, lista e valida uma estimativa via API local.
+- `test-backend-integration.ts` — versão TypeScript do teste de integração.
+
+### Auto-testes do frontend
+- `src/utils/index.ts` exporta `runSelfTests()`, que executa `console.assert` sobre datas, feriados, releases, cores e normalização de atividades.
+- Chamado em `App.tsx` ao carregar: `if (typeof window !== "undefined") runSelfTests();`.
+
+### Testes manuais recomendados
+- Criar/listar/editar/deletar estimativa.
+- Verificar se a timeline respeita feriados, releases e dias parados.
+- Exportar PDF e conferir renderização.
+- Kanban: criar colunas, cards, tarefas e mover cards entre colunas.
+
+---
+
+## Deploy
+
+O deploy padrão é na **Vercel**:
+- `vercel.json` define `buildCommand`, `devCommand` e rewrite de `/api/(.*)` para `/api/$1`.
+- O build gera a pasta `dist/`.
+- As variáveis de ambiente do Supabase devem estar configuradas no dashboard da Vercel.
+
+Checklist de variáveis obrigatórias no Vercel:
+```
+SUPABASE_URL
+SUPABASE_ANON_KEY
+VITE_SUPABASE_URL
+VITE_SUPABASE_ANON_KEY
+# VITE_API_URL deve ficar VAZIO ou não ser definida
+```
+
+---
+
+## Considerações de Segurança
+
+- O projeto usa RLS no Supabase, mas atualmente com políticas abertas (`"Allow all"`).
+- A `SUPABASE_ANON_KEY` e `VITE_SUPABASE_ANON_KEY` são seguras para o frontend.
+- Tokens JWT de autenticação são gerenciados pelo Supabase e armazenados automaticamente.
+- O `dev-server.js` contém credenciais de fallback hardcoded. Sempre prefira variáveis de ambiente em produção.
+- O CORS está configurado, mas permite origins locais amplas em desenvolvimento.
+
+---
+
+## Arquivos de Referência Importantes
+
+- `database.sql` — schema completo do PostgreSQL.
+- `SCHEMA_DATABASE.md` — documentação detalhada do schema e conversão lowercase/camelCase.
+- `SETUP_BACKEND.md` — guia passo a passo de configuração do Supabase.
+- `BACKEND_SUMMARY.md` — resumo do backend local e Vercel.
+- `AUTH_GUIDE.md` / `AUTH_SUMMARY.md` — documentação completa de autenticação.
+- `CORS_FIX_GUIDE.md` — resolução de problemas CORS.
+- `VERCEL_FIX_API_URL.md` — correção do problema `/api/api` em produção.
+- `VERCEL_SETUP.md` — configuração das variáveis de ambiente na Vercel.
+- `SCRIPTS.md` — guia de comandos npm.
+- `REFACTORING.md` — histórico da refatoração para shadcn/ui.
+
+---
+
+## Dicas para Agentes
+
+- Sempre verifique se a alteração em APIs afeta a conversão lowercase/camelCase.
+- Ao adicionar novos campos no banco, atualize `database.sql`, os conversores em `api/` e os tipos em `src/types/index.ts`.
+- Novos componentes de UI devem preferir componentes de `src/components/ui/`. Use `cn()` para mesclar classes.
+- Para PDF, mantenha cores em HEX e estilos inline quando necessário.
+- Ao adicionar rotas de API, siga o padrão de CORS já existente nos handlers.
+- Não altere `App.tsx` de forma a quebrar as regras relaxadas do ESLint sem atualizar `eslint.config.js`.

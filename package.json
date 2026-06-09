@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:api": "/home/paulo_trindade/.nvm/versions/node/v22.22.2/bin/node dev-server.js",
+    "dev:api": "PORT=3003 node dev-server.js",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:api\"",
     "setup:db": "node setup-db.js",
     "build": "tsc -b && vite build",

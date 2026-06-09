@@ -262,6 +262,92 @@ export function isSameDay(dateA, dateB) {
   );
 }
 
+export function buildTaskTree(tasks: Array<{
+  id: string;
+  cardId: string;
+  parentId?: string | null;
+  title: string;
+  description?: string;
+  completed?: boolean;
+  priority?: string;
+  assignee?: string;
+  dueDate?: string;
+  tags?: string[];
+  checklist?: any[];
+  comments?: any[];
+  attachments?: any[];
+}>): Array<{
+  id: string;
+  title: string;
+  description?: string;
+  completed?: boolean;
+  priority?: string;
+  assignee?: string;
+  dueDate?: string;
+  tags?: string[];
+  checklist?: any[];
+  comments?: any[];
+  attachments?: any[];
+  subtasks?: any[];
+}> {
+  const map = new Map<string, any>();
+  const roots: any[] = [];
+
+  tasks.forEach((task) => {
+    map.set(task.id, { ...task, subtasks: [] });
+  });
+
+  tasks.forEach((task) => {
+    const node = map.get(task.id);
+    if (task.parentId && map.has(task.parentId)) {
+      const parent = map.get(task.parentId);
+      parent.subtasks = parent.subtasks || [];
+      parent.subtasks.push(node);
+    } else {
+      roots.push(node);
+    }
+  });
+
+  return roots;
+}
+
+export function flattenTaskTree(
+  tasks: Array<any>,
+  cardId: string,
+  parentId?: string | null
+): Array<{
+  id: string;
+  cardId: string;
+  parentId?: string | null;
+  title: string;
+  description?: string;
+  completed?: boolean;
+  priority?: string;
+  assignee?: string;
+  dueDate?: string;
+  tags?: string[];
+  checklist?: any[];
+  comments?: any[];
+  attachments?: any[];
+}> {
+  const result: any[] = [];
+
+  tasks.forEach((task) => {
+    const { subtasks, ...rest } = task;
+    const flatTask = {
+      ...rest,
+      cardId,
+      parentId: parentId || null,
+    };
+    result.push(flatTask);
+    if (subtasks && subtasks.length > 0) {
+      result.push(...flattenTaskTree(subtasks, cardId, task.id));
+    }
+  });
+
+  return result;
+}
+
 export function runSelfTests() {
   const releases = normalizeDateList(releasesYear);
   const holidays = normalizeDateList(holydaysYear);

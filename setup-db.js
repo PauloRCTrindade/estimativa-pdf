@@ -153,41 +153,25 @@ async function setupDatabase() {
     process.exit(1);
   }
 
-  // 4. Verificação da tabela estimativas
+  // 4. Verificação das tabelas
   logBright('─'.repeat(50));
-  logInfo('Verificando tabela estimativas...');
-
-  logBright('─'.repeat(50));
-
-  try {
-    const { data, error } = await supabase
-      .from('estimativas')
-      .select('*')
-      .limit(1);
-
-    if (error) {
-      if (error.message.includes('does not exist')) {
-        logWarning('⏳ Tabela não existe ainda');
-        logInfo('Você precisa executar o SQL no Supabase:');
-        console.log('');
-        console.log('  1. Acesse: https://app.supabase.com');
-        console.log('  2. Selecione seu projeto');
-        console.log('  3. SQL Editor → New Query');
-        console.log('  4. Cole o conteúdo de database.sql');
-        console.log('  5. Clique em RUN (botão verde)');
-        console.log('');
-        logInfo('Depois execute este script novamente:');
-        console.log('  npm run setup:db');
-        console.log('');
+  const tables = ['estimativas', 'kanban_columns', 'kanban_cards', 'kanban_tasks'];
+  for (const table of tables) {
+    logInfo(`Verificando tabela ${table}...`);
+    try {
+      const { data, error } = await supabase.from(table).select('*').limit(1);
+      if (error) {
+        if (error.message.includes('does not exist')) {
+          logWarning(`⏳ Tabela ${table} não existe ainda`);
+        } else {
+          logError(`Erro em ${table}: ${error.message}`);
+        }
       } else {
-        logError(`Erro: ${error.message}`);
+        logSuccess(`Tabela ${table} existe e está pronta!`);
       }
-    } else {
-      logSuccess('Tabela estimativas existe e está pronta!');
-      logInfo(`Registros existentes: ${data?.length || 0}`);
+    } catch (err) {
+      logError(`Erro na verificação de ${table}: ${err.message}`);
     }
-  } catch (err) {
-    logError(`Erro na verificação: ${err.message}`);
   }
 
   logBright('═'.repeat(50));
@@ -200,16 +184,14 @@ async function setupDatabase() {
   console.log('');
 
   logInfo('Próximas ações:');
-  console.log('  1. Execute o SQL no Supabase (se não fez ainda)');
+  console.log('  1. Execute o SQL no Supabase (se não fez ainda):');
+  console.log('     - Acesse: https://app.supabase.com');
+  console.log('     - SQL Editor → New Query');
+  console.log('     - Cole o conteúdo de database.sql');
+  console.log('     - Clique em RUN');
   console.log('  2. Inicie a API: npm run dev:api');
-  console.log('  3. Teste: curl http://localhost:3000/api/estimativas');
+  console.log('  3. Teste: curl http://localhost:3000/api/kanban/board');
   console.log('  4. Inicie o frontend: npm run dev');
-  console.log('');
-
-  logInfo('Documentação:');
-  console.log('  - SCRIPTS.md → Todos os comandos disponíveis');
-  console.log('  - BACKEND_SUMMARY.md → Resumo do que foi criado');
-  console.log('  - EXEMPLO_USO.tsx → Como usar no frontend');
   console.log('');
 }
 

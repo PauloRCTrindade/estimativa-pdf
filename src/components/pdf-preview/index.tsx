@@ -5,6 +5,34 @@ import { formatBR, getTimelineBorder, } from '../../utils'
 import { weekLabels } from '../../data'
 import { COLORS } from '../../styles'
 
+function processEtapaGroups(atividades: any[]) {
+  const result: Array<any> = [];
+  let i = 0;
+  let groupIndex = 0;
+  while (i < atividades.length) {
+    const etapa = String(atividades[i].etapa || "1");
+    let j = i;
+    while (j < atividades.length && String(atividades[j].etapa || "1") === etapa) j++;
+    const group = atividades.slice(i, j);
+    const maxDias = Math.max(...group.map((a: any) => Number(a.dias) || 0));
+    const size = j - i;
+    const bg = groupIndex % 2 === 0 ? "#ffffff" : "#f3f4f6";
+    for (let k = 0; k < size; k++) {
+      result.push({
+        ...group[k],
+        _etapaRowSpan: size,
+        _etapaMaxDias: maxDias,
+        _isFirstInEtapa: k === 0,
+        _isLastInEtapa: k === size - 1,
+        _groupBg: bg,
+      });
+    }
+    groupIndex++;
+    i = j;
+  }
+  return result;
+}
+
 function isReleaseDeploymentDay(day: Date, releaseAlvoStr: string): boolean {
   if (!releaseAlvoStr) return false;
   const [dia, mes, ano] = releaseAlvoStr.split('/').map(Number);
@@ -42,8 +70,8 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows, hideTimelin
         <thead>
           <tr>
             <th style={pdfStyles.th}>TAREFA</th>
-            <th style={pdfStyles.thCenter}>DIAS ÚTEIS</th>
             <th style={pdfStyles.thCenter}>ETAPA</th>
+            <th style={pdfStyles.thCenter}>DIAS ÚTEIS</th>
             <th style={pdfStyles.thCenter}>INÍCIO</th>
             <th style={pdfStyles.thCenter}>TÉRMINO</th>
           </tr>
@@ -68,25 +96,41 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows, hideTimelin
                         {grupo.pacoteCodigo ? `${grupo.pacoteCodigo} — ` : ""}{grupo.pacoteNome}
                       </td>
                     </tr>
-                    {grupo.atividades.map((atividade) => (
+                    {processEtapaGroups(grupo.atividades).map((atividade) => (
                       <tr key={atividade.id}>
-                        <td style={{ ...pdfStyles.td, paddingLeft: "20px" }}>{atividade.nome}</td>
-                        <td style={pdfStyles.tdCenter}>{atividade.dias}</td>
-                        <td style={pdfStyles.tdCenter}>{atividade.etapa}</td>
-                        <td style={pdfStyles.tdCenter}>{formatBR(atividade.inicio)}</td>
-                        <td style={pdfStyles.tdCenter}>{formatBR(atividade.termino)}</td>
+                        <td style={{ ...pdfStyles.td, paddingLeft: "20px", backgroundColor: atividade._groupBg, borderBottom: atividade._isLastInEtapa ? pdfStyles.td.borderBottom : "none" }}>{atividade.nome}</td>
+                        {atividade._isFirstInEtapa && (
+                          <td rowSpan={atividade._etapaRowSpan} style={{ ...pdfStyles.tdCenter, verticalAlign: "middle", backgroundColor: atividade._groupBg }}>
+                            {atividade.etapa}
+                          </td>
+                        )}
+                        {atividade._isFirstInEtapa && (
+                          <td rowSpan={atividade._etapaRowSpan} style={{ ...pdfStyles.tdCenter, verticalAlign: "middle", backgroundColor: atividade._groupBg }}>
+                            {atividade._etapaMaxDias}
+                          </td>
+                        )}
+                        <td style={{ ...pdfStyles.tdCenter, backgroundColor: atividade._groupBg, borderBottom: atividade._isLastInEtapa ? pdfStyles.tdCenter.borderBottom : "none" }}>{formatBR(atividade.inicio)}</td>
+                        <td style={{ ...pdfStyles.tdCenter, backgroundColor: atividade._groupBg, borderBottom: atividade._isLastInEtapa ? pdfStyles.tdCenter.borderBottom : "none" }}>{formatBR(atividade.termino)}</td>
                       </tr>
                     ))}
                   </>
                 ));
               })()
-            : calculo.atividadesCalculadas.map((atividade) => (
+            : processEtapaGroups(calculo.atividadesCalculadas).map((atividade) => (
                 <tr key={atividade.id}>
-                  <td style={pdfStyles.td}>{atividade.nome}</td>
-                  <td style={pdfStyles.tdCenter}>{atividade.dias}</td>
-                  <td style={pdfStyles.tdCenter}>{atividade.etapa}</td>
-                  <td style={pdfStyles.tdCenter}>{formatBR(atividade.inicio)}</td>
-                  <td style={pdfStyles.tdCenter}>{formatBR(atividade.termino)}</td>
+                  <td style={{ ...pdfStyles.td, backgroundColor: atividade._groupBg, borderBottom: atividade._isLastInEtapa ? pdfStyles.td.borderBottom : "none" }}>{atividade.nome}</td>
+                  {atividade._isFirstInEtapa && (
+                    <td rowSpan={atividade._etapaRowSpan} style={{ ...pdfStyles.tdCenter, verticalAlign: "middle", backgroundColor: atividade._groupBg }}>
+                      {atividade.etapa}
+                    </td>
+                  )}
+                  {atividade._isFirstInEtapa && (
+                    <td rowSpan={atividade._etapaRowSpan} style={{ ...pdfStyles.tdCenter, verticalAlign: "middle", backgroundColor: atividade._groupBg }}>
+                      {atividade._etapaMaxDias}
+                    </td>
+                  )}
+                  <td style={{ ...pdfStyles.tdCenter, backgroundColor: atividade._groupBg, borderBottom: atividade._isLastInEtapa ? pdfStyles.tdCenter.borderBottom : "none" }}>{formatBR(atividade.inicio)}</td>
+                  <td style={{ ...pdfStyles.tdCenter, backgroundColor: atividade._groupBg, borderBottom: atividade._isLastInEtapa ? pdfStyles.tdCenter.borderBottom : "none" }}>{formatBR(atividade.termino)}</td>
                 </tr>
               ))
           }
