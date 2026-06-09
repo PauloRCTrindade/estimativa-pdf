@@ -3,12 +3,12 @@ import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 
 // Configurar variáveis de ambiente
-const supabaseUrl = process.env.SUPABASE_URL || 'https://zhsdfjmagcpayeemijkb.supabase.co';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || 'REMOVED_SUPABASE_ANON_KEY';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const PROJECT_REF = 'zhsdfjmagcpayeemijkb';
-const MANAGEMENT_TOKEN = process.env.SUPABASE_MANAGEMENT_TOKEN || 'REMOVED_SUPABASE_MANAGEMENT_TOKEN';
+const MANAGEMENT_TOKEN = process.env.SUPABASE_MANAGEMENT_TOKEN;
 
 const app = express();
 const PORT = process.env.PORT || 3000;

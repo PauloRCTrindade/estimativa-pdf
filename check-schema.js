@@ -4,8 +4,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://zhsdfjmagcpayeemijkb.supabase.co';
-const supabaseKey = 'REMOVED_SUPABASE_ANON_KEY';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function checkSchema() {
