@@ -17,8 +17,8 @@ export function FormField({ label, hint, error, children, required }: FormFieldP
         {required && <span className="text-red-500 ml-1">*</span>}
       </Label>
       {children}
-      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   )
 }

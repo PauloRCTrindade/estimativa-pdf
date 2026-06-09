@@ -99,7 +99,7 @@ export function DatePicker({
           disabled={(date) => date < new Date("1900-01-01")}
           modifiers={modifiers}
         />
-        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-col gap-2">
+        <div className="mt-4 pt-4 border-t border-border flex flex-col gap-2">
           {feriados && feriados.length > 0 && (
             <Legend color="#b91c1c" label="Feriado" />
           )}

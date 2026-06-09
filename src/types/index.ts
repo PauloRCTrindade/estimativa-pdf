@@ -27,7 +27,7 @@ export type Estimativa = {
   observacoes: string;
   atividades: Array<any>;
   pacotes?: Array<any>;
-  tipo?: 'estimativa-rapida' | 'estimativa-pacotes';
+  tipo?: 'estimativa-pacotes';
   pontos?: string;
   chgDias?: number;
   esteiraPreProd?: string;

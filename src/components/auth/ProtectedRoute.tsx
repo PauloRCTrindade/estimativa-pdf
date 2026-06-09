@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthPage } from './AuthPage';
+import { SignOut } from '@phosphor-icons/react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -18,7 +19,7 @@ export function ProtectedRoute({ children, onLogout, navContent, settingsButton 
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center space-y-4">
           <div className="inline-block animate-spin">
             <img 
@@ -27,7 +28,7 @@ export function ProtectedRoute({ children, onLogout, navContent, settingsButton 
               className="w-16 h-16"
             />
           </div>
-          <p className="text-gray-600">Verificando autenticação...</p>
+          <p className="text-sm text-muted-foreground">Verificando autenticação...</p>
         </div>
       </div>
     );
@@ -37,43 +38,48 @@ export function ProtectedRoute({ children, onLogout, navContent, settingsButton 
     return <AuthPage onAuthSuccess={() => window.location.reload()} />;
   }
 
+  const userName = user?.user_metadata?.full_name || user?.email || 'Usuário';
+  const initials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+
   return (
-    <div>
-      {/* Header com informações do usuário */}
-      <header className="bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-700 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-3 grid grid-cols-3 items-center">
+    <div className="min-h-screen bg-background">
+      {/* Header moderno */}
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+        <div className="mx-auto flex h-14 max-w-[1800px] items-center justify-between px-4 lg:px-8">
           {/* Esquerda: logo + nome */}
           <div className="flex items-center gap-3">
-            <img 
-              src="/chikamaru-thinking.svg" 
-              alt="Chikamaru pensando" 
-              className="w-10 h-10 rounded-full bg-gray-100 dark:bg-zinc-700 p-1"
-            />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              {user?.user_metadata?.full_name || user?.email || 'Usuário'}
-            </h2>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-bold">
+              EP
+            </div>
+            <div className="hidden sm:block">
+              <h2 className="text-sm font-semibold leading-none">{userName}</h2>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Estimativa PDF</p>
+            </div>
           </div>
 
-          {/* Centro: navegação */}
-          <div className="flex justify-center">
+          {/* Centro: navegação em pills */}
+          <div className="flex-1 flex justify-center">
             {navContent}
           </div>
 
           {/* Direita: settings + logout */}
-          <div className="flex justify-end items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {settingsButton}
             <button
               onClick={onLogout}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 rounded-lg transition"
+              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
-              🚪 Sair
+              <SignOut className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Sair</span>
             </button>
           </div>
         </div>
       </header>
 
       {/* Conteúdo protegido */}
-      {children}
+      <main className="mx-auto max-w-[1800px] px-4 py-6 lg:px-8">
+        {children}
+      </main>
     </div>
   );
 }

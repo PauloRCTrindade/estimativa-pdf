@@ -42,181 +42,187 @@
     --color-card: var(--card);
     --color-foreground: var(--foreground);
     --color-background: var(--background);
-    --radius-sm: calc(var(--radius) * 0.6);
-    --radius-md: calc(var(--radius) * 0.8);
+    --radius-sm: calc(var(--radius) * 0.5);
+    --radius-md: calc(var(--radius) * 0.75);
     --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
-    --radius-3xl: calc(var(--radius) * 2.2);
-    --radius-4xl: calc(var(--radius) * 2.6);
+    --radius-xl: calc(var(--radius) * 1.25);
+    --radius-2xl: calc(var(--radius) * 1.5);
+    --radius-3xl: calc(var(--radius) * 2);
+    --radius-4xl: calc(var(--radius) * 2.5);
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
+    --background: oklch(0.985 0 0);
+    --foreground: oklch(0.15 0 0);
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
+    --card-foreground: oklch(0.15 0 0);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.15 0 0);
+    --primary: oklch(0.2 0 0);
     --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
+    --secondary: oklch(0.96 0 0);
+    --secondary-foreground: oklch(0.2 0 0);
+    --muted: oklch(0.96 0 0);
+    --muted-foreground: oklch(0.55 0 0);
+    --accent: oklch(0.96 0 0);
+    --accent-foreground: oklch(0.2 0 0);
+    --destructive: oklch(0.55 0.22 25);
+    --border: oklch(0.9 0 0);
+    --input: oklch(0.9 0 0);
+    --ring: oklch(0.6 0 0);
+    --chart-1: oklch(0.65 0.18 260);
+    --chart-2: oklch(0.6 0.18 145);
+    --chart-3: oklch(0.55 0.18 45);
+    --chart-4: oklch(0.5 0.18 15);
+    --chart-5: oklch(0.45 0.18 290);
+    --radius: 0.75rem;
     --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.15 0 0);
+    --sidebar-primary: oklch(0.2 0 0);
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    --sidebar-accent: oklch(0.96 0 0);
+    --sidebar-accent-foreground: oklch(0.2 0 0);
+    --sidebar-border: oklch(0.9 0 0);
+    --sidebar-ring: oklch(0.6 0 0);
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    --background: oklch(0.08 0 0);
+    --foreground: oklch(0.97 0 0);
+    --card: oklch(0.11 0 0);
+    --card-foreground: oklch(0.97 0 0);
+    --popover: oklch(0.11 0 0);
+    --popover-foreground: oklch(0.97 0 0);
+    --primary: oklch(0.92 0 0);
+    --primary-foreground: oklch(0.1 0 0);
+    --secondary: oklch(0.18 0 0);
+    --secondary-foreground: oklch(0.97 0 0);
+    --muted: oklch(0.18 0 0);
+    --muted-foreground: oklch(0.6 0 0);
+    --accent: oklch(0.18 0 0);
+    --accent-foreground: oklch(0.97 0 0);
+    --destructive: oklch(0.65 0.2 22);
+    --border: oklch(1 0 0 / 8%);
+    --input: oklch(1 0 0 / 12%);
+    --ring: oklch(0.5 0 0);
+    --chart-1: oklch(0.7 0.18 260);
+    --chart-2: oklch(0.65 0.18 145);
+    --chart-3: oklch(0.6 0.18 45);
+    --chart-4: oklch(0.55 0.18 15);
+    --chart-5: oklch(0.5 0.18 290);
+    --sidebar: oklch(0.11 0 0);
+    --sidebar-foreground: oklch(0.97 0 0);
+    --sidebar-primary: oklch(0.92 0 0);
+    --sidebar-primary-foreground: oklch(0.1 0 0);
+    --sidebar-accent: oklch(0.18 0 0);
+    --sidebar-accent-foreground: oklch(0.97 0 0);
+    --sidebar-border: oklch(1 0 0 / 8%);
+    --sidebar-ring: oklch(0.5 0 0);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
+  }
   body {
-    @apply bg-background text-foreground;
-    }
+    @apply bg-background text-foreground antialiased;
+  }
   html {
     @apply font-sans;
-    }
+  }
 }
 
-.teste-css-manual {
-  background: green;
-  color: white;
-  padding: 40px;
+/* ── Scrollbar moderna ───────────────────────────────────────────────────── */
+@layer base {
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
+  }
+}
+
+/* ── Animações suaves ────────────────────────────────────────────────────── */
+@layer base {
+  .transition-smooth {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
 }
 
 /* ── Dark mode overrides para componentes com inline styles ─────────────── */
-/* !important sobrescreve inline styles no modo escuro.                      */
-/* Os elementos #pdf-area e #calendar-area usados pelo html2canvas ficam     */
-/* fora da tela (left:-9999px) e o html sem .dark — PDFs não são afetados.  */
 
 .dark #pdf-area-screen {
-  background-color: #18181b !important;
-  color: #f4f4f5 !important;
+  background-color: #0a0a0a !important;
+  color: #fafafa !important;
 }
 
-/* Células de dados */
 .dark #pdf-area-screen table td {
-  background-color: #27272a !important;
-  color: #f4f4f5 !important;
-  border-color: #3f3f46 !important;
+  background-color: #141414 !important;
+  color: #fafafa !important;
+  border-color: #262626 !important;
 }
 
-/* Cabeçalho da tabela: fundo mais escuro + texto e borda-inferior laranja */
 .dark #pdf-area-screen table th {
-  background-color: #1a1a1d !important;
-  color: #fb923c !important;   /* orange-400 */
-  border-bottom-color: #f97316 !important; /* orange-500 — preserva destaque */
+  background-color: #0f0f0f !important;
+  color: #fb923c !important;
+  border-bottom-color: #f97316 !important;
 }
 
 .dark #pdf-area-screen table tbody tr:nth-child(even) td {
-  background-color: #1f1f23 !important;
+  background-color: #171717 !important;
 }
 
-/* Linha de pacote na tabela (fundo #1c1c1e): borda esquerda laranja */
 .dark #pdf-area-screen [style*="1c1c1e"] td,
 .dark #pdf-area-screen td[style*="1c1c1e"] {
-  background-color: #1a1a1d !important;
+  background-color: #0f0f0f !important;
   color: #fb923c !important;
-  border-color: #3f3f46 !important;
+  border-color: #262626 !important;
   border-left-color: #f97316 !important;
 }
 
-/* Divs com fundo claro (infoCell, sectionContent, legendWrapper) */
 .dark #pdf-area-screen div[style]:not([style*="1f2937"]):not([style*="1c1c1e"]) {
-  background-color: #27272a !important;
-  color: #f4f4f5 !important;
-  border-color: #3f3f46 !important;
+  background-color: #141414 !important;
+  color: #fafafa !important;
+  border-color: #262626 !important;
 }
 
-/* Barras de título escuras (#1f2937): borda esquerda laranja como acento */
 .dark #pdf-area-screen [style*="1f2937"] {
   background-color: revert !important;
-  color: #f4f4f5 !important;
+  color: #fafafa !important;
   border-left: 4px solid #f97316 !important;
 }
 
-/* Header principal: preservar borda laranja inline, ajustar fundo */
 .dark #pdf-area-screen > div[style*="1f2937"]:first-child {
   border-left: 4px solid #f97316 !important;
 }
 
-/* ── TimeLine visível ──────────────────────────────────────────────────── */
 .dark #calendar-area {
-  background-color: #18181b !important;
-  color: #f4f4f5 !important;
+  background-color: #0a0a0a !important;
+  color: #fafafa !important;
 }
 
 .dark #calendar-area td:not([data-color-cell]) {
-  background-color: #27272a !important;
-  color: #f4f4f5 !important;
-  border-color: #3f3f46 !important;
+  background-color: #141414 !important;
+  color: #fafafa !important;
+  border-color: #262626 !important;
 }
 
-/* Fundo da tabela (remove o branco/cinza claro que vaza pelas quinas arredondadas) */
 .dark #calendar-area table {
-  background-color: #27272a !important;
+  background-color: #141414 !important;
 }
 
-/* Células coloridas: tirar o border-radius no dark para não vazar fundo */
 .dark #calendar-area td[data-color-cell] {
   border-radius: 0 !important;
 }
 
-/* Preserve border colors for special cell types in dark mode */
 .dark #calendar-area td[data-chg-border="true"] {
   border-color: #06b6d4 !important;
 }
@@ -230,13 +236,12 @@
 }
 
 .dark #calendar-area div[style]:not([data-legend-color]) {
-  background-color: #27272a !important;
-  color: #f4f4f5 !important;
-  border-color: #3f3f46 !important;
+  background-color: #141414 !important;
+  color: #fafafa !important;
+  border-color: #262626 !important;
 }
 
 .dark #calendar-area [style*="1f2937"] {
   background-color: revert !important;
-  color: #f4f4f5 !important;
+  color: #fafafa !important;
 }
-/* ────────────────────────────────────────────────────────────────────────── */

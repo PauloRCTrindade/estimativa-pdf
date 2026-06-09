@@ -4,12 +4,32 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Gear, StackSimple, ChartBar, Sliders, Info, Stack, FileText, HardDrive, Tabs, Sun, Moon, Rocket, CalendarBlank, CheckCircle, XCircle, Hourglass } from "@phosphor-icons/react";
+import { StackSimple, ChartBar, Sliders, Info, Stack, FileText, HardDrive, Tabs, Sun, Moon, Rocket, CalendarBlank, CheckCircle, XCircle, Hourglass } from "@phosphor-icons/react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { COLORS } from './styles';
 import { STORAGE_KEY } from './data';
 import { PdfPreview } from "./components/pdf-preview";
+
+type KanbanColumn = { id: string; title: string };
+type KanbanCustomTask = {
+  id: string;
+  title: string;
+  description?: string;
+  inicio?: string;
+  termino?: string;
+  completed?: boolean;
+  subtasks?: KanbanCustomTask[];
+};
+type KanbanCard = {
+  id: string;
+  estimateId: string;
+  title: string;
+  columnId: string;
+  notes?: string;
+  tasks?: KanbanCustomTask[];
+};
+const KANBAN_STORAGE_KEY = "kanban-state-v1";
 import {
   addDays,
   createId,
@@ -48,13 +68,13 @@ import { DocumentPage } from "./pages/document";
 import { OverviewPage } from "./pages/overview";
 import { SavePage } from "./pages/save";
 import { FinancialPage } from "./pages/financial";
-import { QuickEstimatePage } from "./pages/quick-estimate";
+import { KanbanPage } from "./pages/kanban";
 
 if (typeof window !== "undefined") runSelfTests();
 
 function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: {
-  page: "estimativa" | "estimativa-rapida" | "financeiro";
-  setPage: (p: "estimativa" | "estimativa-rapida" | "financeiro") => void;
+  page: "estimativa" | "financeiro" | "kanban";
+  setPage: (p: "estimativa" | "financeiro" | "kanban") => void;
   openSettings: boolean;
   setOpenSettings: (v: boolean) => void;
 }) {
@@ -76,6 +96,9 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     return (localStorage.getItem("estimativa-theme") as "light" | "dark") || "light";
   });
+  const [kanbanColumns, setKanbanColumns] = useState<KanbanColumn[]>([]);
+  const [kanbanCards, setKanbanCards] = useState<KanbanCard[]>([]);
+  const favoriteIds = useMemo(() => kanbanCards.map((card) => card.estimateId), [kanbanCards]);
 
   useEffect(() => {
     if (theme === "dark") {
@@ -86,9 +109,187 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
     localStorage.setItem("estimativa-theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    try {
+      const savedKanban = localStorage.getItem(KANBAN_STORAGE_KEY);
+      if (!savedKanban) return;
+      const parsedKanban = JSON.parse(savedKanban);
+      if (Array.isArray(parsedKanban.columns)) setKanbanColumns(parsedKanban.columns);
+      if (Array.isArray(parsedKanban.cards)) setKanbanCards(parsedKanban.cards);
+    } catch {
+      // ignore invalid saved state
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(KANBAN_STORAGE_KEY, JSON.stringify({ columns: kanbanColumns, cards: kanbanCards }));
+    } catch {
+      // ignore write errors
+    }
+  }, [kanbanColumns, kanbanCards]);
+
   function toggleViewMode(mode: "abas" | "pagina-unica") {
     setViewMode(mode);
     localStorage.setItem("estimativa-view-mode", mode);
+  }
+
+  function addKanbanColumn(title: string) {
+    if (!title.trim()) return;
+    setKanbanColumns((prev) => [...prev, { id: createId(), title: title.trim() }]);
+  }
+
+  function updateKanbanColumnTitle(id: string, title: string) {
+    setKanbanColumns((prev) => prev.map((column) => (column.id === id ? { ...column, title } : column)));
+  }
+
+  function moveKanbanCard(cardId: string, columnId: string) {
+    setKanbanCards((prev) => prev.map((card) => (card.id === cardId ? { ...card, columnId } : card)));
+  }
+
+  function updateTaskTree(tasks: KanbanCustomTask[] | undefined, taskId: string, updater: (task: KanbanCustomTask) => KanbanCustomTask | null): KanbanCustomTask[] | undefined {
+    if (!tasks) return tasks;
+
+    return tasks
+      .map((task) => {
+        if (task.id === taskId) {
+          return updater(task);
+        }
+
+        const updatedSubtasks = updateTaskTree(task.subtasks, taskId, updater);
+        if (updatedSubtasks !== task.subtasks) {
+          return { ...task, subtasks: updatedSubtasks };
+        }
+
+        return task;
+      })
+      .filter(Boolean) as KanbanCustomTask[];
+  }
+
+  function addTaskToTree(tasks: KanbanCustomTask[] | undefined, parentTaskId: string, newTask: KanbanCustomTask): KanbanCustomTask[] {
+    if (!tasks) return [];
+
+    return tasks.map((task) => {
+      if (task.id === parentTaskId) {
+        return {
+          ...task,
+          subtasks: [...(task.subtasks ?? []), newTask],
+        };
+      }
+
+      return {
+        ...task,
+        subtasks: addTaskToTree(task.subtasks, parentTaskId, newTask),
+      };
+    });
+  }
+
+  function updateKanbanCardNotes(cardId: string, notes: string) {
+    setKanbanCards((prev) =>
+      prev.map((card) => (card.id === cardId ? { ...card, notes } : card))
+    );
+  }
+
+  function addKanbanCardTask(cardId: string, task: Omit<KanbanCustomTask, "id" | "completed" | "subtasks">, parentTaskId?: string) {
+    const newTask: KanbanCustomTask = {
+      id: createId(),
+      completed: false,
+      subtasks: [],
+      ...task,
+    };
+
+    setKanbanCards((prev) =>
+      prev.map((card) => {
+        if (card.id !== cardId) return card;
+
+        if (!parentTaskId) {
+          return { ...card, tasks: [...(card.tasks ?? []), newTask] };
+        }
+
+        return {
+          ...card,
+          tasks: addTaskToTree(card.tasks, parentTaskId, newTask),
+        };
+      })
+    );
+  }
+
+  function updateKanbanCardTask(cardId: string, taskId: string, patch: Partial<Omit<KanbanCustomTask, "id" | "subtasks">>) {
+    setKanbanCards((prev) =>
+      prev.map((card) =>
+        card.id === cardId
+          ? {
+              ...card,
+              tasks: updateTaskTree(card.tasks, taskId, (task) => ({ ...task, ...patch })),
+            }
+          : card
+      )
+    );
+  }
+
+  function toggleKanbanCardTaskCompleted(cardId: string, taskId: string) {
+    setKanbanCards((prev) =>
+      prev.map((card) =>
+        card.id === cardId
+          ? {
+              ...card,
+              tasks: updateTaskTree(card.tasks, taskId, (task) => ({ ...task, completed: !task.completed })),
+            }
+          : card
+      )
+    );
+  }
+
+  function removeKanbanCardTask(cardId: string, taskId: string) {
+    function removeFromTree(tasks: KanbanCustomTask[] | undefined): KanbanCustomTask[] | undefined {
+      if (!tasks) return tasks;
+      return tasks
+        .flatMap((task) => {
+          if (task.id === taskId) return [];
+          return [{ ...task, subtasks: removeFromTree(task.subtasks) }];
+        })
+        .filter(Boolean) as KanbanCustomTask[];
+    }
+
+    setKanbanCards((prev) =>
+      prev.map((card) =>
+        card.id === cardId
+          ? { ...card, tasks: removeFromTree(card.tasks) ?? [] }
+          : card
+      )
+    );
+  }
+
+  function favoriteEstimativa(item: any) {
+    if (!item?.id) {
+      notify("Estimativa inválida.");
+      return;
+    }
+
+    if (kanbanCards.some((card) => card.estimateId === item.id)) {
+      notify("Esta estimativa já está no Kanban.");
+      return;
+    }
+
+    let targetColumnId = kanbanColumns[0]?.id;
+    if (!targetColumnId) {
+      const defaultColumn = { id: createId(), title: "Backlog" };
+      setKanbanColumns((prev) => [...prev, defaultColumn]);
+      targetColumnId = defaultColumn.id;
+    }
+
+    setKanbanCards((prev) => [
+      ...prev,
+      {
+        id: createId(),
+        estimateId: item.id,
+        title: item.titulo || item.nome || "Estimativa sem título",
+        columnId: targetColumnId,
+        tasks: [],
+      },
+    ]);
+
+    notify("Estimativa favoritada e adicionada ao Kanban.");
   }
 
   // ── Estado de Pacotes (aba Estimativa detalhada) ──
@@ -194,7 +395,7 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
     return `${dia}/${mes}/${ano}`;
   }
 
-  async function salvarEstimativa(tipo: 'estimativa-rapida' | 'estimativa-pacotes') {
+  async function salvarEstimativa(tipo: 'estimativa-pacotes') {
     try {
       _notify("Salvando estimativa...");
       
@@ -219,10 +420,10 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
 
       await criar(novaEstimativa);
       await listar(); // Recarregar lista
-      _notify("✅ Estimativa salva com sucesso!");
+      _notify("Estimativa salva com sucesso!");
     } catch (erro) {
       console.error("Erro ao salvar:", erro);
-      _notify("❌ Erro ao salvar estimativa.");
+      _notify("Erro ao salvar estimativa.");
     }
   }
 
@@ -268,10 +469,10 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
             : [],
         })));
       }
-      _notify("✅ Estimativa carregada.");
+      _notify("Estimativa carregada.");
     } catch (err) {
       console.error("Erro ao carregar estimativa:", err);
-      _notify("❌ Erro ao carregar estimativa.");
+      _notify("Erro ao carregar estimativa.");
     }
   }
 
@@ -280,10 +481,10 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
       _notify("Excluindo estimativa...");
       await deletar(id);
       await listar(); // Recarregar lista
-      _notify("✅ Estimativa excluída com sucesso!");
+      _notify("Estimativa excluída com sucesso!");
     } catch (erro) {
       console.error("Erro ao excluir:", erro);
-      _notify("❌ Erro ao excluir estimativa.");
+      _notify("Erro ao excluir estimativa.");
     }
   }
 
@@ -728,11 +929,11 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
         .join('\n');
       
       updateForm("feriados", feriadosFormatados);
-      notify(`✅ ${dados.length} feriados de ${ano} carregados com sucesso!`);
+      notify(`${dados.length} feriados de ${ano} carregados com sucesso!`);
       setLoadingHolidays(false);
     } catch (erro) {
       console.error("Erro ao buscar feriados:", erro);
-      notify("❌ Erro ao buscar feriados. Tente novamente.");
+      notify("Erro ao buscar feriados. Tente novamente.");
       setLoadingHolidays(false);
     }
   }
@@ -1197,7 +1398,7 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
   }, [calculoPreviaPacotes.timeline, form.releaseAlvo, specialWorkDatesPacotes]);
 
   return (
-    <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950 p-6">
+    <div className="min-h-screen bg-background">
       {/* Página: Cálculo Financeiro */}
       {page === "financeiro" && (
         <FinancialPage
@@ -1215,31 +1416,6 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
         />
       )}
 
-      {/* Página: Estimativa Rápida */}
-      {page === "estimativa-rapida" && (
-        <QuickEstimatePage
-          form={form}
-          updateForm={updateForm}
-          atividades={atividades}
-          updateAtividade={updateAtividade}
-          moveAtividade={moveAtividade}
-          removeAtividade={removeAtividade}
-          addAtividade={addAtividade}
-          salvarTemplate={salvarTemplate}
-          restaurarPadrao={restaurarPadrao}
-          estimativas={estimativas}
-          onLoad={carregarEstimativa}
-          onDelete={excluirEstimativa}
-          onSave={() => salvarEstimativa('estimativa-rapida')}
-          onAbrirPDF={abrirPDF}
-          onGerarPDF={gerarPDF}
-          onAbrirCalendario={abrirCalendario}
-          onGerarPDFCalendario={gerarPDFCalendario}
-          totalDias={totalDias}
-          calculo={calculo}
-          timelineRows={timelineRows}
-        />
-      )}
 
       {/* Página: Estimativa */}
       {page === "estimativa" && (
@@ -1247,40 +1423,34 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
 
           {/* Sub-navegação das seções — apenas no modo Abas */}
           {viewMode === "abas" && (
-          <div className="sticky top-0 z-10 bg-zinc-100 dark:bg-zinc-950 py-3 mb-4 -mx-4 px-4 border-b border-zinc-200 dark:border-zinc-700">
-            <div className="flex gap-1 bg-white dark:bg-zinc-800 rounded-lg p-1 shadow-sm border border-zinc-200 dark:border-zinc-700 overflow-x-auto">
-              <button
-                onClick={() => setSubTab("informacoes")}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "informacoes" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
-              >
-                <Info className="h-4 w-4" /> Informações
-              </button>
-              <button
-                onClick={() => setSubTab("detalhamento")}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "detalhamento" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
-              >
-                <Stack className="h-4 w-4" /> Detalhamento
-              </button>
-              <button
-                onClick={() => setSubTab("gerar-documento")}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "gerar-documento" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
-              >
-                <FileText className="h-4 w-4" /> Documento
-              </button>
-              <button
-                onClick={() => setSubTab("visualizacao-impacto")}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "visualizacao-impacto" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
-              >
-                <ChartBar className="h-4 w-4" /> Visão Geral
-              </button>
-              <button
-                onClick={() => setSubTab("salvar-estimativa")}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${subTab === "salvar-estimativa" ? "bg-zinc-900 dark:bg-zinc-600 text-white shadow" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-700"}`}
-              >
-                <HardDrive className="h-4 w-4" /> Salvar Informações
-              </button>
+            <div className="sticky top-14 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 -mx-4 lg:-mx-8 px-4 lg:px-8 py-2">
+              <nav className="flex gap-0.5 overflow-x-auto">
+                {[
+                  { id: "informacoes", label: "Informações", icon: Info },
+                  { id: "detalhamento", label: "Detalhamento", icon: Stack },
+                  { id: "gerar-documento", label: "Documento", icon: FileText },
+                  { id: "visualizacao-impacto", label: "Visão Geral", icon: ChartBar },
+                  { id: "salvar-estimativa", label: "Salvar", icon: HardDrive },
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = subTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setSubTab(tab.id as typeof subTab)}
+                      className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap ${
+                        isActive
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </nav>
             </div>
-          </div>
           )}
 
           {/* PdfPreview oculto com linha do tempo — sempre renderizado para html2canvas */}
@@ -1294,13 +1464,23 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
           </div>
 
           {/* Aba: Informações */}
-          {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Informações</h1></div>}
+          {viewMode === "pagina-unica" && (
+            <div className="pt-6 pb-2">
+              <h2 className="text-lg font-semibold tracking-tight">Informações</h2>
+              <p className="text-sm text-muted-foreground">Dados gerais da estimativa</p>
+            </div>
+          )}
           {(viewMode === "pagina-unica" || subTab === "informacoes") && (
             <InformationPage form={form} updateForm={updateForm} feriados={feriados} releases={releases} />
           )}
 
           {/* Aba: Detalhamento */}
-          {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Detalhamento</h1></div>}
+          {viewMode === "pagina-unica" && (
+            <div className="pt-8 pb-2">
+              <h2 className="text-lg font-semibold tracking-tight">Detalhamento</h2>
+              <p className="text-sm text-muted-foreground">Pacotes e atividades da estimativa</p>
+            </div>
+          )}
           {(viewMode === "pagina-unica" || subTab === "detalhamento") && (
             <DetailsPage
               pacotes={pacotes}
@@ -1322,7 +1502,12 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
           )}
 
           {/* Aba: Documento */}
-          {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Documento</h1></div>}
+          {viewMode === "pagina-unica" && (
+            <div className="pt-8 pb-2">
+              <h2 className="text-lg font-semibold tracking-tight">Documento</h2>
+              <p className="text-sm text-muted-foreground">Pontos de atenção e premissas</p>
+            </div>
+          )}
           {(viewMode === "pagina-unica" || subTab === "gerar-documento") && (
             <DocumentPage
               form={form}
@@ -1334,7 +1519,12 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
           )}
 
           {/* Aba: Visão Geral */}
-          {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Visão Geral</h1></div>}
+          {viewMode === "pagina-unica" && (
+            <div className="pt-8 pb-2">
+              <h2 className="text-lg font-semibold tracking-tight">Visão Geral</h2>
+              <p className="text-sm text-muted-foreground">Impacto e timeline do projeto</p>
+            </div>
+          )}
           {(viewMode === "pagina-unica" || subTab === "visualizacao-impacto") && (
             <OverviewPage
               form={form}
@@ -1345,12 +1535,19 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
           )}
 
           {/* Aba: Salvar Informações */}
-          {viewMode === "pagina-unica" && <div className="pt-4"><h1 className="text-xl font-bold">Salvar Informações</h1></div>}
+          {viewMode === "pagina-unica" && (
+            <div className="pt-8 pb-2">
+              <h2 className="text-lg font-semibold tracking-tight">Salvar</h2>
+              <p className="text-sm text-muted-foreground">Gerenciar estimativas salvas</p>
+            </div>
+          )}
           {(viewMode === "pagina-unica" || subTab === "salvar-estimativa") && (
             <SavePage
               estimativas={estimativas}
               onLoad={carregarEstimativa}
               onDelete={excluirEstimativa}
+              onFavorite={favoriteEstimativa}
+              favoriteIds={favoriteIds}
               onSave={() => salvarEstimativa('estimativa-pacotes')}
               onAbrirPDF={abrirPDF}
               onGerarPDF={gerarPDF}
@@ -1363,104 +1560,120 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
         </div>
       )}
 
+      {page === "kanban" && (
+        <KanbanPage
+          columns={kanbanColumns}
+          cards={kanbanCards}
+          estimativas={estimativas}
+          onAddColumn={addKanbanColumn}
+          onUpdateColumnTitle={updateKanbanColumnTitle}
+          onMoveCard={moveKanbanCard}
+          onUpdateCardNotes={updateKanbanCardNotes}
+          onAddCardTask={addKanbanCardTask}
+          onUpdateCardTask={updateKanbanCardTask}
+          onToggleCardTaskCompleted={toggleKanbanCardTaskCompleted}
+          onRemoveCardTask={removeKanbanCardTask}
+        />
+      )}
+
       <Dialog open={openSettings} onOpenChange={setOpenSettings}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Gear className="h-5 w-5" />
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Sliders className="h-4 w-4 text-muted-foreground" />
               Configurações
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-6">
 
             {/* Modo de Visualização */}
-            <div>
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Tabs className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Navegação por Abas</span>
+                  <Tabs className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Navegação por Abas</span>
                 </div>
                 <button
                   onClick={() => toggleViewMode(viewMode === "abas" ? "pagina-unica" : "abas")}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-                    viewMode === "abas" ? "bg-blue-500" : "bg-zinc-300 dark:bg-zinc-600"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    viewMode === "abas" ? "bg-primary" : "bg-muted"
                   }`}
                 >
                   <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                    className={`inline-block h-4 w-4 transform rounded-full bg-primary-foreground shadow transition-transform ${
                       viewMode === "abas" ? "translate-x-1" : "translate-x-6"
                     }`}
                   />
                 </button>
               </div>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                {viewMode === "abas" ? "Cada seção em uma aba separada" : "Todas as seções em uma página"}
+              <p className="text-xs text-muted-foreground">
+                {viewMode === "abas" ? "Cada seção em uma aba separada" : "Todas as seções em uma página contínua"}
               </p>
             </div>
 
-            <div className="border-t border-zinc-200 dark:border-zinc-700" />
+            <div className="border-t border-border/60" />
 
             {/* Tema */}
-            <div>
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  {theme === "dark" ? <Moon className="h-4 w-4 text-yellow-500" /> : <Sun className="h-4 w-4 text-yellow-500" />}
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Modo Escuro</span>
+                  {theme === "dark" ? <Moon className="h-4 w-4 text-amber-400" /> : <Sun className="h-4 w-4 text-amber-500" />}
+                  <span className="text-sm font-medium">Modo Escuro</span>
                 </div>
                 <button
                   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-                    theme === "dark" ? "bg-blue-500" : "bg-zinc-300 dark:bg-zinc-600"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    theme === "dark" ? "bg-primary" : "bg-muted"
                   }`}
                 >
                   <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                    className={`inline-block h-4 w-4 transform rounded-full bg-primary-foreground shadow transition-transform ${
                       theme === "dark" ? "translate-x-1" : "translate-x-6"
                     }`}
                   />
                 </button>
               </div>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+              <p className="text-xs text-muted-foreground">
                 {theme === "dark" ? "Tema escuro ativado" : "Tema claro ativado"}
               </p>
             </div>
 
-            <div className="border-t border-zinc-200 dark:border-zinc-700" />
+            <div className="border-t border-border/60" />
 
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Rocket className="h-4 w-4 text-red-500" />
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Releases do Ano</span>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Rocket className="h-4 w-4 text-destructive" />
+                <span className="text-sm font-medium">Releases do Ano</span>
               </div>
-              <Textarea className="min-h-40 mt-2" value={form.releases} onChange={(event) => updateForm("releases", event.target.value)} placeholder="Releases, uma por linha" />
+              <Textarea className="min-h-[120px] text-sm" value={form.releases} onChange={(event) => updateForm("releases", event.target.value)} placeholder="Releases, uma por linha" />
             </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <CalendarBlank className="h-4 w-4 text-green-500" />
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Feriados</span>
+                  <CalendarBlank className="h-4 w-4 text-emerald-500" />
+                  <span className="text-sm font-medium">Feriados</span>
                 </div>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={buscarFeriadosDoAno}
                   disabled={loadingHolidays}
-                  className="h-7 px-2 text-xs flex items-center gap-1.5"
+                  className="h-7 gap-1.5 text-xs"
                 >
                   {loadingHolidays ? (
                     <>
-                      <Hourglass className="h-3.5 w-3.5 animate-spin" />
+                      <Hourglass className="h-3 w-3 animate-spin" />
                       Buscando...
                     </>
                   ) : (
                     <>
-                      <CalendarBlank className="h-3.5 w-3.5" />
+                      <CalendarBlank className="h-3 w-3" />
                       Carregar Feriados
                     </>
                   )}
                 </Button>
               </div>
-              <Textarea className="min-h-56 mt-2" value={form.feriados} onChange={(event) => updateForm("feriados", event.target.value)} placeholder="Feriados, um por linha. Ex: 01/01/2026 - Nome do feriado" />
+              <Textarea className="min-h-[160px] text-sm" value={form.feriados} onChange={(event) => updateForm("feriados", event.target.value)} placeholder="Feriados, um por linha. Ex: 01/01/2026 - Nome do feriado" />
             </div>
           </div>
         </DialogContent>
@@ -1472,7 +1685,7 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
 // Wrapper com autenticação
 export default function App() {
   const { isAuthenticated, checkAuth, logout, loading } = useAuth();
-  const [page, setPage] = useState<"estimativa" | "estimativa-rapida" | "financeiro">("estimativa");
+  const [page, setPage] = useState<"estimativa" | "financeiro" | "kanban">("estimativa");
   const [openSettings, setOpenSettings] = useState(false);
 
   useEffect(() => {
@@ -1506,33 +1719,50 @@ export default function App() {
   };
 
   const nav = (
-    <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
+    <nav className="flex items-center gap-0.5 rounded-lg bg-muted/60 p-0.5">
       <button
         onClick={() => setPage("estimativa")}
-        className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-          page === "estimativa" ? "bg-white dark:bg-zinc-600 shadow text-zinc-900 dark:text-white" : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100"
+        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+          page === "estimativa"
+            ? "bg-background text-foreground shadow-sm"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground"
         }`}
       >
-        <StackSimple className="h-4 w-4" />
+        <StackSimple className="h-3.5 w-3.5" />
         Estimativa
       </button>
       <button
-        disabled
-        className="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium text-zinc-400 cursor-not-allowed opacity-50"
+        onClick={() => setPage("kanban")}
+        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+          page === "kanban"
+            ? "bg-background text-foreground shadow-sm"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+        }`}
       >
-        <ChartBar className="h-4 w-4" />
-        Cálculo Financeiro
+        <Stack className="h-3.5 w-3.5" />
+        Kanban
       </button>
-    </div>
+      <button
+        onClick={() => setPage("financeiro")}
+        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+          page === "financeiro"
+            ? "bg-background text-foreground shadow-sm"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+        }`}
+      >
+        <ChartBar className="h-3.5 w-3.5" />
+        Financeiro
+      </button>
+    </nav>
   );
 
   const settingsBtn = (
     <button
       onClick={() => setOpenSettings(true)}
-      className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-lg transition"
+      className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       title="Configurações"
     >
-      <Sliders className="h-5 w-5" />
+      <Sliders className="h-4 w-4" />
     </button>
   );
 

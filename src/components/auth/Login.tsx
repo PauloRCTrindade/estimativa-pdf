@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { Hourglass, EnvelopeSimple } from '@phosphor-icons/react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Hourglass, EnvelopeSimple, Eye, EyeSlash } from '@phosphor-icons/react';
+import { cn } from '@/lib/utils';
 
 interface LoginProps {
   onLoginSuccess?: () => void;
@@ -23,7 +24,6 @@ export function Login({ onLoginSuccess, onSwitchToSignup }: LoginProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     const result = await login(email, password);
     if (result.success) {
       onLoginSuccess?.();
@@ -34,7 +34,6 @@ export function Login({ onLoginSuccess, onSwitchToSignup }: LoginProps) {
     e.preventDefault();
     setResetError(null);
     setResetSuccess(false);
-
     const result = await resetPassword(forgotEmail);
     if (result.success) {
       setResetSuccess(true);
@@ -47,163 +46,147 @@ export function Login({ onLoginSuccess, onSwitchToSignup }: LoginProps) {
 
   if (showForgotPassword) {
     return (
-      <Card className="w-full max-w-md mx-auto p-6 space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold">Recuperar Senha</h1>
-          <p className="text-sm text-gray-600">
-            Digite seu email para receber um link de reset
-          </p>
-        </div>
-
-        <form onSubmit={handleForgotPassword} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Email</label>
-            <Input
-              type="email"
-              placeholder="seu@email.com"
-              value={forgotEmail}
-              onChange={(e) => setForgotEmail(e.target.value)}
-              required
-            />
+      <Card className="border-border/60 shadow-sm">
+        <CardContent className="p-6 space-y-5">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold tracking-tight">Recuperar Senha</h2>
+            <p className="text-sm text-muted-foreground">
+              Digite seu email para receber um link de reset
+            </p>
           </div>
 
-          {resetError && (
-            <div className="p-3 rounded bg-red-50 text-red-700 text-sm">
-              {resetError}
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Email</label>
+              <Input
+                type="email"
+                placeholder="seu@email.com"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                required
+                className="h-10"
+              />
             </div>
-          )}
 
-          {resetSuccess && (
-            <div className="p-3 rounded bg-green-50 text-green-700 text-sm">
-              Email enviado! Verifique sua caixa de entrada
+            {resetError && (
+              <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {resetError}
+              </div>
+            )}
+
+            {resetSuccess && (
+              <div className="rounded-md bg-emerald-500/10 px-3 py-2 text-xs text-emerald-600 dark:text-emerald-400">
+                Email enviado! Verifique sua caixa de entrada
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button type="submit" disabled={loading} className="flex-1 gap-2" size="sm">
+                {loading ? (
+                  <><Hourglass className="h-3.5 w-3.5 animate-spin" /> Enviando...</>
+                ) : (
+                  <><EnvelopeSimple className="h-3.5 w-3.5" /> Enviar Link</>
+                )}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowForgotPassword(false)} size="sm">
+                Voltar
+              </Button>
             </div>
-          )}
-
-          <div className="flex gap-2">
-            <Button
-              type="submit"
-              disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <Hourglass className="h-4 w-4 animate-spin" />
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <EnvelopeSimple className="h-4 w-4" />
-                  Enviar Link
-                </>
-              )}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowForgotPassword(false)}
-            >
-              Voltar
-            </Button>
-          </div>
-        </form>
+          </form>
+        </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto p-6 space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-bold">Login</h1>
-        <p className="text-sm text-gray-600">
-          Bem-vindo de volta! Faça login com suas credenciais
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Email</label>
-          <Input
-            type="email"
-            placeholder="seu@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+    <Card className="border-border/60 shadow-sm">
+      <CardContent className="p-6 space-y-5">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold tracking-tight">Login</h2>
+          <p className="text-sm text-muted-foreground">
+            Bem-vindo de volta! Faça login com suas credenciais
+          </p>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Senha</label>
-          <div className="relative">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Email</label>
             <Input
-              type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              type="email"
+              placeholder="seu@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
+              className="h-10"
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
-            >
-              {showPassword ? '👁️' : '👁️‍🗨️'}
-            </button>
           </div>
-        </div>
 
-        {error && (
-          <div className="p-3 rounded bg-red-50 text-red-700 text-sm">
-            {error}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Senha</label>
+            <div className="relative">
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="h-10 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showPassword ? <EyeSlash className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
-        )}
 
-        <Button
-          type="submit"
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-2"
-        >
-          {loading ? (
-            <>
-              <Hourglass className="h-4 w-4 animate-spin" />
-              Fazendo login...
-            </>
-          ) : (
-            <>
-              <span>Entrar</span>
-            </>
+          {error && (
+            <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {error}
+            </div>
           )}
-        </Button>
-      </form>
 
-      <div className="space-y-2">
-        <button
-          type="button"
-          onClick={() => setShowForgotPassword(true)}
-          className="text-sm text-blue-600 hover:text-blue-700 w-full text-center"
-        >
-          Esqueceu a senha?
-        </button>
-        
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300" />
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Ou</span>
-          </div>
-        </div>
+          <Button type="submit" disabled={loading} className="w-full" size="sm">
+            {loading ? (
+              <><Hourglass className="h-3.5 w-3.5 animate-spin mr-2" /> Fazendo login...</>
+            ) : (
+              "Entrar"
+            )}
+          </Button>
+        </form>
 
-        <p className="text-sm text-center text-gray-600">
-          Não tem uma conta?{' '}
+        <div className="space-y-3">
           <button
             type="button"
-            onClick={onSwitchToSignup}
-            className="text-blue-600 hover:text-blue-700 font-medium"
+            onClick={() => setShowForgotPassword(true)}
+            className="text-xs text-primary hover:underline w-full text-center"
           >
-            Criar agora
+            Esqueceu a senha?
           </button>
-        </p>
-      </div>
+          
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border/60" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-card px-2 text-muted-foreground">ou</span>
+            </div>
+          </div>
+
+          <p className="text-xs text-center text-muted-foreground">
+            Não tem uma conta?{' '}
+            <button
+              type="button"
+              onClick={onSwitchToSignup}
+              className="text-primary hover:underline font-medium"
+            >
+              Criar agora
+            </button>
+          </p>
+        </div>
+      </CardContent>
     </Card>
   );
 }

@@ -8,9 +8,9 @@ interface SectionProps {
 
 export function Section({ title, text }: SectionProps) {
   return (
-    <Card className="mt-4">
+    <Card className="mt-4 border-border/60 bg-card shadow-sm">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">{title}</CardTitle>
+        <CardTitle className="text-base font-semibold tracking-tight">{title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {String(text || "").split("\n").filter(Boolean).map((line, index) => (

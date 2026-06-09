@@ -6,6 +6,7 @@ import { TimeLine } from "@/components/time-line";
 import { Legend } from "@/components/legend";
 import { COLORS } from "@/styles";
 import type { AppForm } from "@/types";
+import { Rocket, X, Minus } from "@phosphor-icons/react";
 
 interface OverviewPageProps {
   form: AppForm;
@@ -21,9 +22,9 @@ export function OverviewPage({
   timelineRowsPreviaPacotes,
 }: OverviewPageProps) {
   return (
-    <div className="space-y-4 pt-2">
-      <Card className="w-full print:hidden">
-        <CardContent className="p-5">
+    <div className="space-y-6 pt-2">
+      <Card className="w-full print:hidden border border-border/60 bg-card rounded-xl shadow-sm">
+        <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField label="Dias de trâmite CHG" hint="Número de dias de processamento">
               <Input type="number" min="0" value={form.chgDias || ""} onChange={(e) => updateForm("chgDias", e.target.value)} placeholder="Ex: 3" />
@@ -39,25 +40,25 @@ export function OverviewPage({
       </Card>
 
       {/* Seção dedicada: Linha do Tempo - Largura total */}
-      <Card className="w-full">
-        <CardContent className="p-5">
+      <Card className="w-full border border-border/60 bg-card rounded-xl shadow-sm">
+        <CardContent className="p-6">
           <TimeLine
             form={{ ...form, inicio: calculoPreviaPacotes.inicioPacote }}
             timelineRows={timelineRowsPreviaPacotes}
             visible={true}
           />
           {/* Legenda abaixo da linha do tempo */}
-          <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 pt-4 border-t">
+          <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 pt-4 border-t border-border/60">
             <Legend color={COLORS.desenvolvimento} label="✓ Desenvolvimento" />
             <Legend color={COLORS.subida} label="✓ Subida em Pre Prod" />
             <Legend color={COLORS.testes} label="✓ QA Compass" />
             <Legend color={COLORS.weekend} label="✗ Fim de semana" />
             <Legend color={COLORS.postRelease} label="✗ Tombamento" />
-            <Legend color={COLORS.holiday} label="✗ Feriado" />
-            <Legend color={COLORS.blocked} label="✗ Projeto Impactado" />
-            <Legend color={COLORS.releaseTarget} label="🚀 Subida em Produção" />
-            <Legend color={COLORS.esteiraPreProd} label="▬ Esteira Pre Prod" type="border" />
-            <Legend color={COLORS.chg} label="▬ Trâmite CHG" type="border" />
+            <Legend color={COLORS.holiday} label="Feriado" icon={<X className="h-3 w-3" />} />
+            <Legend color={COLORS.blocked} label="Projeto Impactado" icon={<X className="h-3 w-3" />} />
+            <Legend color={COLORS.releaseTarget} label="Subida em Produção" icon={<Rocket className="h-3 w-3" />} />
+            <Legend color={COLORS.esteiraPreProd} label="Esteira Pre Prod" type="border" icon={<Minus className="h-3 w-3" />} />
+            <Legend color={COLORS.chg} label="Trâmite CHG" type="border" icon={<Minus className="h-3 w-3" />} />
             <Legend color={COLORS.releaseDay} label="● Domingo da release" />
           </div>
         </CardContent>

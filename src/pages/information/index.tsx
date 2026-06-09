@@ -13,9 +13,9 @@ interface InformationPageProps {
 
 export function InformationPage({ form, updateForm, feriados, releases }: InformationPageProps) {
   return (
-    <div className="space-y-4 pt-2">
-      <Card className="w-full print:hidden">
-        <CardContent className="p-5">
+    <div className="space-y-6 pt-2">
+      <Card className="w-full print:hidden border border-border/60 bg-card rounded-xl shadow-sm">
+        <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField label="Título da estimativa" required>
               <Input value={form.titulo} onChange={(e) => updateForm("titulo", e.target.value)} placeholder="Ex: PTI-123" />

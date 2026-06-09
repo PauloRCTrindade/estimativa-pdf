@@ -29,7 +29,7 @@ export function AtividadeItem({
   onRemove,
 }: AtividadeItemProps) {
   return (
-    <Card className="p-3 border-zinc-200">
+    <Card className="p-3 border-border/60 bg-card shadow-sm">
       <div className="space-y-2">
         <Input
           value={atividade.nome}
@@ -48,7 +48,7 @@ export function AtividadeItem({
               placeholder="Dias"
               className="text-sm"
             />
-            <label className="text-xs text-zinc-500 mt-0.5 block">Dias úteis</label>
+            <label className="text-xs text-muted-foreground mt-0.5 block">Dias úteis</label>
           </div>
           
           <div>
@@ -58,7 +58,7 @@ export function AtividadeItem({
               placeholder="Etapa"
               className="text-sm"
             />
-            <label className="text-xs text-zinc-500 mt-0.5 block">Etapa</label>
+            <label className="text-xs text-muted-foreground mt-0.5 block">Etapa</label>
           </div>
           
           <div>
@@ -72,7 +72,7 @@ export function AtividadeItem({
                 <SelectItem value="testes">Testes internos</SelectItem>
               </SelectContent>
             </Select>
-            <label className="text-xs text-zinc-500 mt-0.5 block">Tipo</label>
+            <label className="text-xs text-muted-foreground mt-0.5 block">Tipo</label>
           </div>
         </div>
 
@@ -126,7 +126,7 @@ export function AtividadesList({
 }: AtividadesListProps) {
   return (
     <div className="space-y-3">
-      <ScrollArea className="h-96 border rounded-lg p-4 bg-white">
+      <ScrollArea className="h-96 border border-border/60 rounded-xl p-4 bg-card shadow-sm">
         <div className="space-y-2 pr-4">
           {atividades.map((atividade, index) => (
             <AtividadeItem

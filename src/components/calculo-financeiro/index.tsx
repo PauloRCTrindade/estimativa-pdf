@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { CurrencyDollar as CurrencyDollarIcon, CalendarBlank as CalendarBlankIcon, Warning } from "@phosphor-icons/react"
+import { CurrencyDollar as CurrencyDollarIcon, CalendarBlank as CalendarBlankIcon, Warning, Calendar } from "@phosphor-icons/react"
 import { parseDateBR, isValidDate, isWeekend, addDays, isSameDay } from "@/utils"
 
 interface Atividade {
@@ -156,11 +156,11 @@ export function CalculoFinanceiro({ atividades, dataInicio = "", dataFim = "", f
         <>
           {/* Informações de Data e Dias Úteis */}
           {(dataInicio || dataFim) && (
-            <Card className="p-3 bg-slate-50 border-slate-200">
+            <Card className="p-3 bg-muted/30 border-border/60 shadow-sm">
               <div className="space-y-2">
                 <div className="flex items-center gap-2 mb-2">
-                  <CalendarBlankIcon className="h-4 w-4 text-slate-600" />
-                  <p className="text-xs font-semibold text-slate-700">Período do Projeto</p>
+                  <CalendarBlankIcon className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-xs font-semibold text-foreground">Período do Projeto</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
@@ -172,30 +172,31 @@ export function CalculoFinanceiro({ atividades, dataInicio = "", dataFim = "", f
                     <p className="font-semibold">{dataFim || "—"}</p>
                   </div>
                 </div>
-                <div className="pt-2 border-t border-slate-200">
+                <div className="pt-2 border-t border-border/40">
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="bg-white rounded p-2 border border-slate-200">
+                    <div className="bg-card rounded p-2 border border-border/60">
                       <p className="text-muted-foreground">Dias totais</p>
-                      <p className="text-lg font-bold text-slate-700">{diasUteis.total}</p>
+                      <p className="text-lg font-bold text-foreground">{diasUteis.total}</p>
                     </div>
-                    <div className="bg-white rounded p-2 border border-slate-200">
+                    <div className="bg-card rounded p-2 border border-border/60">
                       <p className="text-muted-foreground">Dias úteis</p>
-                      <p className="text-lg font-bold text-emerald-600">{diasUteis.uteis}</p>
+                      <p className="text-lg font-bold text-primary">{diasUteis.uteis}</p>
                     </div>
                   </div>
                 </div>
                 
                 {/* Feriados encontrados */}
                 {diasUteis.feriados.length > 0 && (
-                  <div className="pt-2 border-t border-slate-200">
+                  <div className="pt-2 border-t border-border/40">
                     <div className="flex items-center gap-1.5 mb-1.5">
-                      <Warning className="h-3.5 w-3.5 text-amber-600" />
-                      <p className="text-xs font-semibold text-amber-700">{diasUteis.feriados.length} Feriado{diasUteis.feriados.length !== 1 ? "s" : ""}</p>
+                      <Warning className="h-3.5 w-3.5 text-yellow-600" />
+                      <p className="text-xs font-semibold text-yellow-700">{diasUteis.feriados.length} Feriado{diasUteis.feriados.length !== 1 ? "s" : ""}</p>
                     </div>
                     <div className="space-y-1">
                       {diasUteis.feriados.map((f, i) => (
-                        <div key={i} className="text-xs bg-amber-50 border border-amber-200 rounded px-2 py-1 text-amber-800">
-                          📅 {f.toLocaleDateString("pt-BR")}
+                        <div key={i} className="text-xs bg-amber-500/10 border border-amber-500/20 rounded-md px-2 py-1 text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {f.toLocaleDateString("pt-BR")}
                         </div>
                       ))}
                     </div>
@@ -266,14 +267,14 @@ export function CalculoFinanceiro({ atividades, dataInicio = "", dataFim = "", f
           <Separator />
 
           {/* Total */}
-          <Card className="p-3 bg-zinc-900 text-white">
+          <Card className="p-3 bg-primary text-primary-foreground shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-zinc-400">Custo total estimado</p>
+                <p className="text-xs text-primary-foreground/60">Custo total estimado</p>
                 <p className="text-xl font-bold">{formatBRL(custoTotal)}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-zinc-400">Total de dias</p>
+                <p className="text-xs text-primary-foreground/60">Total de dias</p>
                 <p className="text-lg font-semibold">{totalAtividades}</p>
               </div>
             </div>

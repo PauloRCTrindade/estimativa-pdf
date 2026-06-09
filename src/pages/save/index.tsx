@@ -14,6 +14,8 @@ interface SavePageProps {
   onGerarPDF: () => void;
   onAbrirCalendario: () => void;
   onGerarPDFCalendario: () => void;
+  onFavorite: (item: any) => void;
+  favoriteIds: string[];
   form: AppForm;
   timelineRows: any[][];
 }
@@ -27,26 +29,30 @@ export function SavePage({
   onGerarPDF,
   onAbrirCalendario,
   onGerarPDFCalendario,
+  onFavorite,
+  favoriteIds,
   form,
   timelineRows,
 }: SavePageProps) {
   return (
-    <div className="space-y-4 pt-2">
-      <Card className="w-full print:hidden">
-        <CardContent className="p-5 space-y-4">
+    <div className="space-y-6 pt-2">
+      <Card className="w-full print:hidden border border-border/60 bg-card rounded-xl shadow-sm">
+        <CardContent className="p-6 space-y-6">
           <EstimativaHistorico
             historico={(estimativas as any[]).filter(e => e.tipo === 'estimativa-pacotes')}
             onLoad={onLoad}
             onDelete={onDelete}
             onSave={onSave}
+            onFavorite={onFavorite}
+            favoriteIds={favoriteIds}
           />
 
-          <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <Button className="w-full" onClick={onAbrirPDF} variant="default">Abrir Estimativa</Button>
               <Button className="w-full" onClick={onGerarPDF} variant="default">Baixar Estimativa</Button>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-4">
               <Button className="w-full" onClick={onAbrirCalendario} variant="default">
                 <Calendar className="mr-2 h-4 w-4" />
                 Abrir Calendário

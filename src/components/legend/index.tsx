@@ -4,9 +4,10 @@ interface LegendProps {
   color: string
   label: string
   type?: "fill" | "border"
+  icon?: React.ReactNode
 }
 
-export function Legend({ color, label, type = "fill" }: LegendProps) {
+export function Legend({ color, label, type = "fill", icon }: LegendProps) {
   return (
     <table style={{ borderCollapse: "collapse", borderSpacing: 0, margin: 0, padding: 0, width: "auto" }}>
       <tbody>
@@ -25,7 +26,10 @@ export function Legend({ color, label, type = "fill" }: LegendProps) {
             />
           </td>
           <td style={{ verticalAlign: "middle", fontFamily: "Arial, Helvetica, sans-serif", color: color, whiteSpace: "nowrap", padding: 0 }}>
-            {label}
+            <span className="inline-flex items-center gap-1">
+              {icon}
+              {label}
+            </span>
           </td>
         </tr>
       </tbody>

@@ -523,24 +523,24 @@ export function EstimativaPacotesTable({
   let activityRowIndex = 0;
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-sm bg-white dark:bg-zinc-900">
+    <div className="overflow-x-auto rounded-xl border border-border/60 shadow-sm bg-card">
       <table className="min-w-full text-xs border-collapse">
         <thead>
-          <tr className="bg-zinc-800 text-white">
-            <th className="w-28 px-3 py-2 text-left border-r border-zinc-700">Demanda</th>
-            <th className="w-32 px-2 py-2 text-center border-r border-zinc-700">Tipo</th>
-            <th className="w-14 px-2 py-2 text-center border-r border-zinc-700">Etapa</th>
-            <th className="px-3 py-2 text-left border-r border-zinc-700 min-w-64">Atividade / Pacote</th>
-            <th className="w-28 px-2 py-2 text-center border-r border-zinc-700">Início</th>
-            <th className="w-24 px-2 py-2 text-center border-r border-zinc-700">Horas</th>
-            <th className="w-36 px-2 py-2 text-center border-r border-zinc-700">Feriado</th>
-            <th className="w-36 px-2 py-2 text-center border-r border-zinc-700">Finais de Semana</th>
-            <th className="w-36 px-2 py-2 text-center border-r border-zinc-700">Tombamento</th>
-            <th className="w-20 px-2 py-2 text-center border-r border-zinc-700">Dias Necessários</th>
-            <th className="w-20 px-2 py-2 text-center border-r border-zinc-700">Dias de Overtime</th>
-            <th className="w-24 px-2 py-2 text-center border-r border-zinc-700">Horas de Overtime</th>
-            <th className="w-20 px-2 py-2 text-center border-r border-zinc-700">Dias de Atuação</th>
-            <th className="w-24 px-2 py-2 text-center border-r border-zinc-700">Término</th>
+          <tr className="bg-muted/80 text-foreground font-semibold">
+            <th className="w-28 px-3 py-2 text-left border-r border-border/40">Demanda</th>
+            <th className="w-32 px-2 py-2 text-center border-r border-border/40">Tipo</th>
+            <th className="w-14 px-2 py-2 text-center border-r border-border/40">Etapa</th>
+            <th className="px-3 py-2 text-left border-r border-border/40 min-w-64">Atividade / Pacote</th>
+            <th className="w-28 px-2 py-2 text-center border-r border-border/40">Início</th>
+            <th className="w-24 px-2 py-2 text-center border-r border-border/40">Horas</th>
+            <th className="w-36 px-2 py-2 text-center border-r border-border/40">Feriado</th>
+            <th className="w-36 px-2 py-2 text-center border-r border-border/40">Finais de Semana</th>
+            <th className="w-36 px-2 py-2 text-center border-r border-border/40">Tombamento</th>
+            <th className="w-20 px-2 py-2 text-center border-r border-border/40">Dias Necessários</th>
+            <th className="w-20 px-2 py-2 text-center border-r border-border/40">Dias de Overtime</th>
+            <th className="w-24 px-2 py-2 text-center border-r border-border/40">Horas de Overtime</th>
+            <th className="w-20 px-2 py-2 text-center border-r border-border/40">Dias de Atuação</th>
+            <th className="w-24 px-2 py-2 text-center border-r border-border/40">Término</th>
             <th className="w-16 px-2 py-2 text-center">Ações</th>
           </tr>
         </thead>
@@ -552,15 +552,15 @@ export function EstimativaPacotesTable({
             const ativGroupInfoList = buildAtivGroupInfo(pacote);
 
             return [
-              <tr key={`pacote-${pacote.id}`} className="bg-zinc-700 dark:bg-zinc-800 text-zinc-100 font-semibold border-b border-zinc-600">
+              <tr key={`pacote-${pacote.id}`} className="bg-muted/70 text-foreground font-semibold border-b border-border/40">
                 {}
-                <td className="px-2 py-1.5 border-r border-zinc-600">
+                <td className="px-2 py-1.5 border-r border-border/40">
                   <div className="flex items-center gap-1">
                     <button onClick={() => onTogglePacote(pacote.id)} className="hover:opacity-80 transition-opacity flex-shrink-0">
                       {collapsed ? <CaretRight className="h-3.5 w-3.5" /> : <CaretDown className="h-3.5 w-3.5" />}
                     </button>
                     <input
-                      className="bg-transparent text-zinc-100 placeholder-zinc-400 font-semibold w-full outline-none focus:bg-zinc-600 rounded px-1"
+                      className="bg-transparent text-foreground placeholder:text-muted-foreground font-semibold w-full outline-none focus:bg-accent rounded px-1"
                       value={pacote.codigo}
                       placeholder="Código"
                       onChange={(e) => onUpdatePacote(pacote.id, "codigo", e.target.value)}
@@ -568,15 +568,15 @@ export function EstimativaPacotesTable({
                   </div>
                 </td>
                 {}
-                <td className="px-2 py-1.5 border-r border-zinc-600" />
+                <td className="px-2 py-1.5 border-r border-border/40" />
                 {}
-                <td className="px-2 py-1.5 border-r border-zinc-600" />
+                <td className="px-2 py-1.5 border-r border-border/40" />
                 {}
-                <td className="px-2 py-1.5 border-r border-zinc-600">
+                <td className="px-2 py-1.5 border-r border-border/40">
                   <div className="flex items-center gap-2">
-                    <Package className="h-3.5 w-3.5 flex-shrink-0 opacity-70 text-orange-400" />
+                    <Package className="h-3.5 w-3.5 flex-shrink-0 opacity-70 text-primary" />
                     <input
-                      className="bg-transparent text-zinc-100 placeholder-zinc-400 font-semibold flex-1 outline-none focus:bg-zinc-600 rounded px-1 min-w-0"
+                      className="bg-transparent text-foreground placeholder:text-muted-foreground font-semibold flex-1 outline-none focus:bg-accent rounded px-1 min-w-0"
                       value={pacote.nome}
                       placeholder="Nome do pacote"
                       onChange={(e) => onUpdatePacote(pacote.id, "nome", e.target.value)}
@@ -584,44 +584,44 @@ export function EstimativaPacotesTable({
                   </div>
                 </td>
                 {}
-                <td className="px-2 py-1.5 border-r border-zinc-600" />
+                <td className="px-2 py-1.5 border-r border-border/40" />
                 {}
-                <td className="px-2 py-1.5 text-center border-r border-zinc-600 tabular-nums text-orange-400 font-bold">
+                <td className="px-2 py-1.5 text-center border-r border-border/40 tabular-nums text-primary font-bold">
                   {totalHoras > 0 ? `${totalHoras}h` : "—"}
                 </td>
                 {}
-                <td className="px-2 py-1.5 border-r border-zinc-600" />
+                <td className="px-2 py-1.5 border-r border-border/40" />
                 {}
-                <td className="px-2 py-1.5 border-r border-zinc-600" />
+                <td className="px-2 py-1.5 border-r border-border/40" />
                 {}
-                <td className="px-2 py-1.5 border-r border-zinc-600" />
+                <td className="px-2 py-1.5 border-r border-border/40" />
                 {}
-                <td className="px-2 py-1.5 text-center border-r border-zinc-600 tabular-nums font-bold text-zinc-200">
+                <td className="px-2 py-1.5 text-center border-r border-border/40 tabular-nums font-bold text-muted-foreground">
                   {(() => {
                     const total = ativGroupInfoList.filter(g => g.isFirstInGroup).reduce((sum, g) => sum + g.etapaTotalDiasNecessarios, 0);
                     return total > 0 ? total : "—";
                   })()}
                 </td>
                 {}
-                <td className="px-2 py-1.5 border-r border-zinc-600" />
+                <td className="px-2 py-1.5 border-r border-border/40" />
                 {}
-                <td className="px-2 py-1.5 border-r border-zinc-600" />
+                <td className="px-2 py-1.5 border-r border-border/40" />
                 {}
-                <td className="px-2 py-1.5 text-center border-r border-zinc-600 tabular-nums font-bold text-zinc-200">
+                <td className="px-2 py-1.5 text-center border-r border-border/40 tabular-nums font-bold text-muted-foreground">
                   {(() => {
                     const total = ativGroupInfoList.filter(g => g.isFirstInGroup).reduce((sum, g) => sum + g.etapaTotalDiasAtuacao, 0);
                     return total > 0 ? total : "—";
                   })()}
                 </td>
                 {}
-                <td className="px-2 py-1.5 border-r border-zinc-600" />
+                <td className="px-2 py-1.5 border-r border-border/40" />
                 {}
                 <td className="px-2 py-1.5">
                   <div className="flex items-center gap-1">
-                    <button onClick={() => onAddAtividade(pacote.id)} title="Adicionar atividade" className="p-1 hover:bg-zinc-600 rounded transition-colors">
+                    <button onClick={() => onAddAtividade(pacote.id)} title="Adicionar atividade" className="p-1 hover:bg-accent rounded transition-colors">
                       <Plus className="h-3.5 w-3.5" />
                     </button>
-                    <button onClick={() => onRemovePacote(pacote.id)} title="Remover pacote" className="p-1 hover:bg-red-700/60 rounded transition-colors">
+                    <button onClick={() => onRemovePacote(pacote.id)} title="Remover pacote" className="p-1 hover:bg-destructive/20 hover:text-destructive rounded transition-colors">
                       <Trash className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -641,23 +641,23 @@ export function EstimativaPacotesTable({
                     return (
                       <tr
                         key={`ativ-${ativ.id}`}
-                        className={`${groupInfo.colorBg} hover:bg-blue-50 dark:hover:bg-zinc-700/40 transition-colors text-zinc-900 dark:text-zinc-100`}
+                        className={`${groupInfo.colorBg} hover:bg-muted/40 transition-colors text-foreground`}
                       >
                         {}
-                        <td className={`px-2 py-1 border-r border-zinc-200 dark:border-zinc-600 select-none border-l-4 ${groupInfo.colorBorder}`}>
+                        <td className={`px-2 py-1 border-r border-border/40 select-none border-l-4 ${groupInfo.colorBorder}`}>
                           <div className="flex items-center gap-1.5">
-                            <span className="text-zinc-400 tabular-nums text-xs font-medium flex-shrink-0">{activityRowIndex}.</span>
-                            {ativ.demanda && <span className="text-zinc-500 truncate">{ativ.demanda}</span>}
+                            <span className="text-muted-foreground tabular-nums text-xs font-medium flex-shrink-0">{activityRowIndex}.</span>
+                            {ativ.demanda && <span className="text-muted-foreground truncate">{ativ.demanda}</span>}
                           </div>
                         </td>
 
                         {}
-                        <td className="px-1 py-1 border-r border-zinc-200">
+                        <td className="px-1 py-1 border-r border-border/40">
                           <Select
                             value={ativ.tipo}
                             onValueChange={(v) => onUpdateAtividade(pacote.id, ativ.id, "tipo", v)}
                           >
-                            <SelectTrigger className="h-6 text-xs border-transparent bg-transparent hover:border-zinc-200 focus:border-blue-400 px-1.5">
+                            <SelectTrigger className="h-6 text-xs border-transparent bg-transparent hover:border-border/40 focus:border-primary px-1.5">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -669,12 +669,12 @@ export function EstimativaPacotesTable({
                         </td>
 
                         {}
-                        <td className="px-1 py-1 text-center border-r border-zinc-200">
+                        <td className="px-1 py-1 text-center border-r border-border/40">
                           <input
                             className={`w-full px-1 py-0.5 rounded text-xs outline-none border text-center tabular-nums ${
                               focusedCell === `etapa-${ativ.id}`
-                                ? "border-blue-400 bg-white"
-                                : "border-transparent bg-transparent hover:border-zinc-200"
+                                ? "border-primary bg-background ring-1 ring-primary"
+                                : "border-transparent bg-transparent hover:border-border/40"
                             }`}
                             value={ativ.etapa ?? ""}
                             placeholder="1"
@@ -685,12 +685,12 @@ export function EstimativaPacotesTable({
                         </td>
 
                         {}
-                        <td className="px-1 py-1 border-r border-zinc-200">
+                        <td className="px-1 py-1 border-r border-border/40">
                           <input
                             className={`w-full px-1.5 py-0.5 rounded text-xs outline-none border ${
                               focusedCell === `nome-${ativ.id}`
-                                ? "border-blue-400 bg-white"
-                                : "border-transparent bg-transparent hover:border-zinc-200"
+                                ? "border-primary bg-background ring-1 ring-primary"
+                                : "border-transparent bg-transparent hover:border-border/40"
                             }`}
                             value={ativ.nome}
                             placeholder="Nome da atividade"
@@ -701,7 +701,7 @@ export function EstimativaPacotesTable({
                         </td>
 
                         {}
-                        <td className="px-1 py-1 border-r border-zinc-200">
+                        <td className="px-1 py-1 border-r border-border/40">
                           {(() => {
                             const dayType = getInicioDayType(ativ.inicio);
                             const colorClass =
@@ -723,10 +723,10 @@ export function EstimativaPacotesTable({
                         </td>
 
                         {}
-                        <td className="px-1 py-1 text-center border-r border-zinc-200">
+                        <td className="px-1 py-1 text-center border-r border-border/40">
                           <div className="flex items-center justify-center gap-0.5">
                             <button
-                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-zinc-200 text-zinc-500 transition-colors"
+                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-colors"
                               onClick={() => { const v = Math.max(0, Number(ativ.horas || 0) - 1); onUpdateAtividade(pacote.id, ativ.id, "horas", v); cascadeFrom(pacote, idx, { horas: v }); }}
                             >
                               <Minus className="h-2.5 w-2.5" />
@@ -737,10 +737,10 @@ export function EstimativaPacotesTable({
                               step="1"
                               className={`w-12 px-1 py-0.5 rounded text-xs outline-none border text-center tabular-nums font-medium ${
                                 focusedCell === `horas-${ativ.id}`
-                                  ? "border-blue-400 bg-white"
+                                  ? "border-primary bg-background ring-1 ring-primary"
                                   : Number(ativ.horas) > 0
-                                  ? "border-transparent bg-blue-50 text-blue-700 hover:border-blue-200"
-                                  : "border-transparent bg-transparent hover:border-zinc-200"
+                                  ? "border-transparent bg-primary/10 text-primary hover:border-primary/30"
+                                  : "border-transparent bg-transparent hover:border-border/40"
                               }`}
                               value={ativ.horas || ""}
                               placeholder="0"
@@ -749,7 +749,7 @@ export function EstimativaPacotesTable({
                               onBlur={() => setFocusedCell(null)}
                             />
                             <button
-                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-zinc-200 text-zinc-500 transition-colors"
+                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-colors"
                               onClick={() => { const v = Number(ativ.horas || 0) + 1; onUpdateAtividade(pacote.id, ativ.id, "horas", v); cascadeFrom(pacote, idx, { horas: v }); }}
                             >
                               <Plus className="h-2.5 w-2.5" />
@@ -758,10 +758,10 @@ export function EstimativaPacotesTable({
                         </td>
 
                         {}
-                        <td className="px-2 py-1 text-center border-r border-zinc-200">
+                        <td className="px-2 py-1 text-center border-r border-border/40">
                           {(() => {
                             const fs = calcFeriadosNoPeriodo(ativ.inicio, ativ.horas, feriados, releases, ot, horasOT);
-                            if (fs.length === 0) return <span className="text-zinc-300">—</span>;
+                            if (fs.length === 0) return <span className="text-muted-foreground/50">—</span>;
                             return (
                               <div className="flex flex-wrap gap-0.5 justify-center">
                                 {fs.map((f) => {
@@ -778,7 +778,7 @@ export function EstimativaPacotesTable({
                                       }}
                                       className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium tabular-nums cursor-pointer transition-colors ${
                                         selected
-                                          ? "bg-green-100 text-green-700 hover:bg-green-200"
+                                          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
                                           : "bg-red-100 text-red-700 hover:bg-red-200"
                                       }`}
                                     >
@@ -792,10 +792,10 @@ export function EstimativaPacotesTable({
                         </td>
 
                         {}
-                        <td className="px-2 py-1 text-center border-r border-zinc-200">
+                        <td className="px-2 py-1 text-center border-r border-border/40">
                           {(() => {
                             const ws = calcFimDeSemanaNoPeriodo(ativ.inicio, ativ.horas, feriados, releases, ot, horasOT);
-                            if (ws.length === 0) return <span className="text-zinc-300">—</span>;
+                            if (ws.length === 0) return <span className="text-muted-foreground/50">—</span>;
                             return (
                               <div className="flex flex-wrap gap-0.5 justify-center">
                                 {ws.map((w) => {
@@ -817,7 +817,7 @@ export function EstimativaPacotesTable({
                                       }}
                                       className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium tabular-nums cursor-pointer transition-colors ${
                                         selected
-                                          ? "bg-green-100 text-green-700 hover:bg-green-200"
+                                          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
                                           : isReleaseSunday
                                           ? "bg-blue-300 text-blue-900 hover:bg-blue-400"
                                           : "bg-blue-100 text-blue-700 hover:bg-blue-200"
@@ -833,10 +833,10 @@ export function EstimativaPacotesTable({
                         </td>
 
                         {}
-                        <td className="px-2 py-1 text-center border-r border-zinc-200">
+                        <td className="px-2 py-1 text-center border-r border-border/40">
                           {(() => {
                             const ts = calcTombamentosNoPeriodo(ativ.inicio, ativ.horas, feriados, releases, ot, horasOT);
-                            if (ts.length === 0) return <span className="text-zinc-300">—</span>;
+                            if (ts.length === 0) return <span className="text-muted-foreground/50">—</span>;
                             return (
                               <div className="flex flex-wrap gap-0.5 justify-center">
                                 {ts.map((t) => {
@@ -853,7 +853,7 @@ export function EstimativaPacotesTable({
                                       }}
                                       className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium tabular-nums cursor-pointer transition-colors ${
                                         selected
-                                          ? "bg-green-100 text-green-700 hover:bg-green-200"
+                                          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
                                           : "bg-orange-100 text-orange-700 hover:bg-orange-200"
                                       }`}
                                     >
@@ -867,25 +867,25 @@ export function EstimativaPacotesTable({
                         </td>
 
                         {groupInfo.isFirstInGroup && (
-                          <td rowSpan={groupInfo.groupSize} className="px-2 py-1 text-center border-r border-zinc-200 dark:border-zinc-600 align-middle">
-                            <span className={`inline-block px-2 py-0.5 rounded text-xs tabular-nums font-semibold ${groupInfo.etapaTotalDiasNecessarios > 0 ? "bg-zinc-100 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-100" : "text-zinc-400"}`}>
+                          <td rowSpan={groupInfo.groupSize} className="px-2 py-1 text-center border-r border-border/40 align-middle">
+                            <span className={`inline-block px-2 py-0.5 rounded text-xs tabular-nums font-semibold ${groupInfo.etapaTotalDiasNecessarios > 0 ? "bg-muted text-foreground" : "text-muted-foreground"}`}>
                               {groupInfo.etapaTotalDiasNecessarios > 0 ? groupInfo.etapaTotalDiasNecessarios : "—"}
                             </span>
                           </td>
                         )}
 
                         {}
-                        <td className="px-2 py-1 text-center border-r border-zinc-200 dark:border-zinc-600">
-                          <span className={`inline-block px-2 py-0.5 rounded text-xs tabular-nums font-semibold ${diasOvertimeCalc > 0 ? "bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200" : "text-zinc-400"}`}>
+                        <td className="px-2 py-1 text-center border-r border-border/40">
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs tabular-nums font-semibold ${diasOvertimeCalc > 0 ? "bg-purple-100 text-purple-800" : "text-muted-foreground"}`}>
                             {diasOvertimeCalc > 0 ? diasOvertimeCalc : "—"}
                           </span>
                         </td>
 
                         {}
-                        <td className="px-1 py-1 text-center border-r border-zinc-200">
+                        <td className="px-1 py-1 text-center border-r border-border/40">
                           <div className="flex items-center justify-center gap-0.5">
                             <button
-                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-zinc-200 text-zinc-500 transition-colors"
+                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-colors"
                               onClick={() => { const v = Math.max(0, horasOT - 1); onUpdateAtividade(pacote.id, ativ.id, "horasOvertime", v); cascadeFrom(pacote, idx, { horasOvertime: v }); }}
                             >
                               <Minus className="h-2.5 w-2.5" />
@@ -896,10 +896,10 @@ export function EstimativaPacotesTable({
                               step="1"
                               className={`w-12 px-1 py-0.5 rounded text-xs outline-none border text-center tabular-nums font-medium ${
                                 focusedCell === `horasot-${ativ.id}`
-                                  ? "border-blue-400 bg-white"
+                                  ? "border-primary bg-background ring-1 ring-primary"
                                   : horasOT > 0
                                   ? "border-transparent bg-purple-50 text-purple-700 hover:border-purple-200"
-                                  : "border-transparent bg-transparent hover:border-zinc-200"
+                                  : "border-transparent bg-transparent hover:border-border/40"
                               }`}
                               value={horasOT || ""}
                               placeholder="0"
@@ -908,7 +908,7 @@ export function EstimativaPacotesTable({
                               onBlur={() => setFocusedCell(null)}
                             />
                             <button
-                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-zinc-200 text-zinc-500 transition-colors"
+                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-colors"
                               onClick={() => { const v = horasOT + 1; onUpdateAtividade(pacote.id, ativ.id, "horasOvertime", v); cascadeFrom(pacote, idx, { horasOvertime: v }); }}
                             >
                               <Plus className="h-2.5 w-2.5" />
@@ -917,16 +917,16 @@ export function EstimativaPacotesTable({
                         </td>
 
                         {groupInfo.isFirstInGroup && (
-                          <td rowSpan={groupInfo.groupSize} className="px-2 py-1 text-center border-r border-zinc-200 dark:border-zinc-600 align-middle">
-                            <span className={`inline-block px-2 py-0.5 rounded text-xs tabular-nums font-semibold ${groupInfo.etapaTotalDiasAtuacao > 0 ? "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200" : "text-zinc-400"}`}>
+                          <td rowSpan={groupInfo.groupSize} className="px-2 py-1 text-center border-r border-border/40 align-middle">
+                            <span className={`inline-block px-2 py-0.5 rounded text-xs tabular-nums font-semibold ${groupInfo.etapaTotalDiasAtuacao > 0 ? "bg-emerald-100 text-emerald-800" : "text-muted-foreground"}`}>
                               {groupInfo.etapaTotalDiasAtuacao > 0 ? groupInfo.etapaTotalDiasAtuacao : "—"}
                             </span>
                           </td>
                         )}
 
                         {}
-                        <td className="px-2 py-1 text-center border-r border-zinc-200 dark:border-zinc-600 tabular-nums">
-                          <span className={terminoCalc !== "—" ? "text-zinc-700 dark:text-zinc-200 font-medium" : "text-zinc-400"}>
+                        <td className="px-2 py-1 text-center border-r border-border/40 tabular-nums">
+                          <span className={terminoCalc !== "—" ? "text-foreground font-medium" : "text-muted-foreground"}>
                             {terminoCalc}
                           </span>
                         </td>
@@ -936,7 +936,7 @@ export function EstimativaPacotesTable({
                           <button
                             onClick={() => onRemoveAtividade(pacote.id, ativ.id)}
                             title="Remover atividade"
-                            className="p-1 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
                           >
                             <Trash className="h-3.5 w-3.5" />
                           </button>
@@ -954,7 +954,7 @@ export function EstimativaPacotesTable({
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full border-dashed border-orange-300 text-orange-600 hover:bg-orange-50 hover:border-orange-400"
+                className="w-full border-dashed border-primary/40 text-primary hover:bg-primary/5 hover:border-primary/60"
                 onClick={onAddPacote}
               >
                 <Plus className="h-3.5 w-3.5 mr-2" />
