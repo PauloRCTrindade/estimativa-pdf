@@ -1,4 +1,5 @@
 import { supabase } from './lib/supabase.js';
+import { setCorsHeaders, verifyAuth, unauthorized } from './lib/auth.js';
 
 // Convert camelCase to lowercase (table schema uses lowercase columns)
 function camelToLowercase(obj) {
@@ -60,9 +61,8 @@ function lowercaseToCamel(obj) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  
+  setCorsHeaders(res, req);
+
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
@@ -99,6 +99,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
+      const user = await verifyAuth(req);
+      if (!user) return unauthorized(res);
       // Convert request to lowercase
       const convertedBody = camelToLowercase(req.body);
       

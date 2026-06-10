@@ -21,6 +21,15 @@ function notify(msg: string) {
   }
 }
 
+function getToken(): string | undefined {
+  try {
+    const session = JSON.parse(localStorage.getItem('sb-' + (import.meta.env.VITE_SUPABASE_URL?.match(/https:\/\/(.+)\.supabase\.co/)?.[1] || '') + '-auth-token') || 'null');
+    return session?.access_token;
+  } catch {
+    return undefined;
+  }
+}
+
 function cardsWithTreeTasks(cards: KanbanCard[], tasks: KanbanTask[]): KanbanCard[] {
   const tasksByCard = new Map<string, KanbanTask[]>();
   tasks.forEach((t) => {
@@ -55,7 +64,7 @@ async function migrateFromLocalStorage(): Promise<{
     const createdColumns: KanbanColumn[] = [];
     for (const col of columns) {
       try {
-        const created = await criarColumn({ title: col.title, position: columns.indexOf(col) });
+        const created = await criarColumn({ title: col.title, position: columns.indexOf(col) }, getToken());
         createdColumns.push(created);
       } catch {
         createdColumns.push(col);
@@ -107,7 +116,7 @@ async function migrateFromLocalStorage(): Promise<{
                 checklist: ft.checklist,
                 comments: ft.comments,
                 attachments: ft.attachments,
-              });
+              }, getToken());
               allTasks.push(createdTask);
             } catch {
               // ignore individual task creation errors
@@ -146,7 +155,7 @@ export function useKanban(estimativas: Estimativa[]) {
 
   useEffect(() => {
     let mounted = true;
-    carregarBoard()
+    carregarBoard(getToken())
       .then(async (board) => {
         if (!mounted) return;
         if (board.columns.length === 0 && board.cards.length === 0) {
@@ -177,7 +186,7 @@ export function useKanban(estimativas: Estimativa[]) {
     const optimistic: KanbanColumn = { id: createId(), title, position: columns.length };
     setColumns((prev) => [...prev, optimistic]);
     try {
-      const created = await criarColumn({ title, position: columns.length });
+      const created = await criarColumn({ title, position: columns.length }, getToken());
       setColumns((prev) => prev.map((c) => (c.id === optimistic.id ? created : c)));
     } catch {
       setColumns((prev) => prev.filter((c) => c.id !== optimistic.id));
@@ -188,7 +197,7 @@ export function useKanban(estimativas: Estimativa[]) {
   const updateColumnTitle = useCallback(async (id: string, title: string) => {
     setColumns((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)));
     try {
-      await atualizarColumn(id, { title });
+      await atualizarColumn(id, { title }, getToken());
     } catch {
       notify("Erro ao atualizar coluna");
     }
@@ -203,7 +212,7 @@ export function useKanban(estimativas: Estimativa[]) {
     setCards((prev) => prev.filter((c) => c.columnId !== id));
     setTasks((prev) => prev.filter((t) => !removedCardIds.includes(t.cardId)));
     try {
-      await deletarColumn(id);
+      await deletarColumn(id, getToken());
     } catch {
       setColumns(prevColumns);
       setCards(prevCards);
@@ -244,7 +253,7 @@ export function useKanban(estimativas: Estimativa[]) {
 
     try {
       await Promise.all(
-        positionUpdates.map((u) => atualizarColumn(u.id, { position: u.position }))
+        positionUpdates.map((u) => atualizarColumn(u.id, { position: u.position }, getToken()))
       );
     } catch {
       notify("Erro ao reordenar colunas");
@@ -256,7 +265,7 @@ export function useKanban(estimativas: Estimativa[]) {
   const moveCard = useCallback(async (cardId: string, columnId: string) => {
     setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, columnId } : c)));
     try {
-      await atualizarCard(cardId, { columnId });
+      await atualizarCard(cardId, { columnId }, getToken());
     } catch {
       notify("Erro ao mover card");
     }
@@ -308,7 +317,7 @@ export function useKanban(estimativas: Estimativa[]) {
     // Atualizar backend (batch paralelo)
     try {
       await Promise.all(
-        positionUpdates.map((u) => atualizarCard(u.id, { position: u.position, columnId: u.columnId }))
+        positionUpdates.map((u) => atualizarCard(u.id, { position: u.position, columnId: u.columnId }, getToken()))
       );
     } catch {
       notify("Erro ao reordenar cards");
@@ -318,7 +327,7 @@ export function useKanban(estimativas: Estimativa[]) {
   const updateCard = useCallback(async (cardId: string, patch: Partial<Omit<KanbanCard, "id" | "tasks">>) => {
     setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, ...patch } : c)));
     try {
-      await atualizarCard(cardId, patch);
+      await atualizarCard(cardId, patch, getToken());
     } catch {
       notify("Erro ao atualizar card");
     }
@@ -327,7 +336,7 @@ export function useKanban(estimativas: Estimativa[]) {
   const updateCardNotes = useCallback(async (cardId: string, notes: string) => {
     setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, notes } : c)));
     try {
-      await atualizarCard(cardId, { notes });
+      await atualizarCard(cardId, { notes }, getToken());
     } catch {
       notify("Erro ao atualizar notas");
     }
@@ -337,7 +346,7 @@ export function useKanban(estimativas: Estimativa[]) {
     setCards((prev) => prev.filter((c) => c.id !== cardId));
     setTasks((prev) => prev.filter((t) => t.cardId !== cardId));
     try {
-      await deletarCard(cardId);
+      await deletarCard(cardId, getToken());
     } catch {
       notify("Erro ao deletar card");
     }
@@ -393,7 +402,7 @@ export function useKanban(estimativas: Estimativa[]) {
         checklist: newTask.checklist,
         comments: newTask.comments,
         attachments: newTask.attachments,
-      });
+      }, getToken());
       setTasks((prev) => [...prev, created]);
     } catch {
       notify("Erro ao criar tarefa");
@@ -404,7 +413,7 @@ export function useKanban(estimativas: Estimativa[]) {
     setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, tasks: updateTaskTree(c.tasks, taskId, (t) => ({ ...t, ...patch })) } : c)));
     try {
       const flatPatch: Partial<KanbanTask> = { ...patch };
-      await atualizarTask(taskId, flatPatch);
+      await atualizarTask(taskId, flatPatch, getToken());
     } catch {
       notify("Erro ao atualizar tarefa");
     }
@@ -414,7 +423,7 @@ export function useKanban(estimativas: Estimativa[]) {
     setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, tasks: updateTaskTree(c.tasks, taskId, (t) => ({ ...t, completed: !t.completed })) } : c)));
     try {
       const task = tasks.find((t) => t.id === taskId);
-      if (task) await atualizarTask(taskId, { completed: !task.completed });
+      if (task) await atualizarTask(taskId, { completed: !task.completed }, getToken());
     } catch {
       notify("Erro ao alternar tarefa");
     }
@@ -424,7 +433,7 @@ export function useKanban(estimativas: Estimativa[]) {
     setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, tasks: removeFromTree(c.tasks, taskId) ?? [] } : c)));
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
     try {
-      await deletarTask(taskId);
+      await deletarTask(taskId, getToken());
     } catch {
       notify("Erro ao deletar tarefa");
     }
@@ -438,7 +447,7 @@ export function useKanban(estimativas: Estimativa[]) {
     const next = !card.isTemplate;
     setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, isTemplate: next, isDefaultTemplate: next ? c.isDefaultTemplate : false } : c)));
     try {
-      await atualizarCard(cardId, { isTemplate: next, isDefaultTemplate: next ? card.isDefaultTemplate : false });
+      await atualizarCard(cardId, { isTemplate: next, isDefaultTemplate: next ? card.isDefaultTemplate : false }, getToken());
     } catch {
       notify("Erro ao alternar template");
     }
@@ -450,9 +459,9 @@ export function useKanban(estimativas: Estimativa[]) {
       // Unset all others first
       const templates = cards.filter((c) => c.isTemplate && c.id !== cardId);
       for (const t of templates) {
-        await atualizarCard(t.id, { isDefaultTemplate: false });
+        await atualizarCard(t.id, { isDefaultTemplate: false }, getToken());
       }
-      await atualizarCard(cardId, { isDefaultTemplate: true });
+      await atualizarCard(cardId, { isDefaultTemplate: true }, getToken());
     } catch {
       notify("Erro ao definir template padrão");
     }
@@ -471,7 +480,7 @@ export function useKanban(estimativas: Estimativa[]) {
         columnId,
         title: "Novo card",
         position: cards.length,
-      });
+      }, getToken());
       setCards((prev) => prev.map((c) => (c.id === optimistic.id ? { ...created, tasks: [] } : c)));
       return created.id;
     } catch {
@@ -496,7 +505,7 @@ export function useKanban(estimativas: Estimativa[]) {
         columnId,
         title: trimmed,
         position: cards.length,
-      });
+      }, getToken());
       setCards((prev) => prev.map((c) => (c.id === optimistic.id ? { ...created, tasks: [] } : c)));
       return created.id;
     } catch {
@@ -521,7 +530,7 @@ export function useKanban(estimativas: Estimativa[]) {
 
     let targetColumnId = columns[0]?.id;
     if (!targetColumnId) {
-      const defaultCol = await criarColumn({ title: "Backlog", position: 0 });
+      const defaultCol = await criarColumn({ title: "Backlog", position: 0 }, getToken());
       targetColumnId = defaultCol.id;
       setColumns((prev) => [...prev, defaultCol]);
     }
@@ -533,7 +542,7 @@ export function useKanban(estimativas: Estimativa[]) {
     };
 
     try {
-      const created = await criarCard(newCard);
+      const created = await criarCard(newCard, getToken());
 
       // Apply default template
       const defaultTemplate = cards.find((c) => c.isTemplate && c.isDefaultTemplate);
@@ -570,7 +579,7 @@ export function useKanban(estimativas: Estimativa[]) {
               checklist: task.checklist,
               comments: task.comments,
               attachments: task.attachments,
-            });
+            }, getToken());
             clonedCount++;
           } catch {
             // ignore individual clone errors
@@ -578,7 +587,7 @@ export function useKanban(estimativas: Estimativa[]) {
         }
 
         // Reload tasks to reflect clones
-        const { tasks: allTasks } = await carregarBoard();
+        const { tasks: allTasks } = await carregarBoard(getToken());
         setTasks(allTasks);
         setCards((prev) => [
           ...prev,

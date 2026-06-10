@@ -7,7 +7,7 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const PROJECT_REF = 'zhsdfjmagcpayeemijkb';
+const PROJECT_REF = process.env.SUPABASE_PROJECT_REF;
 const MANAGEMENT_TOKEN = process.env.SUPABASE_MANAGEMENT_TOKEN;
 
 const app = express();

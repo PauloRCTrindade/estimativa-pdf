@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase.js';
+import { setCorsHeaders, verifyAuth, unauthorized } from '../../lib/auth.js';
 
 function lowercaseToCamel(obj) {
   if (!obj || typeof obj !== 'object') return obj;
@@ -21,8 +22,7 @@ function lowercaseToCamel(obj) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,DELETE,OPTIONS');
+  setCorsHeaders(res, req);
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
@@ -40,6 +40,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PUT') {
+      const user = await verifyAuth(req);
+      if (!user) return unauthorized(res);
       const convertedBody = {};
       for (const [key, value] of Object.entries(req.body || {})) {
         convertedBody[key.toLowerCase()] = value;
@@ -55,6 +57,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
+      const user = await verifyAuth(req);
+      if (!user) return unauthorized(res);
       const { error } = await supabase.from('kanban_columns').delete().eq('id', id);
       if (error) return res.status(400).json({ error: error.message });
       return res.status(204).end();

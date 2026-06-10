@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js';
+import { setCorsHeaders, verifyAuth, unauthorized } from '../lib/auth.js';
 
 function camelToLowercase(obj) {
   if (!obj || typeof obj !== 'object') return obj;
@@ -40,8 +41,7 @@ function lowercaseToCamel(obj) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  setCorsHeaders(res, req);
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
@@ -59,6 +59,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
+      const user = await verifyAuth(req);
+      if (!user) return unauthorized(res);
       const convertedBody = camelToLowercase(req.body);
       const { data, error } = await supabase
         .from('kanban_tasks')
