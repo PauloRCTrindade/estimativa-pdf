@@ -107,7 +107,11 @@ export async function atualizarCard(
     headers: getHeaders(token),
     body: JSON.stringify(card),
   });
-  if (!response.ok) throw new Error("Erro ao atualizar card");
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    console.error("[atualizarCard] HTTP", response.status, text);
+    throw new Error(`Erro ao atualizar card: ${response.status} ${text}`);
+  }
   return response.json();
 }
 

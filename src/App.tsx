@@ -112,6 +112,8 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
     createTemplateCard,
     addCard: addKanbanCard,
     favoriteEstimativa,
+    archiveCard: archiveKanbanCard,
+    unarchiveCard: unarchiveKanbanCard,
   } = useKanban(estimativas);
 
   function toggleViewMode(mode: "abas" | "pagina-unica") {
@@ -1411,6 +1413,8 @@ function GeradorEstimativaPDF({ page, setPage, openSettings, setOpenSettings }: 
           onSetDefaultTemplate={setDefaultTemplate}
           onCreateTemplateCard={createTemplateCard}
           onAddCard={addKanbanCard}
+          onArchiveCard={archiveKanbanCard}
+          onUnarchiveCard={unarchiveKanbanCard}
         />
       )}
 

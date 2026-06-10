@@ -78,6 +78,8 @@ CREATE TABLE IF NOT EXISTS kanban_cards (
   assignee TEXT,
   is_template BOOLEAN DEFAULT FALSE,
   is_default_template BOOLEAN DEFAULT FALSE,
+  is_archived BOOLEAN DEFAULT FALSE,
+  completed BOOLEAN DEFAULT FALSE,
   position INTEGER DEFAULT 0,
   criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()

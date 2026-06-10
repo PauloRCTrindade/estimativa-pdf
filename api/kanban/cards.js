@@ -1,20 +1,21 @@
 import { supabase } from '../lib/supabase.js';
 import { setCorsHeaders, verifyAuth, unauthorized } from '../lib/auth.js';
+import { camelToSnakeObj, snakeToCamelObj } from '../lib/case-converter.js';
 
-function camelToLowercase(obj) {
-  if (!obj || typeof obj !== 'object') return obj;
-  const converted = {};
-  for (const [key, value] of Object.entries(obj)) {
-    const lowerKey = key.toLowerCase();
-    if (Array.isArray(value)) {
-      converted[lowerKey] = value.map(item => typeof item === 'object' ? camelToLowercase(item) : item);
-    } else if (typeof value === 'object' && value !== null) {
-      converted[lowerKey] = camelToLowercase(value);
-    } else {
-      converted[lowerKey] = value;
-    }
-  }
-  return converted;
+const keyMap = {
+  estimateid: 'estimateId',
+  columnid: 'columnId',
+  duedate: 'dueDate',
+  istemplate: 'isTemplate',
+  isdefaulttemplate: 'isDefaultTemplate',
+  isarchived: 'isArchived',
+  completed: 'completed',
+  criadoem: 'criadoEm',
+  atualizadoem: 'atualizadoEm',
+};
+
+function lowercaseToCamel(obj) {
+  return snakeToCamelObj(obj, keyMap);
 }
 
 function lowercaseToCamel(obj) {
@@ -56,16 +57,17 @@ export default async function handler(req, res) {
       if (req.query.column_id) query = query.eq('column_id', req.query.column_id);
       if (req.query.is_template) query = query.eq('is_template', req.query.is_template === 'true');
       if (req.query.is_default_template) query = query.eq('is_default_template', req.query.is_default_template === 'true');
+      if (req.query.is_archived) query = query.eq('is_archived', req.query.is_archived === 'true');
 
       const { data, error } = await query;
       if (error) return res.status(400).json({ error: error.message });
-      return res.status(200).json((data || []).map(lowercaseToCamel));
+      return res.status(200).json((data || []).map((item) => lowercaseToCamel(item)));
     }
 
     if (req.method === 'POST') {
       const user = await verifyAuth(req);
       if (!user) return unauthorized(res);
-      const convertedBody = camelToLowercase(req.body);
+      const convertedBody = camelToSnakeObj(req.body);
       const { data, error } = await supabase
         .from('kanban_cards')
         .insert([convertedBody])

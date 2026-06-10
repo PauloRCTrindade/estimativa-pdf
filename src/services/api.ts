@@ -111,7 +111,11 @@ export async function criarEstimativa(estimativa: Estimativa, token?: string): P
       body: JSON.stringify(estimativa),
     });
 
-    if (!response.ok) throw new Error('Erro ao criar estimativa');
+    if (!response.ok) {
+      const body = await response.text();
+      console.error('Erro ao criar estimativa — status:', response.status, 'body:', body);
+      throw new Error(`Erro ao criar estimativa: ${response.status} — ${body}`);
+    }
     return await response.json();
   } catch (error) {
     console.error('Erro ao criar estimativa:', error);

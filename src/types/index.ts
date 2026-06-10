@@ -74,6 +74,8 @@ export interface KanbanCard {
   assignee?: string;
   isTemplate?: boolean;
   isDefaultTemplate?: boolean;
+  isArchived?: boolean;
+  completed?: boolean;
   position?: number;
 }
 

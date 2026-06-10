@@ -1,20 +1,14 @@
 import { supabase } from '../lib/supabase.js';
 import { setCorsHeaders, verifyAuth, unauthorized } from '../lib/auth.js';
+import { camelToSnakeObj, snakeToCamelObj } from '../lib/case-converter.js';
 
-function camelToLowercase(obj) {
-  if (!obj || typeof obj !== 'object') return obj;
-  const converted = {};
-  for (const [key, value] of Object.entries(obj)) {
-    const lowerKey = key.toLowerCase();
-    if (Array.isArray(value)) {
-      converted[lowerKey] = value.map(item => typeof item === 'object' ? camelToLowercase(item) : item);
-    } else if (typeof value === 'object' && value !== null) {
-      converted[lowerKey] = camelToLowercase(value);
-    } else {
-      converted[lowerKey] = value;
-    }
-  }
-  return converted;
+const keyMap = {
+  criadoem: 'criadoEm',
+  atualizadoem: 'atualizadoEm',
+};
+
+function lowercaseToCamel(obj) {
+  return snakeToCamelObj(obj, keyMap);
 }
 
 function lowercaseToCamel(obj) {
@@ -53,13 +47,13 @@ export default async function handler(req, res) {
         .order('position', { ascending: true });
 
       if (error) return res.status(400).json({ error: error.message });
-      return res.status(200).json((data || []).map(lowercaseToCamel));
+      return res.status(200).json((data || []).map((item) => lowercaseToCamel(item)));
     }
 
     if (req.method === 'POST') {
       const user = await verifyAuth(req);
       if (!user) return unauthorized(res);
-      const convertedBody = camelToLowercase(req.body);
+      const convertedBody = camelToSnakeObj(req.body);
       const { data, error } = await supabase
         .from('kanban_columns')
         .insert([convertedBody])

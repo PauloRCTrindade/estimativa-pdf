@@ -7,6 +7,7 @@ import {
   isParadoDay, getChgDates, getWorkingDays
 } from "@/utils";
 import { calcularTermino } from "@/components/estimativa-pacotes";
+import { HojeView } from "./hoje-view";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,7 @@ import {
   Plus, Trash, CaretRight, Check, CalendarBlank, Note, ListChecks,
   Clock, X, Flag, User, Tag, Paperclip, ChatText, DotsThree,
   CheckCircle, Circle, CaretDown, ArrowLeft, SquareSplitHorizontal,
-  DotsSixVertical
+  DotsSixVertical, Archive, ArrowCounterClockwise, Sun, Warning
 } from "@phosphor-icons/react";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -53,28 +54,50 @@ interface KanbanPageProps {
   onAddCard: (columnId: string, title: string) => Promise<string | null>;
   onReorderCard: (cardId: string, beforeCardId: string | null, targetColumnId?: string) => void;
   onReorderColumn: (columnId: string, targetColumnId: string, placement: "before" | "after") => void;
+  onArchiveCard: (cardId: string) => void;
+  onUnarchiveCard: (cardId: string) => void;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Helpers
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* Extrai [ano, mes, dia] de uma string de data, ignorando timezone */
+function extractYMD(dateString: string | undefined): [number, number, number] | null {
+  if (!dateString) return null;
+  const iso = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return [Number(iso[1]), Number(iso[2]), Number(iso[3])];
+  const br = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (br) return [Number(br[3]), Number(br[2]), Number(br[1])];
+  const d = new Date(dateString);
+  if (!Number.isNaN(d.getTime())) return [d.getFullYear(), d.getMonth() + 1, d.getDate()];
+  return null;
+}
+
+function makeLocalDate(y: number, m: number, day: number): Date {
+  return new Date(y, m - 1, day, 0, 0, 0, 0);
+}
+
+function todayLocal(): Date {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate(), 0, 0, 0, 0);
+}
+
 function formatDateBR(dateString: string | undefined): string {
   if (!dateString) return "—";
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) return dateString;
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return dateString;
+  const ymd = extractYMD(dateString);
+  if (!ymd) return dateString;
+  const date = makeLocalDate(ymd[0], ymd[1], ymd[2]);
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 function formatDateRelative(dateString: string | undefined): string {
   if (!dateString) return "";
-  const d = new Date(dateString);
-  if (Number.isNaN(d.getTime())) return dateString;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(d);
-  target.setHours(0, 0, 0, 0);
+  const ymd = extractYMD(dateString);
+  if (!ymd) return dateString;
+  const target = makeLocalDate(ymd[0], ymd[1], ymd[2]);
+  const today = todayLocal();
   const diff = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   if (diff === 0) return "Hoje";
   if (diff === 1) return "Amanhã";
@@ -83,7 +106,7 @@ function formatDateRelative(dateString: string | undefined): string {
     const days = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
     return days[target.getDay()];
   }
-  return d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+  return target.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
 }
 
 function normalizeTaskType(rawTipo: unknown) {
@@ -391,12 +414,15 @@ interface TaskDetailModalProps {
   onRemoveCard: (cardId: string) => void;
   onToggleCardTemplate: (cardId: string) => void;
   onSetDefaultTemplate: (cardId: string) => void;
+  onArchiveCard: (cardId: string) => void;
+  onUnarchiveCard: (cardId: string) => void;
+  onRequestDelete?: (cardId: string) => void;
 }
 
 function TaskDetailModal({
   open, onClose, card, columnTitle, estimativas,
   onUpdateCard, onUpdateCardNotes, onAddCardTask, onUpdateCardTask, onToggleCardTaskCompleted, onRemoveCardTask,
-  onRemoveCard, onToggleCardTemplate, onSetDefaultTemplate,
+  onRemoveCard, onToggleCardTemplate, onSetDefaultTemplate, onArchiveCard, onUnarchiveCard, onRequestDelete,
 }: TaskDetailModalProps) {
   const [view, setView] = useState<ModalView>({ type: "card", cardId: card.id });
   const [animationKey, setAnimationKey] = useState(0);
@@ -444,25 +470,16 @@ function TaskDetailModal({
     return currentTask?.subtasks ?? [];
   }, [view, card.tasks, card.id, currentTask]);
 
-  const breadcrumbItems = useMemo(() => {
-    const items: Array<{ label: string; onClick?: () => void }> = [
-      { label: "Quadro", onClick: () => { setView({ type: "card", cardId: card.id }); setAnimationKey((k) => k + 1); } },
-      { label: columnTitle, onClick: () => { setView({ type: "card", cardId: card.id }); setAnimationKey((k) => k + 1); } },
-      { label: card.title, onClick: () => { setView({ type: "card", cardId: card.id }); setAnimationKey((k) => k + 1); } },
-    ];
+  function goToParent() {
     if (view.type === "task") {
-      view.path.forEach((pathTask, index) => {
-        items.push({
-          label: pathTask.title,
-          onClick: () => {
-            setView({ type: "task", path: view.path.slice(0, index + 1) });
-            setAnimationKey((k) => k + 1);
-          },
-        });
-      });
+      if (view.path.length === 1) {
+        setView({ type: "card", cardId: card.id });
+      } else {
+        setView({ type: "task", path: view.path.slice(0, -1) });
+      }
+      setAnimationKey((k) => k + 1);
     }
-    return items;
-  }, [view, card.title, card.id, columnTitle]);
+  }
 
   function navigateToTask(task: KanbanCustomTask) {
     if (view.type === "card") {
@@ -590,24 +607,20 @@ function TaskDetailModal({
         className="relative z-10 grid w-full max-w-[calc(100%-2rem)] gap-0 overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-2xl ring-1 ring-foreground/10 animate-in fade-in zoom-in-95 duration-200 sm:max-w-3xl"
         style={{ maxHeight: "90vh" }}
       >
-        {/* Header: Breadcrumbs + close + template controls */}
+        {/* Header: Parent navigation + close + template controls */}
         <div className="flex items-center justify-between border-b px-5 py-3">
-          <div className="flex items-center gap-1 overflow-hidden text-xs text-muted-foreground">
-            {breadcrumbItems.map((item, index) => (
-              <div key={index} className="flex items-center gap-1 shrink-0">
-                {index > 0 && <CaretRight className="h-3 w-3 opacity-50" />}
-                {item.onClick ? (
-                  <button
-                    onClick={item.onClick}
-                    className="truncate max-w-[140px] hover:text-foreground hover:underline transition-colors"
-                  >
-                    {item.label}
-                  </button>
-                ) : (
-                  <span className="truncate max-w-[140px]">{item.label}</span>
-                )}
-              </div>
-            ))}
+          <div className="flex items-center gap-1 overflow-hidden text-xs text-muted-foreground min-w-0">
+            {view.type === "task" && (
+              <button
+                onClick={goToParent}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors shrink-0"
+              >
+                <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate max-w-[240px] sm:max-w-[320px]">
+                  {view.path.length === 1 ? card.title : view.path[view.path.length - 2]?.title}
+                </span>
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {card.isDefaultTemplate && (
@@ -635,8 +648,34 @@ function TaskDetailModal({
                 Definir como padrão
               </button>
             )}
+            {card.isArchived ? (
+              <button
+                onClick={() => { onUnarchiveCard(card.id); onClose(); }}
+                className="flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                title="Restaurar card"
+              >
+                <ArrowCounterClockwise className="h-4 w-4" />
+                Restaurar
+              </button>
+            ) : (
+              <button
+                onClick={() => { onArchiveCard(card.id); onClose(); }}
+                className="flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                title="Arquivar card"
+              >
+                <Archive className="h-4 w-4" />
+                Arquivar
+              </button>
+            )}
             <button
-              onClick={() => { onRemoveCard(card.id); onClose(); }}
+              onClick={() => {
+                if (onRequestDelete) {
+                  onRequestDelete(card.id);
+                } else {
+                  onRemoveCard(card.id);
+                }
+                onClose();
+              }}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
               title="Deletar card"
             >
@@ -682,7 +721,17 @@ function TaskDetailModal({
                     {displayCompleted && <Check weight="bold" className="h-3 w-3" />}
                   </button>
                 ) : (
-                  <div className="mt-1 h-5 w-5 shrink-0" />
+                  <button
+                    onClick={() => onUpdateCard(card.id, { completed: !card.completed })}
+                    className={cn(
+                      "mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-150",
+                      card.completed
+                        ? "border-emerald-500 bg-emerald-500 text-white"
+                        : "border-muted-foreground/30 hover:border-muted-foreground/60"
+                    )}
+                  >
+                    {card.completed && <Check weight="bold" className="h-3 w-3" />}
+                  </button>
                 )}
                 <div className="min-w-0 flex-1">
                   {editingTitle && isTaskView ? (
@@ -732,7 +781,7 @@ function TaskDetailModal({
                       className={cn(
                         "text-lg font-semibold leading-snug transition-colors",
                         isTaskView && "cursor-text hover:bg-accent/40 rounded px-1 -ml-1 py-0.5",
-                        displayCompleted && "text-muted-foreground line-through"
+                        (displayCompleted || (!isTaskView && card.completed)) && "text-muted-foreground line-through"
                       )}
                     >
                       {displayTitle || "Sem título"}
@@ -799,7 +848,7 @@ function TaskDetailModal({
                     className="flex w-full items-center gap-2 text-sm font-medium text-foreground mb-2"
                   >
                     <ListChecks className="h-4 w-4 text-muted-foreground" />
-                    Tarefas da estimativa
+                    Tarefas Principais
                     <span className="ml-auto text-xs text-muted-foreground">{estimateTasks.length}</span>
                     <CaretDown className={cn("h-3 w-3 text-muted-foreground transition-transform", !expandedSections.estimativa && "-rotate-90")} />
                   </button>
@@ -842,105 +891,6 @@ function TaskDetailModal({
                 </div>
               )}
 
-              {/* Calendar - only at card level and not template */}
-              {!isTaskView && !card.isTemplate && estimate && (
-                <div className="rounded-lg border border-border/60 bg-card">
-                  <div className="flex items-center justify-between px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <CalendarBlank className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Calendário</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => setShowCalendar((prev) => !prev)}
-                      >
-                        {showCalendar ? "Ocultar" : "Visualizar"}
-                      </Button>
-                      {showCalendar && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={() => setLargeCalendar((prev) => !prev)}
-                        >
-                          {largeCalendar ? "Reduzir" : "Expandir"}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  {showCalendar && (
-                    <div className={cn(
-                      "overflow-x-auto border-t border-border/60 px-3 py-3 text-[11px]",
-                      largeCalendar ? "max-h-[420px]" : "max-h-[240px]"
-                    )}>
-                      {(() => {
-                        const calendar = buildEstimateCalendar(estimate);
-                        if (!calendar || calendar.rows.length === 0) {
-                          return <p className="text-xs text-muted-foreground">Calendário indisponível.</p>;
-                        }
-                        return (
-                          <div className="space-y-3">
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                              <span>Período:</span>
-                              <span className="font-medium text-foreground">{formatDateBR(calendar.rangeStart?.toISOString() || "")}</span>
-                              <span>→</span>
-                              <span className="font-medium text-foreground">{formatDateBR(calendar.rangeEnd?.toISOString() || "")}</span>
-                            </div>
-                            {calendar.rows.map((row, rowIndex) => (
-                              <div key={rowIndex} className="space-y-1">
-                                <div className="grid gap-1 text-[10px] uppercase tracking-wider text-muted-foreground" style={{ gridTemplateColumns: "repeat(15, minmax(0, 1fr))" }}>
-                                  {row.map((day, index) => {
-                                    const prevDay = index > 0 ? row[index - 1] : null;
-                                    const showMonth = day && (!prevDay || prevDay.date.getMonth() !== day.date.getMonth());
-                                    return <div key={index} className="h-4 text-center">{showMonth ? day.date.toLocaleString("pt-BR", { month: "short" }).toUpperCase() : ""}</div>;
-                                  })}
-                                </div>
-                                <div className="grid gap-1 text-[10px] font-medium text-muted-foreground" style={{ gridTemplateColumns: "repeat(15, minmax(0, 1fr))" }}>
-                                  {row.map((day, index) => (
-                                    <div key={index} className="flex h-5 items-center justify-center rounded-sm">
-                                      {day ? ["D", "S", "T", "Q", "Q", "S", "S"][day.date.getDay()] : ""}
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="grid gap-1 text-[11px] font-semibold text-foreground" style={{ gridTemplateColumns: "repeat(15, minmax(0, 1fr))" }}>
-                                  {row.map((day, index) => (
-                                    <div key={index} className={cn("flex h-7 items-center justify-center rounded-sm", day ? "bg-muted" : "bg-transparent")}>
-                                      {day ? String(day.date.getDate()).padStart(2, "0") : ""}
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(15, minmax(0, 1fr))" }}>
-                                  {row.map((day, index) => {
-                                    if (!day) return <div key={index} className="h-9 rounded-sm bg-muted/30" />;
-                                    const badgeText = day.isReleaseDay ? "🚀" : day.isChg ? "CHG" : day.isEsteiraPreProd ? "PRE" : day.tipo === "feriado" ? "F" : day.tipo === "tombamento" ? "T" : day.tipo === "parado" ? "P" : "";
-                                    const cellStyle = {
-                                      backgroundColor: day.color || "transparent",
-                                      border: day.isEsteiraPreProd ? `2px solid ${COLORS.esteiraPreProd}` : day.isChg ? `2px solid ${COLORS.chg}` : `1px solid hsl(var(--border) / 0.3)`,
-                                    };
-                                    return (
-                                      <div
-                                        key={index}
-                                        className="flex h-9 items-center justify-center rounded-sm text-[10px] font-semibold text-zinc-950 dark:text-zinc-100"
-                                        style={cellStyle}
-                                      >
-                                        <span>{badgeText}</span>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-                </div>
-              )}
-
               {/* Subtasks */}
               <div>
                 <button
@@ -948,7 +898,7 @@ function TaskDetailModal({
                   className="flex w-full items-center gap-2 text-sm font-medium text-foreground mb-2"
                 >
                   <ListChecks className="h-4 w-4 text-muted-foreground" />
-                  {isTaskView ? "Subtarefas" : "Tarefas"}
+                  {isTaskView ? "Subtarefas" : "Tarefas Gerais"}
                   <span className="ml-auto text-xs text-muted-foreground">
                     {countCompleted(currentSubtasks)}/{countTasks(currentSubtasks)}
                   </span>
@@ -1058,6 +1008,105 @@ function TaskDetailModal({
                   </div>
                 )}
               </div>
+
+              {/* Calendar - only at card level and not template */}
+              {!isTaskView && !card.isTemplate && estimate && (
+                <div className="rounded-lg border border-border/60 bg-card">
+                  <div className="flex items-center justify-between px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <CalendarBlank className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Calendário</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => setShowCalendar((prev) => !prev)}
+                      >
+                        {showCalendar ? "Ocultar" : "Visualizar"}
+                      </Button>
+                      {showCalendar && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => setLargeCalendar((prev) => !prev)}
+                        >
+                          {largeCalendar ? "Reduzir" : "Expandir"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  {showCalendar && (
+                    <div className={cn(
+                      "overflow-x-auto border-t border-border/60 px-3 py-3 text-[11px]",
+                      largeCalendar ? "max-h-[420px]" : "max-h-[240px]"
+                    )}>
+                      {(() => {
+                        const calendar = buildEstimateCalendar(estimate);
+                        if (!calendar || calendar.rows.length === 0) {
+                          return <p className="text-xs text-muted-foreground">Calendário indisponível.</p>;
+                        }
+                        return (
+                          <div className="space-y-3">
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                              <span>Período:</span>
+                              <span className="font-medium text-foreground">{formatDateBR(calendar.rangeStart?.toISOString() || "")}</span>
+                              <span>→</span>
+                              <span className="font-medium text-foreground">{formatDateBR(calendar.rangeEnd?.toISOString() || "")}</span>
+                            </div>
+                            {calendar.rows.map((row, rowIndex) => (
+                              <div key={rowIndex} className="space-y-1">
+                                <div className="grid gap-1 text-[10px] uppercase tracking-wider text-muted-foreground" style={{ gridTemplateColumns: "repeat(15, minmax(0, 1fr))" }}>
+                                  {row.map((day, index) => {
+                                    const prevDay = index > 0 ? row[index - 1] : null;
+                                    const showMonth = day && (!prevDay || prevDay.date.getMonth() !== day.date.getMonth());
+                                    return <div key={index} className="h-4 text-center">{showMonth ? day.date.toLocaleString("pt-BR", { month: "short" }).toUpperCase() : ""}</div>;
+                                  })}
+                                </div>
+                                <div className="grid gap-1 text-[10px] font-medium text-muted-foreground" style={{ gridTemplateColumns: "repeat(15, minmax(0, 1fr))" }}>
+                                  {row.map((day, index) => (
+                                    <div key={index} className="flex h-5 items-center justify-center rounded-sm">
+                                      {day ? ["D", "S", "T", "Q", "Q", "S", "S"][day.date.getDay()] : ""}
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="grid gap-1 text-[11px] font-semibold text-foreground" style={{ gridTemplateColumns: "repeat(15, minmax(0, 1fr))" }}>
+                                  {row.map((day, index) => (
+                                    <div key={index} className={cn("flex h-7 items-center justify-center rounded-sm", day ? "bg-muted" : "bg-transparent")}>
+                                      {day ? String(day.date.getDate()).padStart(2, "0") : ""}
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(15, minmax(0, 1fr))" }}>
+                                  {row.map((day, index) => {
+                                    if (!day) return <div key={index} className="h-9 rounded-sm bg-muted/30" />;
+                                    const badgeText = day.isReleaseDay ? "🚀" : day.isChg ? "CHG" : day.isEsteiraPreProd ? "PRE" : day.tipo === "feriado" ? "F" : day.tipo === "tombamento" ? "T" : day.tipo === "parado" ? "P" : "";
+                                    const cellStyle = {
+                                      backgroundColor: day.color || "transparent",
+                                      border: day.isEsteiraPreProd ? `2px solid ${COLORS.esteiraPreProd}` : day.isChg ? `2px solid ${COLORS.chg}` : `1px solid hsl(var(--border) / 0.3)`,
+                                    };
+                                    return (
+                                      <div
+                                        key={index}
+                                        className="flex h-9 items-center justify-center rounded-sm text-[10px] font-semibold text-zinc-950 dark:text-zinc-100"
+                                        style={cellStyle}
+                                      >
+                                        <span>{badgeText}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Checklist */}
               {isTaskView && (
@@ -1370,6 +1419,7 @@ export function KanbanPage({
   onUpdateCard, onUpdateCardNotes, onAddCardTask, onUpdateCardTask,
   onToggleCardTaskCompleted, onRemoveCardTask,
   onRemoveCard, onToggleCardTemplate, onSetDefaultTemplate, onCreateTemplateCard, onAddCard, onReorderCard,
+  onArchiveCard, onUnarchiveCard,
 }: KanbanPageProps) {
   const [newColumnName, setNewColumnName] = useState("");
   const [error, setError] = useState("");
@@ -1390,6 +1440,8 @@ export function KanbanPage({
   const [boardSubtitleDraft, setBoardSubtitleDraft] = useState("");
   const [deletingColumnId, setDeletingColumnId] = useState<string | null>(null);
   const deletingColumnTitle = useMemo(() => columns.find((c) => c.id === deletingColumnId)?.title || "", [columns, deletingColumnId]);
+  const [kanbanSubtab, setKanbanSubtab] = useState<"ativos" | "hoje" | "arquivados">("ativos");
+  const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
   const selectedCard = useMemo(() => cards.find((c) => c.id === selectedCardId) ?? null, [cards, selectedCardId]);
 
   /* ── drag & drop ───────────────────────────────────────────────────────── */
@@ -1488,7 +1540,7 @@ export function KanbanPage({
   }
   function getColumnCards(columnId: string) {
     return cards
-      .filter((card) => card.columnId === columnId)
+      .filter((card) => card.columnId === columnId && !card.isArchived)
       .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   }
   function handleSubmitAddCard(columnId: string) {
@@ -1567,15 +1619,51 @@ export function KanbanPage({
               className="text-sm text-muted-foreground cursor-text hover:bg-accent/40 rounded px-1 -ml-1 py-0.5 transition-colors inline-block"
               title="Clique para editar"
             >
-              {boardSubtitle} ({cards.length} cards)
+              {boardSubtitle} ({cards.filter((c) => !c.isArchived).length} ativos · {cards.filter((c) => !c.completed && !c.isArchived && c.dueDate).filter((c) => { const ymd = extractYMD(c.dueDate); if (!ymd) return false; const t = todayLocal(); const d = makeLocalDate(ymd[0], ymd[1], ymd[2]); return d.getTime() === t.getTime() || d < t; }).length} hoje · {cards.filter((c) => c.isArchived).length} arquivados)
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2" />
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border border-border/60 bg-muted/50 p-0.5">
+            <button
+              onClick={() => setKanbanSubtab("ativos")}
+              className={cn(
+                "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                kanbanSubtab === "ativos"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Ativos
+            </button>
+            <button
+              onClick={() => setKanbanSubtab("hoje")}
+              className={cn(
+                "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                kanbanSubtab === "hoje"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Hoje
+            </button>
+            <button
+              onClick={() => setKanbanSubtab("arquivados")}
+              className={cn(
+                "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                kanbanSubtab === "arquivados"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Arquivados
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Empty state */}
-      {columns.length === 0 && (
+      {columns.length === 0 && kanbanSubtab === "ativos" && (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
@@ -1589,8 +1677,8 @@ export function KanbanPage({
         </Card>
       )}
 
-      {/* Board */}
-      {columns.length > 0 && (
+      {/* Board — Ativos */}
+      {kanbanSubtab === "ativos" && columns.length > 0 && (
         <div className="flex flex-1 gap-4 overflow-x-auto pb-2 min-w-0">
           {[...columns].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((column) => {
             const columnCards = getColumnCards(column.id);
@@ -1694,7 +1782,8 @@ export function KanbanPage({
                             card.isTemplate
                               ? "border-dashed border-amber-500/40 bg-amber-500/[0.02] dark:bg-amber-500/[0.03]"
                               : "border-border/60 bg-card",
-                            isDragOver && "ring-2 ring-primary/40"
+                            isDragOver && "ring-2 ring-primary/40",
+                            card.completed && "opacity-75"
                           )}
                         >
                         <CardContent className="space-y-2 p-3">
@@ -1725,8 +1814,27 @@ export function KanbanPage({
                             )}
                           </div>
 
-                          {/* Title */}
-                          <p className="text-sm font-medium leading-snug text-foreground">{card.title}</p>
+                          {/* Title + completed checkbox */}
+                          <div className="flex items-start gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onUpdateCard(card.id, { completed: !card.completed });
+                              }}
+                              className={cn(
+                                "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all",
+                                card.completed
+                                  ? "border-emerald-500 bg-emerald-500 text-white"
+                                  : "border-muted-foreground/30 hover:border-muted-foreground/60"
+                              )}
+                            >
+                              {card.completed && <Check weight="bold" className="h-3 w-3" />}
+                            </button>
+                            <p className={cn(
+                              "text-sm font-medium leading-snug",
+                              card.completed ? "text-muted-foreground line-through" : "text-foreground"
+                            )}>{card.title}</p>
+                          </div>
 
                           {/* Tags */}
                           {card.tags && card.tags.length > 0 && (
@@ -1855,6 +1963,77 @@ export function KanbanPage({
         </div>
       )}
 
+      {/* Hoje */}
+      {kanbanSubtab === "hoje" && (
+        <HojeView
+          cards={cards}
+          columns={columns}
+          onUpdateCard={onUpdateCard}
+          onToggleCardTaskCompleted={onToggleCardTaskCompleted}
+          onRemoveCard={onRemoveCard}
+          onArchiveCard={onArchiveCard}
+          onOpenCard={(cardId) => setSelectedCardId(cardId)}
+        />
+      )}
+
+      {/* Arquivados */}
+      {kanbanSubtab === "arquivados" && (
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto pb-2 min-w-0">
+          {cards.filter((c) => c.isArchived).length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <Archive className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Nenhum card arquivado</p>
+                  <p className="text-xs text-muted-foreground">Cards arquivados aparecerão aqui. Você pode arquivar um card a partir dos detalhes dele.</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {cards
+                .filter((c) => c.isArchived)
+                .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+                .map((card) => (
+                  <div
+                    key={card.id}
+                    className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-sm font-medium line-clamp-2">{card.title}</h3>
+                      <Badge variant="secondary" className="shrink-0 text-[10px]">
+                        {columns.find((c) => c.id === card.columnId)?.title || "Sem coluna"}
+                      </Badge>
+                    </div>
+                    <div className="mt-auto flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 flex-1 text-xs gap-1"
+                        onClick={() => onUnarchiveCard(card.id)}
+                      >
+                        <ArrowCounterClockwise className="h-3.5 w-3.5" />
+                        Restaurar
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
+                        onClick={() => setDeletingCardId(card.id)}
+                      >
+                        <Trash className="h-3.5 w-3.5" />
+                        Deletar
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Task Detail Modal */}
       {selectedCard && (
         <TaskDetailModal
@@ -1872,7 +2051,44 @@ export function KanbanPage({
           onRemoveCard={onRemoveCard}
           onToggleCardTemplate={onToggleCardTemplate}
           onSetDefaultTemplate={onSetDefaultTemplate}
+          onArchiveCard={onArchiveCard}
+          onUnarchiveCard={onUnarchiveCard}
+          onRequestDelete={(cardId) => setDeletingCardId(cardId)}
         />
+      )}
+
+      {/* Delete Card Confirmation Modal */}
+      {deletingCardId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150"
+            onClick={() => setDeletingCardId(null)}
+          />
+          <div className="relative z-10 w-full max-w-sm overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-2xl ring-1 ring-foreground/10 animate-in fade-in zoom-in-95 duration-200 p-5 space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-base font-semibold">Deletar card</h3>
+              <p className="text-sm text-muted-foreground">
+                Tem certeza que deseja deletar este card? Todas as informações adicionadas nele serão perdidas permanentemente.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setDeletingCardId(null)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  onRemoveCard(deletingCardId);
+                  setDeletingCardId(null);
+                  if (selectedCardId === deletingCardId) setSelectedCardId(null);
+                }}
+              >
+                Deletar permanentemente
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete Column Confirmation Modal */}

@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase.js';
 import { setCorsHeaders } from '../lib/auth.js';
+import { snakeToCamelObj } from '../lib/case-converter.js';
 
 export default async function handler(req, res) {
   setCorsHeaders(res, req);
@@ -24,32 +25,20 @@ export default async function handler(req, res) {
     if (cardError) throw cardError;
     if (taskError) throw taskError;
 
-    const lowercaseToCamel = (obj) => {
-      if (!obj || typeof obj !== 'object') return obj;
-      const keyMap = {
-        estimateid: 'estimateId',
-        columnid: 'columnId',
-        duedate: 'dueDate',
-        istemplate: 'isTemplate',
-        isdefaulttemplate: 'isDefaultTemplate',
-        parentid: 'parentId',
-        cardid: 'cardId',
-        criadoem: 'criadoEm',
-        atualizadoem: 'atualizadoEm',
-      };
-      const converted = {};
-      for (const [key, value] of Object.entries(obj)) {
-        const camelKey = keyMap[key] || key;
-        if (Array.isArray(value)) {
-          converted[camelKey] = value.map(item => typeof item === 'object' ? lowercaseToCamel(item) : item);
-        } else if (typeof value === 'object' && value !== null) {
-          converted[camelKey] = lowercaseToCamel(value);
-        } else {
-          converted[camelKey] = value;
-        }
-      }
-      return converted;
+    const keyMap = {
+      estimateid: 'estimateId',
+      columnid: 'columnId',
+      duedate: 'dueDate',
+      istemplate: 'isTemplate',
+      isdefaulttemplate: 'isDefaultTemplate',
+      isarchived: 'isArchived',
+      completed: 'completed',
+      parentid: 'parentId',
+      cardid: 'cardId',
+      criadoem: 'criadoEm',
+      atualizadoem: 'atualizadoEm',
     };
+    const lowercaseToCamel = (obj) => snakeToCamelObj(obj, keyMap);
 
     return res.status(200).json({
       columns: (columns || []).map(lowercaseToCamel),

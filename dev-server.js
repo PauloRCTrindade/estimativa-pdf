@@ -8,29 +8,16 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const PROJECT_REF = process.env.SUPABASE_PROJECT_REF;
-const MANAGEMENT_TOKEN = process.env.SUPABASE_MANAGEMENT_TOKEN;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-async function execSql(query) {
-  const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${MANAGEMENT_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'SQL error');
-  return data;
-}
-
 // Conversor de camelCase para snake_case (schema do banco)
 function camelToSnake(key) {
-  return key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+  return key
+    .replace(/([a-z])([A-Z])/g, '$1_$2')
+    .replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')
+    .toLowerCase();
 }
 
 function camelToSnakeCase(obj) {
@@ -50,6 +37,62 @@ function camelToSnakeCase(obj) {
     }
   }
   return converted;
+}
+
+// Tenta inserir/atualizar no Supabase removendo automaticamente campos que não existem no schema
+async function safeEstimativaInsert(body) {
+  let attemptBody = { ...body };
+  const removedFields = [];
+  
+  while (true) {
+    const { data, error } = await supabase
+      .from('estimativas')
+      .insert([attemptBody])
+      .select()
+      .single();
+    
+    if (!error) return { data, error: null };
+    
+    // Se o erro for "column not found", extrai o nome da coluna e remove
+    const match = error.message.match(/Could not find the '([^']+)' column/);
+    if (match) {
+      const col = match[1];
+      if (attemptBody.hasOwnProperty(col)) {
+        delete attemptBody[col];
+        removedFields.push(col);
+        continue; // tenta novamente
+      }
+    }
+    
+    // Outro tipo de erro: retorna
+    return { data, error };
+  }
+}
+
+async function safeEstimativaUpdate(id, body) {
+  let attemptBody = { ...body };
+  
+  while (true) {
+    const { data, error } = await supabase
+      .from('estimativas')
+      .update(attemptBody)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (!error) return { data, error: null };
+    
+    const match = error.message.match(/Could not find the '([^']+)' column/);
+    if (match) {
+      const col = match[1];
+      if (attemptBody.hasOwnProperty(col)) {
+        delete attemptBody[col];
+        continue;
+      }
+    }
+    
+    return { data, error };
+  }
 }
 
 // Conversor de lowercase para camelCase (resposta ao cliente)
@@ -119,7 +162,8 @@ app.get('/api/estimativas', async (req, res) => {
       .order('id', { ascending: false });
 
     if (error) {
-      return res.status(400).json({ error: error.message });
+      console.error('Supabase insert error:', error);
+      return res.status(400).json({ error: error.message, details: error });
     }
 
     // Converter resposta para camelCase
@@ -133,8 +177,8 @@ app.get('/api/estimativas', async (req, res) => {
 // POST /api/estimativas - Criar
 app.post('/api/estimativas', async (req, res) => {
   try {
-    // Converter camelCase para lowercase
-    const convertedBody = camelToSnakeCase(req.body);
+    // Converter camelCase para snake_case e filtrar apenas campos existentes
+    const convertedBody = filterEstimativaFields(camelToSnakeCase(req.body));
     
     const { data, error } = await supabase
       .from('estimativas')
@@ -176,15 +220,10 @@ app.get('/api/estimativas/:id', async (req, res) => {
 // PUT /api/estimativas/:id - Atualizar
 app.put('/api/estimativas/:id', async (req, res) => {
   try {
-    // Converter camelCase para lowercase
+    // Converter camelCase para snake_case
     const convertedBody = camelToSnakeCase(req.body);
     
-    const { data, error } = await supabase
-      .from('estimativas')
-      .update(convertedBody)
-      .eq('id', req.params.id)
-      .select()
-      .single();
+    const { data, error } = await safeEstimativaUpdate(req.params.id, convertedBody);
 
     if (error) {
       return res.status(400).json({ error: error.message });
@@ -221,7 +260,7 @@ app.delete('/api/estimativas/:id', async (req, res) => {
 
 const kanbanKeyMap = {
   estimate_id: 'estimateId', column_id: 'columnId', due_date: 'dueDate',
-  is_template: 'isTemplate', is_default_template: 'isDefaultTemplate',
+  is_template: 'isTemplate', is_default_template: 'isDefaultTemplate', is_archived: 'isArchived', completed: 'completed',
   parent_id: 'parentId', card_id: 'cardId', criado_em: 'criadoEm', atualizado_em: 'atualizadoEm',
 };
 
@@ -241,37 +280,17 @@ function toCamelKanban(obj) {
   return converted;
 }
 
-function sqlValue(val) {
-  if (val === null || val === undefined) return 'NULL';
-  if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
-  if (typeof val === 'number') return String(val);
-  if (Array.isArray(val)) return `'${JSON.stringify(val).replace(/'/g, "''")}'::jsonb`;
-  if (typeof val === 'object') return `'${JSON.stringify(val).replace(/'/g, "''")}'::jsonb`;
-  return `'${String(val).replace(/'/g, "''")}'`;
-}
-
-function buildInsertSql(table, obj) {
-  // Filtrar propriedades que não existem no banco (ex: tasks é uma relação separada)
-  const keys = Object.keys(obj).filter(k => k !== 'tasks');
-  const cols = keys.join(', ');
-  const vals = keys.map(k => sqlValue(obj[k])).join(', ');
-  return `INSERT INTO ${table} (${cols}) VALUES (${vals}) RETURNING *;`;
-}
-
-function buildUpdateSql(table, id, obj) {
-  // Filtrar propriedades que não existem no banco (ex: tasks é uma relação separada)
-  const sets = Object.entries(obj)
-    .filter(([k]) => k !== 'tasks')
-    .map(([k, v]) => `${k} = ${sqlValue(v)}`).join(', ');
-  return `UPDATE ${table} SET ${sets} WHERE id = '${id}' RETURNING *;`;
-}
-
 // GET /api/kanban/board - Board completo
 app.get('/api/kanban/board', async (req, res) => {
   try {
-    const columns = await execSql("SELECT * FROM kanban_columns ORDER BY position ASC;");
-    const cards = await execSql("SELECT * FROM kanban_cards ORDER BY position ASC;");
-    const tasks = await execSql("SELECT * FROM kanban_tasks ORDER BY position ASC;");
+    const [{ data: columns, error: colError }, { data: cards, error: cardError }, { data: tasks, error: taskError }] = await Promise.all([
+      supabase.from('kanban_columns').select('*').order('position', { ascending: true }),
+      supabase.from('kanban_cards').select('*').order('position', { ascending: true }),
+      supabase.from('kanban_tasks').select('*').order('position', { ascending: true }),
+    ]);
+    if (colError) throw colError;
+    if (cardError) throw cardError;
+    if (taskError) throw taskError;
     res.json({
       columns: (columns || []).map(toCamelKanban),
       cards: (cards || []).map(toCamelKanban),
@@ -285,27 +304,29 @@ app.get('/api/kanban/board', async (req, res) => {
 // Columns
 app.get('/api/kanban/columns', async (req, res) => {
   try {
-    const data = await execSql("SELECT * FROM kanban_columns ORDER BY position ASC;");
+    const { data, error } = await supabase.from('kanban_columns').select('*').order('position', { ascending: true });
+    if (error) throw error;
     res.json((data || []).map(toCamelKanban));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.post('/api/kanban/columns', async (req, res) => {
   try {
-    const data = await execSql(buildInsertSql('kanban_columns', camelToSnakeCase(req.body)));
-    res.status(201).json(toCamelKanban(data[0]));
+    const { data, error } = await supabase.from('kanban_columns').insert(camelToSnakeCase(req.body)).select().single();
+    if (error) throw error;
+    res.status(201).json(toCamelKanban(data));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/kanban/columns/:id', async (req, res) => {
   try {
-    const body = {};
-    for (const [key, value] of Object.entries(req.body || {})) body[key.toLowerCase()] = value;
-    const data = await execSql(buildUpdateSql('kanban_columns', req.params.id, body));
-    res.json(toCamelKanban(data[0]));
+    const { data, error } = await supabase.from('kanban_columns').update(camelToSnakeCase(req.body)).eq('id', req.params.id).select().single();
+    if (error) throw error;
+    res.json(toCamelKanban(data));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.delete('/api/kanban/columns/:id', async (req, res) => {
   try {
-    await execSql(`DELETE FROM kanban_columns WHERE id = '${req.params.id}';`);
+    const { error } = await supabase.from('kanban_columns').delete().eq('id', req.params.id);
+    if (error) throw error;
     res.status(204).end();
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -313,34 +334,34 @@ app.delete('/api/kanban/columns/:id', async (req, res) => {
 // Cards
 app.get('/api/kanban/cards', async (req, res) => {
   try {
-    let sql = "SELECT * FROM kanban_cards";
-    const wheres = [];
-    if (req.query.column_id) wheres.push(`column_id = '${req.query.column_id}'`);
-    if (req.query.is_template) wheres.push(`is_template = ${req.query.is_template === 'true'}`);
-    if (req.query.is_default_template) wheres.push(`is_default_template = ${req.query.is_default_template === 'true'}`);
-    if (wheres.length) sql += " WHERE " + wheres.join(" AND ");
-    sql += " ORDER BY position ASC;";
-    const data = await execSql(sql);
+    let query = supabase.from('kanban_cards').select('*').order('position', { ascending: true });
+    if (req.query.column_id) query = query.eq('column_id', req.query.column_id);
+    if (req.query.is_template) query = query.eq('is_template', req.query.is_template === 'true');
+    if (req.query.is_default_template) query = query.eq('is_default_template', req.query.is_default_template === 'true');
+    if (req.query.is_archived) query = query.eq('is_archived', req.query.is_archived === 'true');
+    const { data, error } = await query;
+    if (error) throw error;
     res.json((data || []).map(toCamelKanban));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.post('/api/kanban/cards', async (req, res) => {
   try {
-    const data = await execSql(buildInsertSql('kanban_cards', camelToSnakeCase(req.body)));
-    res.status(201).json(toCamelKanban(data[0]));
+    const { data, error } = await supabase.from('kanban_cards').insert(camelToSnakeCase(req.body)).select().single();
+    if (error) throw error;
+    res.status(201).json(toCamelKanban(data));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/kanban/cards/:id', async (req, res) => {
   try {
-    const body = {};
-    for (const [key, value] of Object.entries(req.body || {})) body[key.toLowerCase()] = value;
-    const data = await execSql(buildUpdateSql('kanban_cards', req.params.id, body));
-    res.json(toCamelKanban(data[0]));
+    const { data, error } = await supabase.from('kanban_cards').update(camelToSnakeCase(req.body)).eq('id', req.params.id).select().single();
+    if (error) throw error;
+    res.json(toCamelKanban(data));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.delete('/api/kanban/cards/:id', async (req, res) => {
   try {
-    await execSql(`DELETE FROM kanban_cards WHERE id = '${req.params.id}';`);
+    const { error } = await supabase.from('kanban_cards').delete().eq('id', req.params.id);
+    if (error) throw error;
     res.status(204).end();
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -348,30 +369,31 @@ app.delete('/api/kanban/cards/:id', async (req, res) => {
 // Tasks
 app.get('/api/kanban/tasks', async (req, res) => {
   try {
-    let sql = "SELECT * FROM kanban_tasks";
-    if (req.query.card_id) sql += ` WHERE card_id = '${req.query.card_id}'`;
-    sql += " ORDER BY position ASC;";
-    const data = await execSql(sql);
+    let query = supabase.from('kanban_tasks').select('*').order('position', { ascending: true });
+    if (req.query.card_id) query = query.eq('card_id', req.query.card_id);
+    const { data, error } = await query;
+    if (error) throw error;
     res.json((data || []).map(toCamelKanban));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.post('/api/kanban/tasks', async (req, res) => {
   try {
-    const data = await execSql(buildInsertSql('kanban_tasks', camelToSnakeCase(req.body)));
-    res.status(201).json(toCamelKanban(data[0]));
+    const { data, error } = await supabase.from('kanban_tasks').insert(camelToSnakeCase(req.body)).select().single();
+    if (error) throw error;
+    res.status(201).json(toCamelKanban(data));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/kanban/tasks/:id', async (req, res) => {
   try {
-    const body = {};
-    for (const [key, value] of Object.entries(req.body || {})) body[key.toLowerCase()] = value;
-    const data = await execSql(buildUpdateSql('kanban_tasks', req.params.id, body));
-    res.json(toCamelKanban(data[0]));
+    const { data, error } = await supabase.from('kanban_tasks').update(camelToSnakeCase(req.body)).eq('id', req.params.id).select().single();
+    if (error) throw error;
+    res.json(toCamelKanban(data));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.delete('/api/kanban/tasks/:id', async (req, res) => {
   try {
-    await execSql(`DELETE FROM kanban_tasks WHERE id = '${req.params.id}';`);
+    const { error } = await supabase.from('kanban_tasks').delete().eq('id', req.params.id);
+    if (error) throw error;
     res.status(204).end();
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

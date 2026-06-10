@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:api": "PORT=3003 node dev-server.js",
+    "dev:api": "cross-env PORT=3003 node dev-server.js",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:api\"",
     "setup:db": "node setup-db.js",
     "build": "tsc -b && vite build",
@@ -49,6 +49,8 @@
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.5.0",
     "babel-plugin-react-compiler": "^1.0.0",
+    "concurrently": "^9.0.0",
+    "cross-env": "^7.0.3",
     "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
