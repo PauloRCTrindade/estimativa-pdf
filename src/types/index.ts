@@ -95,6 +95,7 @@ export type AppForm = {
 
 export type Estimativa = {
   id?: string;
+  nome?: string;
   titulo: string;
   arquiteto: string;
   inicio: string;

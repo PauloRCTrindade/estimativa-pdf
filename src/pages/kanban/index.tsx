@@ -1,5 +1,5 @@
 import { type DragEvent, useState, useMemo, useCallback, useRef, useEffect } from "react";
-import type { Estimativa } from "@/types";
+import type { Estimativa, KanbanColumn, KanbanCard, KanbanCustomTask, TaskPriority } from "@/types";
 import {
   parseDateBR, isValidDate, sameDateBR, addDays, parseDateRangeList,
   parseDiasParadosList, normalizeDateList, getTimelineColor, getTimelineLabel,
@@ -26,69 +26,10 @@ import {
 } from "@phosphor-icons/react";
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Tipos
+   Tipos locais
    ═══════════════════════════════════════════════════════════════════════════ */
 
-export type TaskPriority = "p1" | "p2" | "p3" | "p4";
 export type TaskStatus = "backlog" | "analise" | "desenvolvimento" | "qa" | "producao";
-
-export interface KanbanChecklistItem {
-  id: string;
-  title: string;
-  completed: boolean;
-}
-
-export interface KanbanComment {
-  id: string;
-  author: string;
-  text: string;
-  createdAt: string;
-}
-
-export interface KanbanAttachment {
-  id: string;
-  name: string;
-  url: string;
-  type: "image" | "file" | "link";
-}
-
-export interface KanbanCustomTask {
-  id: string;
-  title: string;
-  description?: string;
-  inicio?: string;
-  termino?: string;
-  completed?: boolean;
-  subtasks?: KanbanCustomTask[];
-  priority?: TaskPriority;
-  assignee?: string;
-  dueDate?: string;
-  tags?: string[];
-  checklist?: KanbanChecklistItem[];
-  comments?: KanbanComment[];
-  attachments?: KanbanAttachment[];
-}
-
-export interface KanbanColumn {
-  id: string;
-  title: string;
-  position?: number;
-}
-
-export interface KanbanCard {
-  id: string;
-  estimateId: string;
-  title: string;
-  columnId: string;
-  notes?: string;
-  tasks?: KanbanCustomTask[];
-  description?: string;
-  tags?: string[];
-  dueDate?: string;
-  priority?: TaskPriority;
-  assignee?: string;
-  position?: number;
-}
 
 interface KanbanPageProps {
   columns: KanbanColumn[];

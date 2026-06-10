@@ -269,7 +269,7 @@ export function buildTaskTree(tasks: Array<{
   title: string;
   description?: string;
   completed?: boolean;
-  priority?: string;
+  priority?: import("@/types").TaskPriority;
   assignee?: string;
   dueDate?: string;
   tags?: string[];
@@ -281,7 +281,7 @@ export function buildTaskTree(tasks: Array<{
   title: string;
   description?: string;
   completed?: boolean;
-  priority?: string;
+  priority?: import("@/types").TaskPriority;
   assignee?: string;
   dueDate?: string;
   tags?: string[];
@@ -322,7 +322,7 @@ export function flattenTaskTree(
   title: string;
   description?: string;
   completed?: boolean;
-  priority?: string;
+  priority?: import("@/types").TaskPriority;
   assignee?: string;
   dueDate?: string;
   tags?: string[];
