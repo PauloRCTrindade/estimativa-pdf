@@ -177,14 +177,10 @@ app.get('/api/estimativas', async (req, res) => {
 // POST /api/estimativas - Criar
 app.post('/api/estimativas', async (req, res) => {
   try {
-    // Converter camelCase para snake_case e filtrar apenas campos existentes
-    const convertedBody = filterEstimativaFields(camelToSnakeCase(req.body));
-    
-    const { data, error } = await supabase
-      .from('estimativas')
-      .insert([convertedBody])
-      .select()
-      .single();
+    // Converter camelCase para snake_case
+    const convertedBody = camelToSnakeCase(req.body);
+
+    const { data, error } = await safeEstimativaInsert(convertedBody);
 
     if (error) {
       return res.status(400).json({ error: error.message });

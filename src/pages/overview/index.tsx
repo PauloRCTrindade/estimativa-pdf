@@ -6,12 +6,13 @@ import { TimeLine } from "@/components/time-line";
 import { Legend } from "@/components/legend";
 import { COLORS } from "@/styles";
 import type { AppForm } from "@/types";
+import type { CalculoResult } from "@/features/estimativa";
 import { Rocket, X, Minus } from "@phosphor-icons/react";
 
 interface OverviewPageProps {
   form: AppForm;
   updateForm: (field: string, value: unknown) => void;
-  calculoPreviaPacotes: { inicioPacote: string };
+  calculoPreviaPacotes: CalculoResult;
   timelineRowsPreviaPacotes: unknown[][];
 }
 

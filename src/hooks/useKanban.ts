@@ -12,7 +12,7 @@ import {
   atualizarTask,
   deletarTask,
 } from "@/services/kanbanApi";
-import { createId, buildTaskTree, flattenTaskTree } from "@/utils";
+import { createId, buildTaskTree } from "@/utils";
 import { createClient } from "@supabase/supabase-js";
 
 function notify(msg: string) {
@@ -34,6 +34,45 @@ async function getToken(): Promise<string | undefined> {
   } catch {
     return undefined;
   }
+}
+
+async function cloneTaskTree(
+  tasks: KanbanCustomTask[],
+  cardId: string,
+  parentId: string | null,
+  token: string
+): Promise<{ count: number; createdTasks: KanbanTask[] }> {
+  let count = 0;
+  const createdTasks: KanbanTask[] = [];
+
+  for (const task of tasks) {
+    const { subtasks, ...rest } = task;
+    const created = await criarTask({
+      cardId,
+      parentId,
+      title: rest.title,
+      description: rest.description,
+      completed: false,
+      priority: rest.priority,
+      assignee: rest.assignee,
+      dueDate: rest.dueDate,
+      tags: rest.tags,
+      checklist: rest.checklist,
+      comments: rest.comments,
+      attachments: rest.attachments,
+    }, token);
+
+    count++;
+    createdTasks.push(created);
+
+    if (subtasks && subtasks.length > 0) {
+      const { count: childCount, createdTasks: childTasks } = await cloneTaskTree(subtasks, cardId, created.id, token);
+      count += childCount;
+      createdTasks.push(...childTasks);
+    }
+  }
+
+  return { count, createdTasks };
 }
 
 function cardsWithTreeTasks(cards: KanbanCard[], tasks: KanbanTask[]): KanbanCard[] {
@@ -104,29 +143,13 @@ async function migrateFromLocalStorage(): Promise<{
         }, await getToken());
         createdCards.push(created);
 
-        // Flatten tasks and create
+        // Clone tasks recursively (preserves subtasks hierarchy)
         if (card.tasks && card.tasks.length > 0) {
-          const flatTasks = flattenTaskTree(card.tasks, created.id);
-          for (const ft of flatTasks) {
-            try {
-              const createdTask = await criarTask({
-                cardId: created.id,
-                parentId: ft.parentId,
-                title: ft.title,
-                description: ft.description,
-                completed: ft.completed,
-                priority: ft.priority,
-                assignee: ft.assignee,
-                dueDate: ft.dueDate,
-                tags: ft.tags,
-                checklist: ft.checklist,
-                comments: ft.comments,
-                attachments: ft.attachments,
-              }, await getToken());
-              allTasks.push(createdTask);
-            } catch {
-              // ignore individual task creation errors
-            }
+          try {
+            const { createdTasks } = await cloneTaskTree(card.tasks, created.id, null, await getToken());
+            allTasks.push(...createdTasks);
+          } catch {
+            // ignore task clone errors
           }
         }
       } catch {
@@ -561,50 +584,22 @@ export function useKanban(estimativas: Estimativa[]) {
       let clonedCount = 0;
 
       if (defaultTemplate && defaultTemplate.tasks && defaultTemplate.tasks.length > 0) {
-        const flatOriginal = flattenTaskTree(defaultTemplate.tasks, created.id);
-        // We need to remap parentIds because new tasks get new IDs
-        const idMap = new Map<string, string>();
-        const newFlatTasks = flatOriginal.map((t) => {
-          const newId = createId();
-          idMap.set(t.id, newId);
-          return {
-            ...t,
-            id: newId,
-            cardId: created.id,
-            parentId: t.parentId ? idMap.get(t.parentId) || null : null,
-            completed: false,
-          };
-        });
-
-        for (const task of newFlatTasks) {
-          try {
-            await criarTask({
-              cardId: task.cardId,
-              parentId: task.parentId,
-              title: task.title,
-              description: task.description,
-              completed: false,
-              priority: task.priority,
-              assignee: task.assignee,
-              dueDate: task.dueDate,
-              tags: task.tags,
-              checklist: task.checklist,
-              comments: task.comments,
-              attachments: task.attachments,
-            }, await getToken());
-            clonedCount++;
-          } catch {
-            // ignore individual clone errors
-          }
+        try {
+          const { count, createdTasks: newTasks } = await cloneTaskTree(
+            defaultTemplate.tasks,
+            created.id,
+            null,
+            await getToken()
+          );
+          clonedCount = count;
+          setTasks((prev) => [...prev, ...newTasks]);
+          setCards((prev) => [
+            ...prev,
+            { ...created, tasks: buildTaskTree(newTasks) },
+          ]);
+        } catch {
+          setCards((prev) => [...prev, { ...created, tasks: [] }]);
         }
-
-        // Reload tasks to reflect clones
-        const { tasks: allTasks } = await carregarBoard(await getToken());
-        setTasks(allTasks);
-        setCards((prev) => [
-          ...prev,
-          { ...created, tasks: buildTaskTree(allTasks.filter((t) => t.cardId === created.id)) },
-        ]);
       } else {
         setCards((prev) => [...prev, { ...created, tasks: [] }]);
       }

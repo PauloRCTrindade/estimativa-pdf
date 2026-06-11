@@ -3,11 +3,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/form-field";
 import { PdfPreview } from "@/components/pdf-preview";
 import type { AppForm } from "@/types";
+import type { CalculoResult } from "@/features/estimativa";
 
 interface DocumentPageProps {
   form: AppForm;
   updateForm: (field: string, value: unknown) => void;
-  calculoPreviaPacotes: { inicioPacote: string; [key: string]: unknown };
+  calculoPreviaPacotes: CalculoResult;
   totalDiasPacotes: number;
   timelineRowsPreviaPacotes: unknown[][];
 }
