@@ -144,12 +144,13 @@ function GeradorEstimativaPDF({
     updateCardTask: updateKanbanCardTask,
     toggleCardTaskCompleted: toggleKanbanCardTaskCompleted,
     removeCardTask: removeKanbanCardTask,
+    reorderCardTask: reorderKanbanCardTask,
     removeCard: removeKanbanCard,
-    toggleCardTemplate,
-    setDefaultTemplate,
-    createTemplateCard,
     addCard: addKanbanCard,
     favoriteEstimativa,
+    useTemplateAsBase: useKanbanTemplateAsBase,
+    createTemplate: createKanbanTemplate,
+    duplicateCard: duplicateKanbanCard,
     archiveCard: archiveKanbanCard,
     unarchiveCard: unarchiveKanbanCard,
   } = useKanban(estimativas);
@@ -338,11 +339,12 @@ function GeradorEstimativaPDF({
           onUpdateCardTask={updateKanbanCardTask}
           onToggleCardTaskCompleted={toggleKanbanCardTaskCompleted}
           onRemoveCardTask={removeKanbanCardTask}
+          onReorderCardTask={reorderKanbanCardTask}
           onRemoveCard={removeKanbanCard}
-          onToggleCardTemplate={toggleCardTemplate}
-          onSetDefaultTemplate={setDefaultTemplate}
-          onCreateTemplateCard={createTemplateCard}
           onAddCard={addKanbanCard}
+          onUseTemplate={useKanbanTemplateAsBase}
+          onCreateTemplate={createKanbanTemplate}
+          onDuplicateCard={duplicateKanbanCard}
           onArchiveCard={archiveKanbanCard}
           onUnarchiveCard={unarchiveKanbanCard}
         />

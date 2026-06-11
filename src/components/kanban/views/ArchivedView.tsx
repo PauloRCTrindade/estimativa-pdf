@@ -20,7 +20,7 @@ export function ArchivedView({
   onOpenCard,
 }: ArchivedViewProps) {
   const archivedCards = cards
-    .filter((c) => c.isArchived)
+    .filter((c) => c.isArchived && !c.isTemplate)
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
   if (archivedCards.length === 0) {

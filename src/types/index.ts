@@ -58,6 +58,7 @@ export interface KanbanCustomTask {
   checklist?: KanbanChecklistItem[];
   comments?: KanbanComment[];
   attachments?: KanbanAttachment[];
+  position?: number;
 }
 
 export interface KanbanCard {

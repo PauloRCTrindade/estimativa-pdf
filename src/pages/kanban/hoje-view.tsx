@@ -318,7 +318,7 @@ export function HojeView({
   }, [columns]);
 
   const { overdueCards, todayCards } = useMemo(() => {
-    const active = cards.filter((c) => !c.completed && !c.isArchived);
+    const active = cards.filter((c) => !c.completed && !c.isArchived && !c.isTemplate);
     const overdue: Array<{ card: KanbanCard; tasks: KanbanCustomTask[] }> = [];
     const today: Array<{ card: KanbanCard; tasks: KanbanCustomTask[] }> = [];
 

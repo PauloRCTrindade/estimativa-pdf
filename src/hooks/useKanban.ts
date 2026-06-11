@@ -40,7 +40,8 @@ async function cloneTaskTree(
   tasks: KanbanCustomTask[],
   cardId: string,
   parentId: string | null,
-  token: string
+  token: string,
+  resetCompleted = true
 ): Promise<{ count: number; createdTasks: KanbanTask[] }> {
   let count = 0;
   const createdTasks: KanbanTask[] = [];
@@ -52,7 +53,7 @@ async function cloneTaskTree(
       parentId,
       title: rest.title,
       description: rest.description,
-      completed: false,
+      completed: resetCompleted ? false : rest.completed,
       priority: rest.priority,
       assignee: rest.assignee,
       dueDate: rest.dueDate,
@@ -66,7 +67,7 @@ async function cloneTaskTree(
     createdTasks.push(created);
 
     if (subtasks && subtasks.length > 0) {
-      const { count: childCount, createdTasks: childTasks } = await cloneTaskTree(subtasks, cardId, created.id, token);
+      const { count: childCount, createdTasks: childTasks } = await cloneTaskTree(subtasks, cardId, created.id, token, resetCompleted);
       count += childCount;
       createdTasks.push(...childTasks);
     }
@@ -474,6 +475,83 @@ export function useKanban(estimativas: Estimativa[]) {
     }
   }, []);
 
+  /* ── Task reorder helpers ────────────────────────────────────────────── */
+
+  function findTaskArrayInTree(
+    tasksTree: KanbanCustomTask[] | undefined,
+    parentTaskId: string | null
+  ): KanbanCustomTask[] | undefined {
+    if (!parentTaskId) return tasksTree;
+    if (!tasksTree) return undefined;
+    for (const task of tasksTree) {
+      if (task.id === parentTaskId) return task.subtasks;
+      const found = findTaskArrayInTree(task.subtasks, parentTaskId);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  function replaceTaskArrayInTree(
+    tasksTree: KanbanCustomTask[] | undefined,
+    parentTaskId: string | null,
+    newArray: KanbanCustomTask[]
+  ): KanbanCustomTask[] | undefined {
+    if (!parentTaskId) return newArray;
+    if (!tasksTree) return tasksTree;
+    return tasksTree.map((task) => {
+      if (task.id === parentTaskId) return { ...task, subtasks: newArray };
+      const replaced = replaceTaskArrayInTree(task.subtasks, parentTaskId, newArray);
+      if (replaced !== task.subtasks) return { ...task, subtasks: replaced };
+      return task;
+    });
+  }
+
+  const reorderCardTask = useCallback(async (
+    cardId: string,
+    parentTaskId: string | null,
+    sourceIndex: number,
+    destIndex: number
+  ) => {
+    const card = cards.find((c) => c.id === cardId);
+    if (!card) return;
+
+    const taskArray = findTaskArrayInTree(card.tasks, parentTaskId);
+    if (!taskArray || sourceIndex === destIndex) return;
+    if (sourceIndex < 0 || sourceIndex >= taskArray.length) return;
+    if (destIndex < 0 || destIndex >= taskArray.length) return;
+
+    // Reorder array
+    const reordered = [...taskArray];
+    const [moved] = reordered.splice(sourceIndex, 1);
+    reordered.splice(destIndex, 0, moved);
+
+    // Assign positions
+    const withPositions = reordered.map((t, idx) => ({ ...t, position: idx }));
+
+    // Update card tree
+    const newTasks = replaceTaskArrayInTree(card.tasks, parentTaskId, withPositions);
+    setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, tasks: newTasks } : c)));
+
+    // Update flat tasks state
+    setTasks((prev) => {
+      const map = new Map(prev.map((t) => [t.id, t]));
+      withPositions.forEach((t) => {
+        if (map.has(t.id)) map.set(t.id, { ...map.get(t.id)!, position: t.position });
+      });
+      return Array.from(map.values());
+    });
+
+    // Persist to backend
+    try {
+      const token = await getToken();
+      await Promise.all(
+        withPositions.map((t) => atualizarTask(t.id, { position: t.position }, token))
+      );
+    } catch {
+      notify("Erro ao reordenar tarefas");
+    }
+  }, [cards]);
+
   /* ── Template helpers ────────────────────────────────────────────────── */
 
   const toggleCardTemplate = useCallback(async (cardId: string) => {
@@ -620,6 +698,168 @@ export function useKanban(estimativas: Estimativa[]) {
     }
   }, [columns, cards, favoriteIds, optimisticFavoriteIds]);
 
+  const useTemplateAsBase = useCallback(async (templateCardId: string) => {
+    const template = cards.find((c) => c.id === templateCardId);
+    if (!template) {
+      notify("Template não encontrado.");
+      return null;
+    }
+
+    let targetColumnId = columns[0]?.id;
+    if (!targetColumnId) {
+      const defaultCol = await criarColumn({ title: "Backlog", position: 0 }, await getToken());
+      targetColumnId = defaultCol.id;
+      setColumns((prev) => [...prev, defaultCol]);
+    }
+
+    const newCardPayload: Omit<KanbanCard, "id" | "tasks"> = {
+      columnId: targetColumnId,
+      title: `Cópia de ${template.title}`,
+      description: template.description,
+      tags: template.tags,
+      dueDate: template.dueDate,
+      priority: template.priority,
+      assignee: template.assignee,
+    };
+
+    try {
+      const created = await criarCard(newCardPayload, await getToken());
+
+      let clonedCount = 0;
+      if (template.tasks && template.tasks.length > 0) {
+        try {
+          const { count, createdTasks: newTasks } = await cloneTaskTree(
+            template.tasks,
+            created.id,
+            null,
+            await getToken()
+          );
+          clonedCount = count;
+          setTasks((prev) => [...prev, ...newTasks]);
+          setCards((prev) => [
+            ...prev,
+            { ...created, tasks: buildTaskTree(newTasks) },
+          ]);
+        } catch {
+          setCards((prev) => [...prev, { ...created, tasks: [] }]);
+        }
+      } else {
+        setCards((prev) => [...prev, { ...created, tasks: [] }]);
+      }
+
+      notify(`Card criado a partir do template. ${clonedCount > 0 ? `${clonedCount} tarefas copiadas.` : ""}`);
+      return created.id;
+    } catch {
+      notify("Erro ao usar template como base");
+      return null;
+    }
+  }, [columns, cards]);
+
+  const createTemplate = useCallback(async () => {
+    let targetColumnId = columns[0]?.id;
+    if (!targetColumnId) {
+      const defaultCol = await criarColumn({ title: "Backlog", position: 0 }, await getToken());
+      targetColumnId = defaultCol.id;
+      setColumns((prev) => [...prev, defaultCol]);
+    }
+
+    const optimistic: KanbanCard = {
+      id: createId(),
+      columnId: targetColumnId,
+      title: "Novo template",
+      isTemplate: true,
+      tasks: [],
+    };
+    setCards((prev) => [...prev, optimistic]);
+    try {
+      const created = await criarCard({
+        columnId: targetColumnId,
+        title: "Novo template",
+        isTemplate: true,
+        position: cards.length,
+      }, await getToken());
+      setCards((prev) => prev.map((c) => (c.id === optimistic.id ? { ...created, tasks: [] } : c)));
+      return created.id;
+    } catch {
+      setCards((prev) => prev.filter((c) => c.id !== optimistic.id));
+      notify("Erro ao criar template");
+      return null;
+    }
+  }, [columns, cards.length]);
+
+  const duplicateCard = useCallback(async (cardId: string) => {
+    const card = cards.find((c) => c.id === cardId);
+    if (!card) {
+      notify("Card não encontrado.");
+      return null;
+    }
+
+    const optimistic: KanbanCard = {
+      id: createId(),
+      columnId: card.columnId,
+      title: `${card.title} (cópia)`,
+      description: card.description,
+      notes: card.notes,
+      tags: card.tags,
+      dueDate: card.dueDate,
+      priority: card.priority,
+      assignee: card.assignee,
+      isArchived: false,
+      completed: card.completed,
+      tasks: card.tasks,
+    };
+    setCards((prev) => [...prev, optimistic]);
+
+    try {
+      const created = await criarCard({
+        columnId: card.columnId,
+        title: `${card.title} (cópia)`,
+        description: card.description,
+        notes: card.notes,
+        tags: card.tags,
+        dueDate: card.dueDate,
+        priority: card.priority,
+        assignee: card.assignee,
+        isArchived: false,
+        completed: card.completed,
+        position: cards.length,
+      }, await getToken());
+
+      let clonedCount = 0;
+      if (card.tasks && card.tasks.length > 0) {
+        try {
+          const { count, createdTasks: newTasks } = await cloneTaskTree(
+            card.tasks,
+            created.id,
+            null,
+            await getToken(),
+            false
+          );
+          clonedCount = count;
+          setTasks((prev) => [...prev, ...newTasks]);
+          setCards((prev) =>
+            prev.map((c) => (c.id === optimistic.id ? { ...created, tasks: buildTaskTree(newTasks) } : c))
+          );
+        } catch {
+          setCards((prev) =>
+            prev.map((c) => (c.id === optimistic.id ? { ...created, tasks: [] } : c))
+          );
+        }
+      } else {
+        setCards((prev) =>
+          prev.map((c) => (c.id === optimistic.id ? { ...created, tasks: [] } : c))
+        );
+      }
+
+      notify(`Card duplicado. ${clonedCount > 0 ? `${clonedCount} tarefas copiadas.` : ""}`);
+      return created.id;
+    } catch {
+      setCards((prev) => prev.filter((c) => c.id !== optimistic.id));
+      notify("Erro ao duplicar card");
+      return null;
+    }
+  }, [cards]);
+
   const archiveCard = useCallback(async (cardId: string) => {
     setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, isArchived: true } : c)));
     try {
@@ -662,11 +902,15 @@ export function useKanban(estimativas: Estimativa[]) {
     updateCardTask,
     toggleCardTaskCompleted,
     removeCardTask,
+    reorderCardTask,
     toggleCardTemplate,
     setDefaultTemplate,
     createTemplateCard,
     addCard,
     favoriteEstimativa,
+    useTemplateAsBase,
+    createTemplate,
+    duplicateCard,
     archiveCard,
     unarchiveCard,
   };

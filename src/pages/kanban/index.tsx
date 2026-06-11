@@ -12,8 +12,10 @@ import {
 } from "@/components/kanban/shared/kanbanHelpers";
 import { HojeView } from "./hoje-view";
 import { TaskDetailModal } from "@/components/kanban/modals/TaskDetailModal";
+import { TemplateDetailModal } from "@/components/kanban/modals/TemplateDetailModal";
 import { ConfirmDeleteDialog } from "@/components/kanban/shared/ConfirmDeleteDialog";
 import { ArchivedView } from "@/components/kanban/views/ArchivedView";
+import { TemplatesView } from "@/components/kanban/views/TemplatesView";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,14 +53,16 @@ interface KanbanPageProps {
   onUpdateCardTask: (cardId: string, taskId: string, patch: Partial<Omit<KanbanCustomTask, "id" | "subtasks">>) => void;
   onToggleCardTaskCompleted: (cardId: string, taskId: string) => void;
   onRemoveCardTask: (cardId: string, taskId: string) => void;
+  onReorderCardTask: (cardId: string, parentTaskId: string | null, sourceIndex: number, destIndex: number) => void;
   onRemoveCard: (cardId: string) => void;
-  onToggleCardTemplate: (cardId: string) => void;
-  onSetDefaultTemplate: (cardId: string) => void;
   onAddCard: (columnId: string, title: string) => Promise<string | null>;
   onReorderCard: (cardId: string, beforeCardId: string | null, targetColumnId?: string) => void;
   onReorderColumn: (columnId: string, targetColumnId: string, placement: "before" | "after") => void;
   onArchiveCard: (cardId: string) => void;
   onUnarchiveCard: (cardId: string) => void;
+  onUseTemplate: (templateCardId: string) => Promise<string | null>;
+  onCreateTemplate: () => Promise<string | null>;
+  onDuplicateCard?: (cardId: string) => Promise<string | null>;
 }
 
 function PriorityFlagSimple({ priority, size = 12 }: { priority?: import("@/types").TaskPriority; size?: number }) {
@@ -89,13 +93,15 @@ export function KanbanPage({
   onUpdateCardTask,
   onToggleCardTaskCompleted,
   onRemoveCardTask,
+  onReorderCardTask,
   onRemoveCard,
-  onToggleCardTemplate,
-  onSetDefaultTemplate,
   onAddCard,
   onReorderCard,
   onArchiveCard,
   onUnarchiveCard,
+  onUseTemplate,
+  onCreateTemplate,
+  onDuplicateCard,
 }: KanbanPageProps) {
   const [newColumnName, setNewColumnName] = useState("");
   const [error, setError] = useState("");
@@ -116,8 +122,10 @@ export function KanbanPage({
   const [boardSubtitleDraft, setBoardSubtitleDraft] = useState("");
   const [deletingColumnId, setDeletingColumnId] = useState<string | null>(null);
   const deletingColumnTitle = useMemo(() => columns.find((c) => c.id === deletingColumnId)?.title || "", [columns, deletingColumnId]);
-  const [kanbanSubtab, setKanbanSubtab] = useState<"ativos" | "hoje" | "arquivados">("ativos");
+  const [kanbanSubtab, setKanbanSubtab] = useState<"ativos" | "hoje" | "arquivados" | "templates">("ativos");
   const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const selectedTemplate = useMemo(() => cards.find((c) => c.id === selectedTemplateId && c.isTemplate) ?? null, [cards, selectedTemplateId]);
   const selectedCard = useMemo(() => cards.find((c) => c.id === selectedCardId) ?? null, [cards, selectedCardId]);
 
   /* ── drag & drop ───────────────────────────────────────────────────────── */
@@ -216,7 +224,7 @@ export function KanbanPage({
   }
   function getColumnCards(columnId: string) {
     return cards
-      .filter((card) => card.columnId === columnId && !card.isArchived)
+      .filter((card) => card.columnId === columnId && !card.isArchived && !card.isTemplate)
       .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   }
   function handleSubmitAddCard(columnId: string) {
@@ -295,7 +303,7 @@ export function KanbanPage({
               className="text-sm text-muted-foreground cursor-text hover:bg-accent/40 rounded px-1 -ml-1 py-0.5 transition-colors inline-block"
               title="Clique para editar"
             >
-              {boardSubtitle} ({cards.filter((c) => !c.isArchived).length} ativos · {cards.filter((c) => !c.completed && !c.isArchived && c.dueDate).filter((c) => { const ymd = extractYMD(c.dueDate); if (!ymd) return false; const t = todayLocal(); const d = makeLocalDate(ymd[0], ymd[1], ymd[2]); return d.getTime() === t.getTime() || d < t; }).length} hoje · {cards.filter((c) => c.isArchived).length} arquivados)
+              {boardSubtitle} ({cards.filter((c) => !c.isArchived && !c.isTemplate).length} ativos · {cards.filter((c) => !c.completed && !c.isArchived && !c.isTemplate && c.dueDate).filter((c) => { const ymd = extractYMD(c.dueDate); if (!ymd) return false; const t = todayLocal(); const d = makeLocalDate(ymd[0], ymd[1], ymd[2]); return d.getTime() === t.getTime() || d < t; }).length} hoje · {cards.filter((c) => c.isArchived && !c.isTemplate).length} arquivados · {cards.filter((c) => c.isTemplate).length} templates)
             </p>
           )}
         </div>
@@ -333,6 +341,17 @@ export function KanbanPage({
               )}
             >
               Arquivados
+            </button>
+            <button
+              onClick={() => setKanbanSubtab("templates")}
+              className={cn(
+                "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                kanbanSubtab === "templates"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Templates
             </button>
           </div>
         </div>
@@ -652,6 +671,18 @@ export function KanbanPage({
         />
       )}
 
+      {/* Templates */}
+      {kanbanSubtab === "templates" && (
+        <TemplatesView
+          cards={cards}
+          columns={columns}
+          onOpenCard={(cardId) => setSelectedTemplateId(cardId)}
+          onRemoveCard={(cardId) => setDeletingCardId(cardId)}
+          onUseTemplate={onUseTemplate}
+          onCreateTemplate={onCreateTemplate}
+        />
+      )}
+
       {/* Arquivados */}
       {kanbanSubtab === "arquivados" && (
         <ArchivedView
@@ -660,6 +691,23 @@ export function KanbanPage({
           onUnarchiveCard={onUnarchiveCard}
           onRemoveCard={(cardId) => setDeletingCardId(cardId)}
           onOpenCard={(cardId) => setSelectedCardId(cardId)}
+        />
+      )}
+
+      {/* Template Detail Modal */}
+      {selectedTemplate && (
+        <TemplateDetailModal
+          open={!!selectedTemplate}
+          onClose={() => setSelectedTemplateId(null)}
+          card={selectedTemplate}
+          onUpdateCard={onUpdateCard}
+          onAddCardTask={onAddCardTask}
+          onUpdateCardTask={onUpdateCardTask}
+          onToggleCardTaskCompleted={onToggleCardTaskCompleted}
+          onRemoveCardTask={onRemoveCardTask}
+          onReorderCardTask={onReorderCardTask}
+          onRemoveCard={onRemoveCard}
+          onRequestDelete={(cardId) => setDeletingCardId(cardId)}
         />
       )}
 
@@ -677,9 +725,9 @@ export function KanbanPage({
           onUpdateCardTask={onUpdateCardTask}
           onToggleCardTaskCompleted={onToggleCardTaskCompleted}
           onRemoveCardTask={onRemoveCardTask}
+          onReorderCardTask={onReorderCardTask}
           onRemoveCard={onRemoveCard}
-          onToggleCardTemplate={onToggleCardTemplate}
-          onSetDefaultTemplate={onSetDefaultTemplate}
+          onDuplicateCard={onDuplicateCard}
           onArchiveCard={onArchiveCard}
           onUnarchiveCard={onUnarchiveCard}
           onRequestDelete={(cardId) => setDeletingCardId(cardId)}
@@ -696,6 +744,7 @@ export function KanbanPage({
           if (deletingCardId) {
             onRemoveCard(deletingCardId);
             if (selectedCardId === deletingCardId) setSelectedCardId(null);
+          if (selectedTemplateId === deletingCardId) setSelectedTemplateId(null);
           }
           setDeletingCardId(null);
         }}

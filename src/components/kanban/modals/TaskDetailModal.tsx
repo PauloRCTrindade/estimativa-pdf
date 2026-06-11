@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import {
   Plus, Trash, CaretRight, Check, CalendarBlank, Note, ListChecks,
   Clock, X, Flag, User, Tag, Paperclip, ChatText,
-  CheckCircle, CaretDown, ArrowLeft, Archive, ArrowCounterClockwise,
+  CheckCircle, CaretDown, ArrowLeft, Archive, ArrowCounterClockwise, Copy,
 } from "@phosphor-icons/react";
 
 function createId() {
@@ -82,9 +82,9 @@ export interface TaskDetailModalProps {
   onUpdateCardTask: (cardId: string, taskId: string, patch: Partial<Omit<KanbanCustomTask, "id" | "subtasks">>) => void;
   onToggleCardTaskCompleted: (cardId: string, taskId: string) => void;
   onRemoveCardTask: (cardId: string, taskId: string) => void;
+  onReorderCardTask: (cardId: string, parentTaskId: string | null, sourceIndex: number, destIndex: number) => void;
   onRemoveCard: (cardId: string) => void;
-  onToggleCardTemplate: (cardId: string) => void;
-  onSetDefaultTemplate: (cardId: string) => void;
+  onDuplicateCard?: (cardId: string) => Promise<string | null>;
   onArchiveCard: (cardId: string) => void;
   onUnarchiveCard: (cardId: string) => void;
   onRequestDelete?: (cardId: string) => void;
@@ -106,9 +106,9 @@ export function TaskDetailModal({
   onUpdateCardTask,
   onToggleCardTaskCompleted,
   onRemoveCardTask,
+  onReorderCardTask,
   onRemoveCard,
-  onToggleCardTemplate,
-  onSetDefaultTemplate,
+  onDuplicateCard,
   onArchiveCard,
   onUnarchiveCard,
   onRequestDelete,
@@ -134,6 +134,8 @@ export function TaskDetailModal({
   const [showCalendar, setShowCalendar] = useState(false);
   const [largeCalendar, setLargeCalendar] = useState(false);
   const [checkedEstimateTasks, setCheckedEstimateTasks] = useState<Record<string, boolean>>({});
+  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -309,29 +311,17 @@ export function TaskDetailModal({
             )}
           </div>
           <div className="flex items-center gap-2">
-            {card.isDefaultTemplate && (
-              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                Template padrão
-              </span>
-            )}
-            <button
-              onClick={() => onToggleCardTemplate(card.id)}
-              className={cn(
-                "flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-                card.isTemplate
-                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              )}
-              title={card.isTemplate ? "Remover marcação de template" : "Marcar como template"}
-            >
-              {card.isTemplate ? "Template" : "Usar como template"}
-            </button>
-            {card.isTemplate && !card.isDefaultTemplate && (
+            {onDuplicateCard && (
               <button
-                onClick={() => onSetDefaultTemplate(card.id)}
-                className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                onClick={async () => {
+                  await onDuplicateCard(card.id);
+                  onClose();
+                }}
+                className="flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                title="Duplicar card"
               >
-                Definir como padrão
+                <Copy className="h-4 w-4" />
+                Duplicar
               </button>
             )}
             {card.isArchived ? (
@@ -383,11 +373,6 @@ export function TaskDetailModal({
           >
             {/* ═════ Main Column ═════ */}
             <div className="p-5 md:p-6 space-y-6">
-              {card.isTemplate && (
-                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-                  Este é um <strong>modelo reutilizável</strong>. As tarefas aqui serão copiadas para novos cards quando uma estimativa for favoritada.
-                </div>
-              )}
               {/* Title */}
               <div className="flex items-start gap-3">
                 {isTaskView ? (
@@ -586,59 +571,105 @@ export function TaskDetailModal({
                 </button>
                 {expandedSections.subtarefas && (
                   <div className="space-y-1">
-                    {currentSubtasks.map((task) => (
-                      <div
-                        key={task.id}
-                        onClick={() => navigateToTask(task)}
-                        className="group flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-accent/30"
-                      >
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onToggleCardTaskCompleted(card.id, task.id); }}
+                    {currentSubtasks.map((task, index) => (
+                      <div key={task.id} className="relative">
+                        {/* Drop indicator */}
+                        {dragOverTaskId === task.id && draggingTaskId !== task.id && (
+                          <div className="absolute -top-0.5 left-0 right-0 h-0.5 rounded-full bg-primary z-10" />
+                        )}
+                        <div
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData("text/plain", task.id);
+                            e.dataTransfer.effectAllowed = "move";
+                            setDraggingTaskId(task.id);
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                            if (draggingTaskId && draggingTaskId !== task.id) {
+                              setDragOverTaskId(task.id);
+                            }
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const draggedId = e.dataTransfer.getData("text/plain");
+                            if (!draggedId || draggedId === task.id) {
+                              setDraggingTaskId(null);
+                              setDragOverTaskId(null);
+                              return;
+                            }
+                            const sourceIdx = currentSubtasks.findIndex((t) => t.id === draggedId);
+                            const destIdx = index;
+                            if (sourceIdx !== -1 && sourceIdx !== destIdx) {
+                              const parentId = isTaskView && currentTask ? currentTask.id : null;
+                              onReorderCardTask(card.id, parentId, sourceIdx, destIdx);
+                            }
+                            setDraggingTaskId(null);
+                            setDragOverTaskId(null);
+                          }}
+                          onDragLeave={() => setDragOverTaskId(null)}
+                          onDragEnd={() => {
+                            setDraggingTaskId(null);
+                            setDragOverTaskId(null);
+                          }}
+                          onClick={() => {
+                            if (!draggingTaskId) navigateToTask(task);
+                          }}
                           className={cn(
-                            "mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-all",
-                            task.completed
-                              ? "border-emerald-500 bg-emerald-500 text-white"
-                              : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                            "group flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-accent/30",
+                            draggingTaskId === task.id && "opacity-50"
                           )}
                         >
-                          {task.completed && <Check weight="bold" className="h-2.5 w-2.5" />}
-                        </button>
-                        <div className="min-w-0 flex-1">
-                          <span className={cn("text-sm", task.completed && "text-muted-foreground line-through")}>
-                            {task.title}
-                          </span>
-                          {(task.dueDate || (task.subtasks && task.subtasks.length > 0)) && (
-                            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                              {task.dueDate && (
-                                <span className="inline-flex items-center gap-1">
-                                  <CalendarBlank className="h-3 w-3" />
-                                  {formatDateRelative(task.dueDate)}
-                                </span>
-                              )}
-                              {task.subtasks && task.subtasks.length > 0 && (
-                                <span className="inline-flex items-center gap-1">
-                                  <ListChecks className="h-3 w-3" />
-                                  {countCompleted(task.subtasks)}/{countTasks(task.subtasks)}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                           <button
-                            onClick={(e) => { e.stopPropagation(); navigateToTask(task); }}
-                            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-                            title="Abrir"
+                            onClick={(e) => { e.stopPropagation(); onToggleCardTaskCompleted(card.id, task.id); }}
+                            className={cn(
+                              "mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-all",
+                              task.completed
+                                ? "border-emerald-500 bg-emerald-500 text-white"
+                                : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                            )}
                           >
-                            <CaretRight className="h-3.5 w-3.5" />
+                            {task.completed && <Check weight="bold" className="h-2.5 w-2.5" />}
                           </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); onRemoveCardTask(card.id, task.id); }}
-                            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                            title="Remover"
-                          >
-                            <Trash className="h-3.5 w-3.5" />
-                          </button>
+                          <div className="min-w-0 flex-1">
+                            <span className={cn("text-sm", task.completed && "text-muted-foreground line-through")}>
+                              {task.title}
+                            </span>
+                            {(task.dueDate || (task.subtasks && task.subtasks.length > 0)) && (
+                              <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                                {task.dueDate && (
+                                  <span className="inline-flex items-center gap-1">
+                                    <CalendarBlank className="h-3 w-3" />
+                                    {formatDateRelative(task.dueDate)}
+                                  </span>
+                                )}
+                                {task.subtasks && task.subtasks.length > 0 && (
+                                  <span className="inline-flex items-center gap-1">
+                                    <ListChecks className="h-3 w-3" />
+                                    {countCompleted(task.subtasks)}/{countTasks(task.subtasks)}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); navigateToTask(task); }}
+                              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+                              title="Abrir"
+                            >
+                              <CaretRight className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onRemoveCardTask(card.id, task.id); }}
+                              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                              title="Remover"
+                            >
+                              <Trash className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
