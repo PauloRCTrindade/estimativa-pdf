@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import type { Estimativa, KanbanCard, KanbanCustomTask, TaskPriority } from "@/types";
+import type { Estimativa, KanbanCard, KanbanCustomTask, TaskPriority, KanbanColumn } from "@/types";
 import {
   formatDateBR,
   formatDateRelative,
@@ -17,12 +17,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DatePicker } from "@/components/date-picker";
+import { TagSelector } from "@/components/kanban/shared/TagSelector";
 import { COLORS } from "@/styles";
 import { cn } from "@/lib/utils";
 import {
   Plus, Trash, CaretRight, Check, CalendarBlank, Note, ListChecks,
   Clock, X, Flag, User, Tag, Paperclip, ChatText,
   CheckCircle, CaretDown, ArrowLeft, Archive, ArrowCounterClockwise, Copy,
+  SquareSplitHorizontal,
 } from "@phosphor-icons/react";
 
 function createId() {
@@ -75,7 +78,11 @@ export interface TaskDetailModalProps {
   onClose: () => void;
   card: KanbanCard;
   columnTitle: string;
+  columns: KanbanColumn[];
   estimativas: Estimativa[];
+  feriados?: string[];
+  releases?: string[];
+  allTags?: string[];
   onUpdateCard: (cardId: string, patch: Partial<Omit<KanbanCard, "id" | "tasks">>) => void;
   onUpdateCardNotes: (cardId: string, notes: string) => void;
   onAddCardTask: (cardId: string, task: Omit<KanbanCustomTask, "id" | "completed" | "subtasks">, parentTaskId?: string) => void;
@@ -88,6 +95,7 @@ export interface TaskDetailModalProps {
   onArchiveCard: (cardId: string) => void;
   onUnarchiveCard: (cardId: string) => void;
   onRequestDelete?: (cardId: string) => void;
+  onMoveCard?: (cardId: string, columnId: string) => void;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -99,7 +107,11 @@ export function TaskDetailModal({
   onClose,
   card,
   columnTitle,
+  columns,
   estimativas,
+  feriados,
+  releases,
+  allTags,
   onUpdateCard,
   onUpdateCardNotes,
   onAddCardTask,
@@ -112,6 +124,7 @@ export function TaskDetailModal({
   onArchiveCard,
   onUnarchiveCard,
   onRequestDelete,
+  onMoveCard,
 }: TaskDetailModalProps) {
   const [view, setView] = useState<ModalView>({ type: "card", cardId: card.id });
   const [animationKey, setAnimationKey] = useState(0);
@@ -311,6 +324,25 @@ export function TaskDetailModal({
             )}
           </div>
           <div className="flex items-center gap-2">
+            {!card.isTemplate && onMoveCard && (
+              <div className="flex items-center gap-1.5 rounded-md border border-border/60 bg-background px-2 py-1 text-xs text-foreground transition-colors hover:bg-accent/40">
+                <SquareSplitHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+                <select
+                  value={card.columnId}
+                  disabled={card.isArchived}
+                  onChange={(e) => {
+                    if (!card.isArchived) {
+                      onMoveCard(card.id, e.target.value);
+                    }
+                  }}
+                  className="h-5 bg-transparent text-xs font-medium text-foreground outline-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {columns.sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((col) => (
+                    <option key={col.id} value={col.id}>{col.title}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             {onDuplicateCard && (
               <button
                 onClick={async () => {
@@ -932,21 +964,21 @@ export function TaskDetailModal({
               {/* Dates */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Data de vencimento</label>
-                <div className="flex items-center gap-2">
-                  <CalendarBlank className="h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="date"
-                    value={isTaskView ? (currentTask?.dueDate || currentTask?.termino || "") : (card.dueDate || "")}
-                    onChange={(e) => {
-                      if (isTaskView && currentTask) {
-                        onUpdateCardTask(card.id, currentTask.id, { dueDate: e.target.value });
-                      } else {
-                        onUpdateCard(card.id, { dueDate: e.target.value });
-                      }
-                    }}
-                    className="h-8 text-sm"
-                  />
-                </div>
+                <DatePicker
+                  value={isTaskView ? (currentTask?.dueDate || currentTask?.termino || "") : (card.dueDate || "")}
+                  onChange={(date) => {
+                    if (isTaskView && currentTask) {
+                      onUpdateCardTask(card.id, currentTask.id, { dueDate: date });
+                    } else {
+                      onUpdateCard(card.id, { dueDate: date });
+                    }
+                  }}
+                  placeholder="Selecionar data"
+                  className="h-8 text-sm"
+                  dateFormat="iso"
+                  feriados={feriados}
+                  releases={releases}
+                />
               </div>
 
               {/* Start / End dates (estimativa tasks only show if present) */}
@@ -1009,57 +1041,19 @@ export function TaskDetailModal({
               </div>
 
               {/* Tags */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Etiquetas</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {(displayTags ?? []).map((tag) => (
-                    <Badge key={tag} variant="secondary" className="gap-1 pr-1">
-                      <Tag className="h-3 w-3" />
-                      {tag}
-                      <button
-                        onClick={() => {
-                          if (isTaskView && currentTask) {
-                            onUpdateCardTask(card.id, currentTask.id, { tags: (currentTask.tags ?? []).filter((t) => t !== tag) });
-                          } else {
-                            onUpdateCard(card.id, { tags: (card.tags ?? []).filter((t) => t !== tag) });
-                          }
-                        }}
-                        className="ml-0.5 rounded-sm hover:bg-muted"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground">
-                        <Plus className="h-3 w-3" />
-                        Adicionar
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-56 p-2" align="start">
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          const input = e.currentTarget.elements.namedItem("tag") as HTMLInputElement;
-                          const val = input.value.trim();
-                          if (!val) return;
-                          if (isTaskView && currentTask) {
-                            const tags = [...new Set([...(currentTask.tags ?? []), val])];
-                            onUpdateCardTask(card.id, currentTask.id, { tags });
-                          } else {
-                            const tags = [...new Set([...(card.tags ?? []), val])];
-                            onUpdateCard(card.id, { tags });
-                          }
-                          input.value = "";
-                        }}
-                      >
-                        <Input name="tag" placeholder="Nova etiqueta..." className="h-8 text-sm" autoComplete="off" />
-                      </form>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
+              {!card.isTemplate && (
+                <TagSelector
+                  availableTags={allTags ?? []}
+                  selectedTags={displayTags ?? []}
+                  onChange={(tags) => {
+                    if (isTaskView && currentTask) {
+                      onUpdateCardTask(card.id, currentTask.id, { tags });
+                    } else {
+                      onUpdateCard(card.id, { tags });
+                    }
+                  }}
+                />
+              )}
 
               {/* Attachments */}
               {isTaskView && (

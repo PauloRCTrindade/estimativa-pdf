@@ -324,8 +324,15 @@ export function HojeView({
 
     for (const card of active) {
       const { overdue: oTasks, today: tTasks } = getRelevantTasks(card);
-      if (oTasks.length > 0) overdue.push({ card, tasks: oTasks });
-      if (tTasks.length > 0) today.push({ card, tasks: tTasks });
+      const cardDueOverdue = card.dueDate && isOverdue(card.dueDate);
+      const cardDueToday = card.dueDate && isToday(card.dueDate);
+
+      if (oTasks.length > 0 || cardDueOverdue) {
+        overdue.push({ card, tasks: oTasks });
+      }
+      if (tTasks.length > 0 || cardDueToday) {
+        today.push({ card, tasks: tTasks });
+      }
     }
 
     overdue.sort((a, b) => {

@@ -23,9 +23,9 @@ Funcionalidades principais:
 
 | Camada | Tecnologia |
 |--------|-----------|
-| Frontend | React 19 + TypeScript |
-| Build Tool | Vite 8 |
-| Estilos | Tailwind CSS 4.2 + PostCSS |
+| Frontend | React 19.2.5 + TypeScript (~6.0.2) |
+| Build Tool | Vite 8.0.10 |
+| Estilos | Tailwind CSS 4.2.4 + PostCSS |
 | Componentes UI | shadcn/ui (style: `radix-nova`, baseColor: `neutral`) |
 | Ícones | Phosphor Icons (`@phosphor-icons/react`) e Lucide React |
 | Fonte | Geist Variable (`@fontsource-variable/geist`) |
@@ -43,21 +43,25 @@ Node.js requerido: **22.22.2** (definido em `.nvmrc`).
 
 ```
 ├── api/                        # Vercel Serverless Functions (backend em produção)
-│   ├── lib/supabase.js         # Cliente Supabase para funções serverless
+│   ├── lib/
+│   │   ├── supabase.js         # Cliente Supabase para funções serverless
+│   │   ├── auth.js             # verifyAuth, unauthorized, setCorsHeaders
+│   │   └── case-converter.js   # camelToSnakeObj, snakeToCamelObj
 │   ├── estimativas.js          # GET/POST /api/estimativas
 │   ├── estimativas/[id].js     # GET/PUT/DELETE /api/estimativas/:id
-│   ├── kanban/
-│   │   ├── board.js            # GET /api/kanban/board
-│   │   ├── cards.js            # GET/POST /api/kanban/cards
-│   │   ├── columns.js          # GET/POST /api/kanban/columns
-│   │   └── tasks.js            # GET/POST /api/kanban/tasks
-│   └── kanban/cards/           # Rotas dinâmicas adicionais do Kanban
-│   └── kanban/columns/
-│   └── kanban/tasks/
+│   └── kanban/
+│       ├── board.js            # GET /api/kanban/board
+│       ├── cards.js            # GET/POST /api/kanban/cards
+│       ├── columns.js          # GET/POST /api/kanban/columns
+│       ├── tasks.js            # GET/POST /api/kanban/tasks
+│       ├── cards/[id].js       # PUT/DELETE card
+│       ├── columns/[id].js     # PUT/DELETE column
+│       └── tasks/[id].js       # PUT/DELETE task
 ├── src/                        # Código-fonte do frontend
 │   ├── components/             # Componentes React
 │   │   ├── ui/                 # Componentes shadcn/ui (Button, Card, Dialog, etc.)
 │   │   ├── auth/               # Login, Signup, AuthPage, ProtectedRoute
+│   │   ├── kanban/             # Views, modais e helpers do Kanban
 │   │   ├── atividades-list/
 │   │   ├── calculo-financeiro/
 │   │   ├── date-picker/
@@ -79,6 +83,11 @@ Node.js requerido: **22.22.2** (definido em `.nvmrc`).
 │   │   ├── kanban/
 │   │   ├── overview/
 │   │   └── save/
+│   ├── features/estimativa/    # Hooks de domínio da estimativa
+│   │   ├── useEstimativaForm.ts
+│   │   ├── useTimelineCalculations.ts
+│   │   ├── usePdfGeneration.ts
+│   │   └── useEstimativaCrud.ts
 │   ├── hooks/                  # Hooks customizados
 │   │   ├── useAuth.ts
 │   │   ├── useEstimativas.ts
@@ -92,14 +101,15 @@ Node.js requerido: **22.22.2** (definido em `.nvmrc`).
 │   │   └── index.ts
 │   ├── styles/                 # Cores e estilos inline para PDF
 │   │   └── index.ts
-│   ├── data/                   # Dados estáticos (releases, feriados)
+│   ├── data/                   # Dados estáticos (releases, feriados 2026)
 │   │   └── index.ts
 │   ├── lib/utils.ts            # `cn()` do shadcn/ui
 │   ├── App.tsx                 # Componente raiz com estado global
 │   ├── main.tsx                # Entry point do React
 │   └── index.css               # Tailwind + variáveis CSS + dark mode
-├── dev-server.js               # Servidor Express local (porta 3003)
+├── dev-server.js               # Servidor Express local
 ├── database.sql                # Schema PostgreSQL completo
+├── setup-db.js                 # Script de verificação de conexão/schema
 ├── vercel.json                 # Configuração do deploy na Vercel
 ├── vite.config.ts              # Configuração do Vite + proxy /api
 ├── tsconfig.json               # Projeto TypeScript com referências
@@ -151,7 +161,7 @@ npm run setup:db         # Valida conexão e schema no Supabase
 ### Idioma
 - **Português brasileiro** para nomes de domínio, variáveis e tipos relacionados ao negócio:
   - `titulo`, `arquiteto`, `inicio`, `releaseAlvo`, `feriados`, `premissas`, `atividades`, `pacotes`.
-- **Inglês** para termos técnicos: `handler`, `handler`, `loading`, `error`, `token`, `columns`, `cards`, `tasks`.
+- **Inglês** para termos técnicos: `handler`, `loading`, `error`, `token`, `columns`, `cards`, `tasks`.
 
 ### Nomenclatura
 - Componentes React: `PascalCase`.
@@ -167,7 +177,7 @@ npm run setup:db         # Valida conexão e schema no Supabase
 ### TypeScript
 - O projeto usa `strict: false` e `noImplicitAny: false` em `tsconfig.app.json`.
 - Arquivos legados misturam JS sem tipagem. Novos arquivos devem usar tipos.
-- `App.tsx` é parcialmente ignorado pelo ESLint com regras reduzidas.
+- `App.tsx` é parcialmente ignorado pelo ESLint com regras reduzidas (`@typescript-eslint/no-unused-vars` off, `react-hooks/exhaustive-deps` off, `react-refresh/only-export-components` off).
 
 ### Estilos
 - UI geral: Tailwind CSS + classes shadcn/ui.
@@ -191,7 +201,10 @@ O PostgreSQL do Supabase usa **colunas em lowercase sem separadores**:
 O frontend trabalha em **camelCase**:
 - `releaseAlvo`, `chgDias`, `esteiraPreProd`, `diasParados`, `criadoEm`, `atualizadoEm`, `columnId`, `estimateId`, `parentId`, `cardId`, `dueDate`.
 
-**Sempre mantenha a conversão nos handlers de API.** Cada rota em `api/` possui funções `camelToLowercase` e/ou `lowercaseToCamel` para garantir essa tradução.
+**Sempre mantenha a conversão nos handlers de API.** As rotas possuem conversores, mas a implementação varia por arquivo:
+- `api/estimativas.js` e `api/estimativas/[id].js`: usam `camelToLowercase` (`.toLowerCase()` em todas as chaves) e `lowercaseToCamel` (mapeamento explícito de chaves conhecidas).
+- `api/lib/case-converter.js`: exporta `camelToSnakeObj` e `snakeToCamelObj` usados pelas rotas do Kanban (`api/kanban/`).
+- `dev-server.js`: usa `camelToSnakeCase` (conversão real com underscore) para estimativas e `toCamelKanban` (com `kanbanKeyMap`) para Kanban.
 
 - Campo especial: `pacotes` é armazenado como JSONB e deve preservar sua estrutura interna em camelCase — não converter recursivamente.
 
@@ -207,10 +220,12 @@ O schema completo está em `database.sql`. Ele inclui:
 
 ### Ambiente de desenvolvimento local
 - O frontend (`npm run dev`) roda em uma porta Vite (ex: `5177`).
-- A API local (`npm run dev:api`) roda na porta `3003`.
+- A API local (`npm run dev:api`) roda na porta `3003` via `cross-env PORT=3003`.
 - `vite.config.ts` faz proxy de `/api` para `http://localhost:3003`.
-- `src/services/api.ts` monta a URL base a partir de `VITE_API_URL`;
-  se vazio, usa `/api`; se terminar com `/api`, usa como está; senão, concatena `/api`.
+- `src/services/api.ts` monta a URL base a partir de `VITE_API_URL`:
+  - se vazio, usa `/api`;
+  - se terminar com `/api`, usa como está;
+  - senão, concatena `/api`.
 
 ### Ambiente de produção (Vercel)
 - O frontend é servido pelo Vercel a partir de `dist/`.
@@ -223,14 +238,28 @@ GET    /api/estimativas                listar com filtros opcionais (?arquiteto=
 POST   /api/estimativas                criar
 GET    /api/estimativas/:id            obter uma
 PUT    /api/estimativas/:id            atualizar
-DELETE /api/estimat
+DELETE /api/estimativas/:id            deletar
+GET    /api/kanban/board               board completo
+GET    /api/kanban/columns             listar colunas
+POST   /api/kanban/columns             criar coluna
+PUT    /api/kanban/columns/:id         atualizar coluna
+DELETE /api/kanban/columns/:id         deletar coluna
+GET    /api/kanban/cards               listar cards
+POST   /api/kanban/cards               criar card
+PUT    /api/kanban/cards/:id           atualizar card
+DELETE /api/kanban/cards/:id           deletar card
+GET    /api/kanban/tasks               listar tasks
+POST   /api/kanban/tasks               criar task
+PUT    /api/kanban/tasks/:id           atualizar task
+DELETE /api/kanban/tasks/:id           deletar task
 ```
 
 ### Autenticação nas requisições
 - Os serviços em `src/services/*.ts` aceitam um `token?: string` opcional.
 - O token é obtido via `useAuth().getToken()`, que recupera o `access_token` da sessão Supabase.
 - Enviado no header `Authorization: Bearer <token>`.
-- Nos handlers serverless, o CORS está configurado para permitir origins locais e `process.env.FRONTEND_URL`.
+- Nos handlers serverless (`api/`), as rotas de mutação (POST, PUT, DELETE) exigem autenticação via `verifyAuth`. As rotas GET são públicas no momento.
+- O `dev-server.js` não exige autenticação (uso local apenas).
 
 ---
 
@@ -276,7 +305,7 @@ Para associar estimativas a um usuário no futuro, adicione `user_id` à tabela 
 ## Deploy
 
 O deploy padrão é na **Vercel**:
-- `vercel.json` define `buildCommand`, `devCommand` e rewrite de `/api/(.*)` para `/api/$1`.
+- `vercel.json` define `buildCommand`, `devCommand`, `outputDirectory: "dist"` e rewrite de `/api/(.*)` para `/api/$1`.
 - O build gera a pasta `dist/`.
 - As variáveis de ambiente do Supabase devem estar configuradas no dashboard da Vercel.
 
@@ -291,13 +320,13 @@ VITE_SUPABASE_ANON_KEY
 
 ---
 
-## Considerações de Segurança
+## Segurança
 
 - O projeto usa RLS no Supabase, mas atualmente com políticas abertas (`"Allow all"`).
 - A `SUPABASE_ANON_KEY` e `VITE_SUPABASE_ANON_KEY` são seguras para o frontend.
 - Tokens JWT de autenticação são gerenciados pelo Supabase e armazenados automaticamente.
-- O `dev-server.js` contém credenciais de fallback hardcoded. Sempre prefira variáveis de ambiente em produção.
-- O CORS está configurado, mas permite origins locais amplas em desenvolvimento.
+- O `dev-server.js` lê variáveis de ambiente (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) e não possui credenciais hardcoded. Sempre prefira variáveis de ambiente.
+- O CORS está configurado tanto no `dev-server.js` quanto em `api/lib/auth.js`, permitindo origins locais e `process.env.FRONTEND_URL`/`VERCEL_URL` em produção.
 
 ---
 
@@ -318,9 +347,10 @@ VITE_SUPABASE_ANON_KEY
 
 ## Dicas para Agentes
 
-- Sempre verifique se a alteração em APIs afeta a conversão lowercase/camelCase.
+- Sempre verifique se a alteração em APIs afeta a conversão lowercase/camelCase. Lembre-se de que a implementação do conversor varia entre `api/estimativas.js`, `api/estimativas/[id].js`, `api/lib/case-converter.js` e `dev-server.js`.
 - Ao adicionar novos campos no banco, atualize `database.sql`, os conversores em `api/` e os tipos em `src/types/index.ts`.
 - Novos componentes de UI devem preferir componentes de `src/components/ui/`. Use `cn()` para mesclar classes.
 - Para PDF, mantenha cores em HEX e estilos inline quando necessário.
-- Ao adicionar rotas de API, siga o padrão de CORS já existente nos handlers.
+- Ao adicionar rotas de API, siga o padrão de CORS já existente nos handlers (`setCorsHeaders` + `OPTIONS` preflight).
 - Não altere `App.tsx` de forma a quebrar as regras relaxadas do ESLint sem atualizar `eslint.config.js`.
+- O campo `pacotes` é JSONB — nunca aplique conversão recursiva de camelCase nele.

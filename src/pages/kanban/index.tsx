@@ -1,5 +1,5 @@
 import { type DragEvent, useState, useMemo } from "react";
-import type { Estimativa, KanbanColumn, KanbanCard, KanbanCustomTask } from "@/types";
+import type { Estimativa, KanbanColumn, KanbanCard, KanbanCustomTask, TaskPriority } from "@/types";
 import {
   extractYMD,
   makeLocalDate,
@@ -19,7 +19,9 @@ import { TemplatesView } from "@/components/kanban/views/TemplatesView";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { DatePicker } from "@/components/date-picker";
 import { cn } from "@/lib/utils";
 import {
   Plus,
@@ -30,6 +32,9 @@ import {
   User,
   SquareSplitHorizontal,
   DotsSixVertical,
+  Faders,
+  X,
+  Flag,
 } from "@phosphor-icons/react";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -42,6 +47,9 @@ interface KanbanPageProps {
   columns: KanbanColumn[];
   cards: KanbanCard[];
   estimativas: Estimativa[];
+  feriados?: string[];
+  releases?: string[];
+  allTags?: string[];
   loading?: boolean;
   onAddColumn: (title: string) => void;
   onUpdateColumnTitle: (id: string, title: string) => void;
@@ -55,7 +63,7 @@ interface KanbanPageProps {
   onRemoveCardTask: (cardId: string, taskId: string) => void;
   onReorderCardTask: (cardId: string, parentTaskId: string | null, sourceIndex: number, destIndex: number) => void;
   onRemoveCard: (cardId: string) => void;
-  onAddCard: (columnId: string, title: string) => Promise<string | null>;
+  onAddCard: (payload: { columnId: string; title: string; dueDate?: string; description?: string }) => Promise<string | null>;
   onReorderCard: (cardId: string, beforeCardId: string | null, targetColumnId?: string) => void;
   onReorderColumn: (columnId: string, targetColumnId: string, placement: "before" | "after") => void;
   onArchiveCard: (cardId: string) => void;
@@ -82,6 +90,9 @@ export function KanbanPage({
   columns,
   cards,
   estimativas,
+  feriados,
+  releases,
+  allTags,
   onAddColumn,
   onUpdateColumnTitle,
   onRemoveColumn,
@@ -114,6 +125,9 @@ export function KanbanPage({
   const [editingColumnTitle, setEditingColumnTitle] = useState("");
   const [addingCardColumnId, setAddingCardColumnId] = useState<string | null>(null);
   const [newCardDraft, setNewCardDraft] = useState("");
+  const [newCardDueDate, setNewCardDueDate] = useState("");
+  const [newCardColumnId, setNewCardColumnId] = useState<string>("");
+  const [newCardDescription, setNewCardDescription] = useState("");
   const [boardTitle, setBoardTitle] = useState(() => localStorage.getItem("kanban-board-title") || "Quadro Kanban");
   const [boardSubtitle, setBoardSubtitle] = useState(() => localStorage.getItem("kanban-board-subtitle") || "Organize suas estimativas e acompanhe o progresso.");
   const [editingBoardTitle, setEditingBoardTitle] = useState(false);
@@ -127,6 +141,89 @@ export function KanbanPage({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const selectedTemplate = useMemo(() => cards.find((c) => c.id === selectedTemplateId && c.isTemplate) ?? null, [cards, selectedTemplateId]);
   const selectedCard = useMemo(() => cards.find((c) => c.id === selectedCardId) ?? null, [cards, selectedCardId]);
+
+  /* ── Filtros ───────────────────────────────────────────────────────────── */
+  const [showFilters, setShowFilters] = useState(false);
+  const [dateFilter, setDateFilter] = useState<"hoje" | "esta_semana" | "proximos_7_dias" | "proximo_mes" | null>(null);
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [priorityFilter, setPriorityFilter] = useState<TaskPriority | null>(null);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (dateFilter) count++;
+    if (tagFilter) count++;
+    if (priorityFilter) count++;
+    return count;
+  }, [dateFilter, tagFilter, priorityFilter]);
+
+  function clearFilters() {
+    setDateFilter(null);
+    setTagFilter(null);
+    setPriorityFilter(null);
+  }
+
+  function flattenTasks(tasks: KanbanCustomTask[] | undefined): KanbanCustomTask[] {
+    if (!tasks) return [];
+    const result: KanbanCustomTask[] = [];
+    for (const task of tasks) {
+      result.push(task);
+      if (task.subtasks && task.subtasks.length > 0) {
+        result.push(...flattenTasks(task.subtasks));
+      }
+    }
+    return result;
+  }
+
+  function dateMatchesFilter(dateStr: string | undefined, filter: string): boolean {
+    if (!dateStr) return false;
+    const ymd = extractYMD(dateStr);
+    if (!ymd) return false;
+    const target = makeLocalDate(ymd[0], ymd[1], ymd[2]);
+    const today = todayLocal();
+    const diffDays = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    switch (filter) {
+      case "hoje":
+        return diffDays === 0;
+      case "esta_semana": {
+        const dayOfWeek = today.getDay();
+        const startOfWeek = new Date(today.getTime() - dayOfWeek * 24 * 60 * 60 * 1000);
+        const endOfWeek = new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000);
+        return target >= startOfWeek && target <= endOfWeek;
+      }
+      case "proximos_7_dias":
+        return diffDays >= 0 && diffDays <= 7;
+      case "proximo_mes": {
+        const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+        const endNextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+        return target >= nextMonth && target <= endNextMonth;
+      }
+      default:
+        return false;
+    }
+  }
+
+  function cardMatchesFilters(card: KanbanCard): boolean {
+    if (card.isArchived || card.isTemplate) return false;
+
+    // Check card itself
+    const cardMatchesDate = dateFilter ? dateMatchesFilter(card.dueDate, dateFilter) : true;
+    const cardMatchesTag = tagFilter ? (card.tags ?? []).includes(tagFilter) : true;
+    const cardMatchesPriority = priorityFilter ? card.priority === priorityFilter : true;
+
+    if (cardMatchesDate && cardMatchesTag && cardMatchesPriority) return true;
+
+    // Check tasks and subtasks
+    const allTasks = flattenTasks(card.tasks);
+    for (const task of allTasks) {
+      const taskMatchesDate = dateFilter ? dateMatchesFilter(task.dueDate, dateFilter) : true;
+      const taskMatchesTag = tagFilter ? (task.tags ?? []).includes(tagFilter) : true;
+      const taskMatchesPriority = priorityFilter ? task.priority === priorityFilter : true;
+      if (taskMatchesDate && taskMatchesTag && taskMatchesPriority) return true;
+    }
+
+    return false;
+  }
 
   /* ── drag & drop ───────────────────────────────────────────────────────── */
   function handleDragStart(event: DragEvent<HTMLDivElement>, cardId: string) {
@@ -223,19 +320,36 @@ export function KanbanPage({
     setEditingColumnTitle("");
   }
   function getColumnCards(columnId: string) {
+    const hasFilter = dateFilter || tagFilter || priorityFilter;
     return cards
-      .filter((card) => card.columnId === columnId && !card.isArchived && !card.isTemplate)
+      .filter((card) => {
+        if (card.columnId !== columnId) return false;
+        if (card.isArchived || card.isTemplate) return false;
+        if (hasFilter) return cardMatchesFilters(card);
+        return true;
+      })
       .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   }
-  function handleSubmitAddCard(columnId: string) {
+  function handleSubmitAddCard() {
     const title = newCardDraft.trim();
     if (!title) return;
-    onAddCard(columnId, title);
+    onAddCard({
+      columnId: newCardColumnId || addingCardColumnId || columns[0]?.id || "",
+      title,
+      dueDate: newCardDueDate || undefined,
+      description: newCardDescription.trim() || undefined,
+    });
     setNewCardDraft("");
+    setNewCardDueDate("");
+    setNewCardColumnId("");
+    setNewCardDescription("");
     setAddingCardColumnId(null);
   }
   function handleCancelAddCard() {
     setNewCardDraft("");
+    setNewCardDueDate("");
+    setNewCardColumnId("");
+    setNewCardDescription("");
     setAddingCardColumnId(null);
   }
 
@@ -354,8 +468,87 @@ export function KanbanPage({
               Templates
             </button>
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFilters((prev) => !prev)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+                activeFiltersCount > 0
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <Faders className="h-3.5 w-3.5" />
+              Filtros
+              {activeFiltersCount > 0 && (
+                <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary-foreground text-[10px] font-bold text-primary px-1">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Filtros */}
+      {showFilters && kanbanSubtab === "ativos" && (
+        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">
+          {/* Filtro por data */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Data</label>
+            <select
+              value={dateFilter || ""}
+              onChange={(e) => setDateFilter((e.target.value || null) as typeof dateFilter)}
+              className="h-8 rounded-md border border-border/60 bg-background px-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Todas</option>
+              <option value="hoje">Hoje</option>
+              <option value="esta_semana">Esta semana</option>
+              <option value="proximos_7_dias">Próximos 7 dias</option>
+              <option value="proximo_mes">Próximo mês</option>
+            </select>
+          </div>
+
+          {/* Filtro por etiqueta */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Etiqueta</label>
+            <select
+              value={tagFilter || ""}
+              onChange={(e) => setTagFilter(e.target.value || null)}
+              className="h-8 rounded-md border border-border/60 bg-background px-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Todas</option>
+              {(allTags ?? []).map((tag) => (
+                <option key={tag} value={tag}>{tag}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtro por prioridade */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Prioridade</label>
+            <select
+              value={priorityFilter || ""}
+              onChange={(e) => setPriorityFilter((e.target.value || null) as TaskPriority | null)}
+              className="h-8 rounded-md border border-border/60 bg-background px-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Todas</option>
+              <option value="p1">Prioridade 1</option>
+              <option value="p2">Prioridade 2</option>
+              <option value="p3">Prioridade 3</option>
+              <option value="p4">Prioridade 4</option>
+            </select>
+          </div>
+
+          {/* Limpar filtros */}
+          {activeFiltersCount > 0 && (
+            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={clearFilters}>
+              <X className="h-3 w-3 mr-1" />
+              Limpar filtros
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Empty state */}
       {columns.length === 0 && kanbanSubtab === "ativos" && (
@@ -591,15 +784,44 @@ export function KanbanPage({
                         value={newCardDraft}
                         onChange={(e) => setNewCardDraft(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") handleSubmitAddCard(column.id);
+                          if (e.key === "Enter") handleSubmitAddCard();
                           if (e.key === "Escape") handleCancelAddCard();
                         }}
-                        placeholder="Nome da tarefa"
+                        placeholder="Título da tarefa"
                         className="h-9 text-sm"
                       />
+                      <Textarea
+                        value={newCardDescription}
+                        onChange={(e) => setNewCardDescription(e.target.value)}
+                        placeholder="Descrição (opcional)"
+                        rows={2}
+                        className="resize-none text-sm"
+                      />
                       <div className="flex items-center gap-2">
-                        <Button size="sm" className="h-7 text-xs" onClick={() => handleSubmitAddCard(column.id)}>
-                          Adicionar tarefa
+                        <DatePicker
+                          value={newCardDueDate}
+                          onChange={(date) => setNewCardDueDate(date)}
+                          placeholder="Data de vencimento"
+                          className="h-8 text-sm"
+                          dateFormat="iso"
+                          feriados={feriados}
+                          releases={releases}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={newCardColumnId || column.id}
+                          onChange={(e) => setNewCardColumnId(e.target.value)}
+                          className="h-8 flex-1 rounded-md border border-border/60 bg-background px-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          {columns.sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((col) => (
+                            <option key={col.id} value={col.id}>{col.title}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" className="h-7 text-xs" onClick={handleSubmitAddCard}>
+                          Salvar
                         </Button>
                         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleCancelAddCard}>
                           Cancelar
@@ -608,7 +830,10 @@ export function KanbanPage({
                     </div>
                   ) : (
                     <button
-                      onClick={() => setAddingCardColumnId(column.id)}
+                      onClick={() => {
+                        setAddingCardColumnId(column.id);
+                        setNewCardColumnId(column.id);
+                      }}
                       className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent/30 hover:text-foreground"
                     >
                       <Plus className="h-4 w-4" />
@@ -718,7 +943,11 @@ export function KanbanPage({
           onClose={() => setSelectedCardId(null)}
           card={selectedCard}
           columnTitle={columns.find((c) => c.id === selectedCard.columnId)?.title || ""}
+          columns={columns}
           estimativas={estimativas}
+          feriados={feriados}
+          releases={releases}
+          allTags={allTags}
           onUpdateCard={onUpdateCard}
           onUpdateCardNotes={onUpdateCardNotes}
           onAddCardTask={onAddCardTask}
@@ -731,6 +960,7 @@ export function KanbanPage({
           onArchiveCard={onArchiveCard}
           onUnarchiveCard={onUnarchiveCard}
           onRequestDelete={(cardId) => setDeletingCardId(cardId)}
+          onMoveCard={onMoveCard}
         />
       )}
 

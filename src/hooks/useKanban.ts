@@ -603,20 +603,24 @@ export function useKanban(estimativas: Estimativa[]) {
     }
   }, [cards.length]);
 
-  const addCard = useCallback(async (columnId: string, title: string) => {
-    const trimmed = title.trim();
+  const addCard = useCallback(async (payload: { columnId: string; title: string; dueDate?: string; description?: string }) => {
+    const trimmed = payload.title.trim();
     if (!trimmed) return null;
     const optimistic: KanbanCard = {
       id: createId(),
-      columnId,
+      columnId: payload.columnId,
       title: trimmed,
+      dueDate: payload.dueDate,
+      description: payload.description,
       tasks: [],
     };
     setCards((prev) => [...prev, optimistic]);
     try {
       const created = await criarCard({
-        columnId,
+        columnId: payload.columnId,
         title: trimmed,
+        dueDate: payload.dueDate,
+        description: payload.description,
         position: cards.length,
       }, await getToken());
       setCards((prev) => prev.map((c) => (c.id === optimistic.id ? { ...created, tasks: [] } : c)));
@@ -882,10 +886,18 @@ export function useKanban(estimativas: Estimativa[]) {
     }
   }, []);
 
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    cards.forEach((c) => c.tags?.forEach((t) => set.add(t)));
+    tasks.forEach((t) => t.tags?.forEach((tag) => set.add(tag)));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [cards, tasks]);
+
   return {
     columns,
     cards,
     tasks,
+    allTags,
     loading,
     favoriteIds: optimisticFavoriteIds,
     isAddingFavorite: (id: string) => addingFavoriteIds.has(id),

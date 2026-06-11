@@ -129,6 +129,7 @@ function GeradorEstimativaPDF({
   const {
     columns: kanbanColumns,
     cards: kanbanCards,
+    allTags: kanbanAllTags,
     loading: kanbanLoading,
     favoriteIds,
     isAddingFavorite,
@@ -326,6 +327,9 @@ function GeradorEstimativaPDF({
           columns={kanbanColumns}
           cards={kanbanCards}
           estimativas={estimativas}
+          feriados={feriados}
+          releases={releases}
+          allTags={kanbanAllTags}
           loading={kanbanLoading}
           onAddColumn={addKanbanColumn}
           onUpdateColumnTitle={updateKanbanColumnTitle}

@@ -1,5 +1,4 @@
 import * as React from "react"
-import { format } from "date-fns"
 import { pt } from "date-fns/locale"
 import { Calendar as CalendarIcon } from "@phosphor-icons/react"
 
@@ -21,6 +20,37 @@ interface DatePickerProps {
   className?: string
   feriados?: string[]
   releases?: string[]
+  /** Formato da data: "br" = dd/mm/yyyy (padrão), "iso" = yyyy-mm-dd */
+  dateFormat?: "br" | "iso"
+}
+
+function parseBR(dateStr: string): Date | undefined {
+  if (!dateStr) return undefined
+  const [day, month, year] = dateStr.split("/").map(Number)
+  if (!day || !month || !year) return undefined
+  return new Date(year, month - 1, day)
+}
+
+function parseISO(dateStr: string): Date | undefined {
+  if (!dateStr) return undefined
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return undefined
+  const [, year, month, day] = match.map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function formatBR(date: Date): string {
+  const day = String(date.getDate()).padStart(2, "0")
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const year = date.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
+function formatISO(date: Date): string {
+  const day = String(date.getDate()).padStart(2, "0")
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const year = date.getFullYear()
+  return `${year}-${month}-${day}`
 }
 
 export function DatePicker({
@@ -30,24 +60,25 @@ export function DatePicker({
   className,
   feriados,
   releases,
+  dateFormat = "br",
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
 
-  // Parse date from dd/mm/yyyy format
-  const parseDate = (dateStr: string): Date | undefined => {
-    if (!dateStr) return undefined
-    const [day, month, year] = dateStr.split("/").map(Number)
-    if (!day || !month || !year) return undefined
-    return new Date(year, month - 1, day)
-  }
+  const parseDate = React.useCallback(
+    (dateStr: string): Date | undefined => {
+      if (dateFormat === "iso") return parseISO(dateStr)
+      return parseBR(dateStr)
+    },
+    [dateFormat]
+  )
 
-  // Format date to dd/mm/yyyy format
-  const formatDate = (date: Date): string => {
-    const day = String(date.getDate()).padStart(2, "0")
-    const month = String(date.getMonth() + 1).padStart(2, "0")
-    const year = date.getFullYear()
-    return `${day}/${month}/${year}`
-  }
+  const formatDate = React.useCallback(
+    (date: Date): string => {
+      if (dateFormat === "iso") return formatISO(date)
+      return formatBR(date)
+    },
+    [dateFormat]
+  )
 
   const selectedDate = parseDate(value)
 
@@ -106,7 +137,7 @@ export function DatePicker({
           {releases && releases.length > 0 && (
             <>
               <Legend color="#ea580c" label="Tombamento (Pós-Release)" />
-              <Legend color="#1e40af" label="Domingo com Release Próximo" />
+              <Legend color="#1e40af" label="Domingo da Release" />
             </>
           )}
         </div>
