@@ -1,7 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Download } from "@phosphor-icons/react";
+import { FloppyDisk } from "@phosphor-icons/react";
 import { EstimativaHistorico } from "@/components/estimativa-historico";
+import { DocumentosExportacao } from "@/components/documentos-exportacao";
 import { TimeLine } from "@/components/time-line";
 import type { AppForm } from "@/types";
 
@@ -38,34 +39,31 @@ export function SavePage({
 }: SavePageProps) {
   return (
     <div className="space-y-6 pt-2">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-foreground">Salvar</h2>
+        <Button size="sm" onClick={onSave} className="h-8 text-xs">
+          <FloppyDisk className="mr-1.5 h-3.5 w-3.5" />
+          Salvar estimativa
+        </Button>
+      </div>
+
       <Card className="w-full print:hidden border border-border/60 bg-card rounded-xl shadow-sm">
         <CardContent className="p-6 space-y-6">
           <EstimativaHistorico
             historico={(estimativas as any[]).filter(e => e.tipo === 'estimativa-pacotes')}
             onLoad={onLoad}
             onDelete={onDelete}
-            onSave={onSave}
             onFavorite={onFavorite}
             favoriteIds={favoriteIds}
             isAddingFavorite={isAddingFavorite}
           />
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Button className="w-full" onClick={onAbrirPDF} variant="default">Abrir Estimativa</Button>
-              <Button className="w-full" onClick={onGerarPDF} variant="default">Baixar Estimativa</Button>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Button className="w-full" onClick={onAbrirCalendario} variant="default">
-                <Calendar className="mr-2 h-4 w-4" />
-                Abrir Calendário
-              </Button>
-              <Button className="w-full" onClick={onGerarPDFCalendario} variant="default">
-                <Download className="mr-2 h-4 w-4" />
-                Baixar Calendário
-              </Button>
-            </div>
-          </div>
+          <DocumentosExportacao
+            onVisualizarEstimativa={onAbrirPDF}
+            onBaixarEstimativa={onGerarPDF}
+            onVisualizarCalendario={onAbrirCalendario}
+            onBaixarCalendario={onGerarPDFCalendario}
+          />
         </CardContent>
       </Card>
 
