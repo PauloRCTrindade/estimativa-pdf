@@ -1,4 +1,5 @@
 import { type DragEvent, useState, useMemo, useCallback } from "react";
+import { useDragScroll } from "@/hooks/useDragScroll";
 import type { Estimativa, KanbanColumn, KanbanCard, KanbanCustomTask, TaskPriority } from "@/types";
 import {
   extractYMD,
@@ -260,6 +261,7 @@ export function KanbanPage({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const selectedTemplate = useMemo(() => cards.find((c) => c.id === selectedTemplateId && c.isTemplate) ?? null, [cards, selectedTemplateId]);
   const selectedCard = useMemo(() => cards.find((c) => c.id === selectedCardId) ?? null, [cards, selectedCardId]);
+  const boardRef = useDragScroll<HTMLDivElement>();
 
   /* ── Filtros ───────────────────────────────────────────────────────────── */
   const [showFilters, setShowFilters] = useState(false);
@@ -686,7 +688,7 @@ export function KanbanPage({
 
       {/* Board — Ativos */}
       {kanbanSubtab === "ativos" && columns.length > 0 && (
-        <div className="flex flex-1 gap-4 overflow-x-auto pb-2 min-w-0">
+        <div ref={boardRef} className="flex flex-1 gap-4 overflow-x-auto pb-2 min-w-0 cursor-grab">
           {[...columns].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((column) => {
             const columnCards = getColumnCards(column.id);
             const isDropTarget = dragOverColumnId === column.id;
@@ -704,6 +706,7 @@ export function KanbanPage({
               >
                 {/* Column header */}
                 <div
+                  data-kanban-column-header
                   className={cn(
                     "group px-1 rounded-lg transition-colors cursor-grab active:cursor-grabbing",
                     dragOverColumnReorderId === column.id && "bg-primary/10 ring-2 ring-primary/30"
@@ -844,6 +847,7 @@ export function KanbanPage({
                         )}
                         <Card
                           draggable
+                          data-kanban-card
                           onDragStart={(e) => handleDragStart(e, card.id)}
                           onDragOver={(e) => handleDragOverCard(e, card.id)}
                           onDrop={(e) => handleDropOnCard(e, card.id)}
