@@ -257,6 +257,7 @@ app.delete('/api/estimativas/:id', async (req, res) => {
 const kanbanKeyMap = {
   estimate_id: 'estimateId', column_id: 'columnId', due_date: 'dueDate',
   is_template: 'isTemplate', is_default_template: 'isDefaultTemplate', is_archived: 'isArchived', completed: 'completed',
+  completed_estimate_task_ids: 'completedEstimateTaskIds',
   parent_id: 'parentId', card_id: 'cardId', criado_em: 'criadoEm', atualizado_em: 'atualizadoEm',
 };
 

@@ -175,6 +175,14 @@ export function useKanban(estimativas: Estimativa[]) {
   const [tasks, setTasks] = useState<KanbanTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingFavoriteIds, setAddingFavoriteIds] = useState<Set<string>>(new Set());
+  const [tagColors, setTagColorsState] = useState<Record<string, string>>(() => {
+    try {
+      const raw = localStorage.getItem("kanban-tag-colors");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
 
   const favoriteIds = useMemo(() => cards.filter((c) => c.estimateId).map((c) => c.estimateId!), [cards]);
   const optimisticFavoriteIds = useMemo(() => {
@@ -236,6 +244,19 @@ export function useKanban(estimativas: Estimativa[]) {
       notify("Erro ao atualizar coluna");
     }
   }, []);
+
+  const updateColumnColor = useCallback(async (id: string, color: string) => {
+    const previousColumns = columns;
+    setColumns((prev) => prev.map((c) => (c.id === id ? { ...c, color } : c)));
+    try {
+      const updated = await atualizarColumn(id, { color }, await getToken());
+      setColumns((prev) => prev.map((c) => (c.id === id ? { ...c, color: updated.color } : c)));
+    } catch (err) {
+      setColumns(previousColumns);
+      console.error("[updateColumnColor] Erro ao persistir cor da coluna:", err);
+      notify("Erro ao atualizar cor da coluna");
+    }
+  }, [columns]);
 
   const removeColumn = useCallback(async (id: string) => {
     const prevColumns = columns;
@@ -378,6 +399,24 @@ export function useKanban(estimativas: Estimativa[]) {
     }
   }, []);
 
+  const toggleEstimateTaskCompleted = useCallback(async (cardId: string, taskId: string) => {
+    const card = cards.find((c) => c.id === cardId);
+    if (!card) return;
+    const currentIds = card.completedEstimateTaskIds ?? [];
+    const isCompleted = currentIds.includes(taskId);
+    const nextIds = isCompleted ? currentIds.filter((id) => id !== taskId) : [...currentIds, taskId];
+    const previousCards = cards;
+    setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, completedEstimateTaskIds: nextIds } : c)));
+    try {
+      const updated = await atualizarCard(cardId, { completedEstimateTaskIds: nextIds }, await getToken());
+      setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, completedEstimateTaskIds: updated.completedEstimateTaskIds } : c)));
+    } catch (err) {
+      setCards(previousCards);
+      console.error("[toggleEstimateTaskCompleted] Erro ao persistir:", err);
+      notify("Erro ao atualizar tarefa principal");
+    }
+  }, [cards]);
+
   const removeCard = useCallback(async (cardId: string) => {
     setCards((prev) => prev.filter((c) => c.id !== cardId));
     setTasks((prev) => prev.filter((t) => t.cardId !== cardId));
@@ -446,24 +485,40 @@ export function useKanban(estimativas: Estimativa[]) {
   }, []);
 
   const updateCardTask = useCallback(async (cardId: string, taskId: string, patch: Partial<Omit<KanbanCustomTask, "id" | "subtasks">>) => {
+    const previousCards = cards;
+    const previousTasks = tasks;
     setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, tasks: updateTaskTree(c.tasks, taskId, (t) => ({ ...t, ...patch })) } : c)));
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...patch } : t)));
     try {
-      const flatPatch: Partial<KanbanTask> = { ...patch };
-      await atualizarTask(taskId, flatPatch, await getToken());
-    } catch {
+      const updated = await atualizarTask(taskId, patch, await getToken());
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...updated } : t)));
+    } catch (err) {
+      setCards(previousCards);
+      setTasks(previousTasks);
+      console.error("[updateCardTask] Erro ao persistir tarefa:", err);
       notify("Erro ao atualizar tarefa");
     }
-  }, []);
+  }, [cards, tasks]);
 
   const toggleCardTaskCompleted = useCallback(async (cardId: string, taskId: string) => {
-    setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, tasks: updateTaskTree(c.tasks, taskId, (t) => ({ ...t, completed: !t.completed })) } : c)));
+    const previousCards = cards;
+    const previousTasks = tasks;
+    const currentCompleted = tasks.find((t) => t.id === taskId)?.completed ?? false;
+    const nextCompleted = !currentCompleted;
+
+    setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, tasks: updateTaskTree(c.tasks, taskId, (t) => ({ ...t, completed: nextCompleted })) } : c)));
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, completed: nextCompleted } : t)));
+
     try {
-      const task = tasks.find((t) => t.id === taskId);
-      if (task) await atualizarTask(taskId, { completed: !task.completed }, await getToken());
-    } catch {
+      const updated = await atualizarTask(taskId, { completed: nextCompleted }, await getToken());
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, completed: updated.completed } : t)));
+    } catch (err) {
+      setCards(previousCards);
+      setTasks(previousTasks);
+      console.error("[toggleCardTaskCompleted] Erro ao persistir estado da tarefa:", err);
       notify("Erro ao alternar tarefa");
     }
-  }, [tasks]);
+  }, [cards, tasks]);
 
   const removeCardTask = useCallback(async (cardId: string, taskId: string) => {
     setCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, tasks: removeFromTree(c.tasks, taskId) ?? [] } : c)));
@@ -656,6 +711,7 @@ export function useKanban(estimativas: Estimativa[]) {
       columnId: targetColumnId,
       estimateId: item.id,
       title: item.titulo || item.nome || "Estimativa sem título",
+      completedEstimateTaskIds: [],
     };
 
     try {
@@ -724,6 +780,7 @@ export function useKanban(estimativas: Estimativa[]) {
       dueDate: template.dueDate,
       priority: template.priority,
       assignee: template.assignee,
+      completedEstimateTaskIds: template.completedEstimateTaskIds,
     };
 
     try {
@@ -810,6 +867,7 @@ export function useKanban(estimativas: Estimativa[]) {
       assignee: card.assignee,
       isArchived: false,
       completed: card.completed,
+      completedEstimateTaskIds: card.completedEstimateTaskIds,
       tasks: card.tasks,
     };
     setCards((prev) => [...prev, optimistic]);
@@ -826,6 +884,7 @@ export function useKanban(estimativas: Estimativa[]) {
         assignee: card.assignee,
         isArchived: false,
         completed: card.completed,
+        completedEstimateTaskIds: card.completedEstimateTaskIds,
         position: cards.length,
       }, await getToken());
 
@@ -893,22 +952,47 @@ export function useKanban(estimativas: Estimativa[]) {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [cards, tasks]);
 
+  const setTagColor = useCallback((tag: string, color: string) => {
+    setTagColorsState((prev) => {
+      const next = { ...prev, [tag]: color };
+      localStorage.setItem("kanban-tag-colors", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const getTagColor = useCallback((tag: string) => {
+    const saved = tagColors[tag];
+    if (saved) return saved;
+    const palette = [
+      "#ef4444", "#f97316", "#f59e0b", "#84cc16",
+      "#10b981", "#06b6d4", "#3b82f6", "#6366f1",
+      "#8b5cf6", "#d946ef", "#f43f5e", "#78716c",
+    ];
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+    const index = Math.abs(hash) % palette.length;
+    return palette[index];
+  }, [tagColors]);
+
   return {
     columns,
     cards,
     tasks,
     allTags,
+    tagColors,
     loading,
     favoriteIds: optimisticFavoriteIds,
     isAddingFavorite: (id: string) => addingFavoriteIds.has(id),
     addColumn,
     updateColumnTitle,
+    updateColumnColor,
     removeColumn,
     reorderColumn,
     moveCard,
     reorderCard,
     updateCard,
     updateCardNotes,
+    toggleEstimateTaskCompleted,
     removeCard,
     addCardTask,
     updateCardTask,
@@ -925,5 +1009,7 @@ export function useKanban(estimativas: Estimativa[]) {
     duplicateCard,
     archiveCard,
     unarchiveCard,
+    setTagColor,
+    getTagColor,
   };
 }

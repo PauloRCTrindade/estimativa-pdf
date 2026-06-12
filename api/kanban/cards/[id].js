@@ -10,6 +10,7 @@ const keyMap = {
   isdefaulttemplate: 'isDefaultTemplate',
   isarchived: 'isArchived',
   completed: 'completed',
+  completedestimatetaskids: 'completedEstimateTaskIds',
   criadoem: 'criadoEm',
   atualizadoem: 'atualizadoEm',
 };

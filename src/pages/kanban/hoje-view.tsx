@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from "react";
-import type { KanbanColumn, KanbanCard, KanbanCustomTask, TaskPriority } from "@/types";
+import type { KanbanColumn, KanbanCard, KanbanCustomTask, TaskPriority, Estimativa } from "@/types";
 import { cn } from "@/lib/utils";
+import { getCardProgress, getTasksForEstimate } from "@/components/kanban/shared/kanbanHelpers";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,6 +21,7 @@ import {
 interface HojeViewProps {
   cards: KanbanCard[];
   columns: KanbanColumn[];
+  estimativas: Estimativa[];
   onUpdateCard: (cardId: string, patch: Partial<Omit<KanbanCard, "id" | "tasks">>) => void;
   onToggleCardTaskCompleted: (cardId: string, taskId: string) => void;
   onArchiveCard: (cardId: string) => void;
@@ -134,6 +136,7 @@ interface TodayKanbanCardProps {
   card: KanbanCard;
   columnTitle: string;
   relevantTasks: KanbanCustomTask[];
+  estimativas: Estimativa[];
   onToggleCompleted: () => void;
   onToggleTask: (taskId: string) => void;
   onOpen: () => void;
@@ -143,13 +146,14 @@ function TodayKanbanCard({
   card,
   columnTitle,
   relevantTasks,
+  estimativas,
   onToggleCompleted,
   onToggleTask,
   onOpen,
 }: TodayKanbanCardProps) {
-  const total = countTasks(card.tasks);
-  const completed = countCompleted(card.tasks);
-  const percent = taskProgressPercent(card.tasks);
+  const estimate = estimativas.find((e) => e.id === card.estimateId && e.tipo === "estimativa-pacotes");
+  const estimateTasks = estimate ? getTasksForEstimate(estimate) : [];
+  const { total, completed, percent } = getCardProgress(card, estimateTasks);
 
   return (
     <Card
@@ -305,6 +309,7 @@ function getRelevantTasks(card: KanbanCard): { overdue: KanbanCustomTask[]; toda
 export function HojeView({
   cards,
   columns,
+  estimativas,
   onUpdateCard,
   onToggleCardTaskCompleted,
   onArchiveCard,
@@ -386,6 +391,7 @@ export function HojeView({
                 card={card}
                 columnTitle={columnMap.get(card.columnId) || "—"}
                 relevantTasks={tasks}
+                estimativas={estimativas}
                 onToggleCompleted={() => handleToggleCompleted(card.id)}
                 onToggleTask={(taskId) => onToggleCardTaskCompleted(card.id, taskId)}
                 onOpen={() => onOpenCard(card.id)}
@@ -409,6 +415,7 @@ export function HojeView({
                 card={card}
                 columnTitle={columnMap.get(card.columnId) || "—"}
                 relevantTasks={tasks}
+                estimativas={estimativas}
                 onToggleCompleted={() => handleToggleCompleted(card.id)}
                 onToggleTask={(taskId) => onToggleCardTaskCompleted(card.id, taskId)}
                 onOpen={() => onOpenCard(card.id)}

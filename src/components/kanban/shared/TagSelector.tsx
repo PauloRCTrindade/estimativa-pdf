@@ -14,6 +14,8 @@ interface TagSelectorProps {
   selectedTags: string[];
   onChange: (tags: string[]) => void;
   disabled?: boolean;
+  getTagColor?: (tag: string) => { bg: string; text: string; border: string } | string;
+  setTagColor?: (tag: string, color: string) => void;
 }
 
 export function TagSelector({
@@ -21,7 +23,19 @@ export function TagSelector({
   selectedTags,
   onChange,
   disabled,
+  getTagColor,
+  setTagColor,
 }: TagSelectorProps) {
+  function resolveTagColor(tag: string): { bg: string; text: string; border: string } {
+    if (getTagColor) {
+      const result = getTagColor(tag);
+      if (typeof result === "string") {
+        return { bg: result + "20", text: result, border: result + "40" };
+      }
+      return result;
+    }
+    return { bg: "bg-muted", text: "text-muted-foreground", border: "border-border" };
+  }
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -70,19 +84,27 @@ export function TagSelector({
         Etiquetas
       </label>
       <div className="flex flex-wrap gap-1.5">
-        {(selectedTags ?? []).map((tag) => (
-          <Badge key={tag} variant="secondary" className="gap-1 pr-1">
-            <Tag className="h-3 w-3" />
-            {tag}
-            <button
-              onClick={() => removeTag(tag)}
-              className="ml-0.5 rounded-sm hover:bg-muted"
-              disabled={disabled}
+        {(selectedTags ?? []).map((tag) => {
+          const tc = resolveTagColor(tag);
+          return (
+            <Badge
+              key={tag}
+              variant="secondary"
+              className="gap-1 pr-1"
+              style={{ backgroundColor: tc.bg.startsWith("bg-") ? undefined : tc.bg, color: tc.text.startsWith("text-") ? undefined : tc.text, borderColor: tc.border.startsWith("border-") ? undefined : tc.border }}
             >
-              <X className="h-3 w-3" />
-            </button>
-          </Badge>
-        ))}
+              <Tag className="h-3 w-3" />
+              {tag}
+              <button
+                onClick={() => removeTag(tag)}
+                className="ml-0.5 rounded-sm hover:bg-muted"
+                disabled={disabled}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          );
+        })}
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <button
@@ -106,10 +128,10 @@ export function TagSelector({
               <div className="max-h-48 overflow-y-auto space-y-0.5">
                 {filtered.map((tag) => {
                   const checked = selectedTags.includes(tag);
+                  const tc = resolveTagColor(tag);
                   return (
-                    <button
+                    <div
                       key={tag}
-                      onClick={() => toggleTag(tag)}
                       className={cn(
                         "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
                         checked
@@ -117,18 +139,36 @@ export function TagSelector({
                           : "hover:bg-accent/40 text-foreground"
                       )}
                     >
-                      <span
-                        className={cn(
-                          "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-                          checked
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-muted-foreground/30"
-                        )}
+                      <button
+                        onClick={() => toggleTag(tag)}
+                        className="flex flex-1 items-center gap-2 text-left"
                       >
-                        {checked && <Check className="h-3 w-3" />}
-                      </span>
-                      <span className="truncate">{tag}</span>
-                    </button>
+                        <span
+                          className={cn(
+                            "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+                            checked
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-muted-foreground/30"
+                          )}
+                        >
+                          {checked && <Check className="h-3 w-3" />}
+                        </span>
+                        <span
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: tc.text.startsWith("text-") ? undefined : tc.text }}
+                        />
+                        <span className="truncate">{tag}</span>
+                      </button>
+                      {setTagColor && (
+                        <input
+                          type="color"
+                          value={tc.text.startsWith("#") ? tc.text : "#6366f1"}
+                          onChange={(e) => setTagColor(tag, e.target.value)}
+                          className="h-4 w-4 cursor-pointer rounded border-0 p-0 shrink-0"
+                          title="Alterar cor"
+                        />
+                      )}
+                    </div>
                   );
                 })}
                 {filtered.length === 0 && !canCreate && (
@@ -137,16 +177,27 @@ export function TagSelector({
                   </p>
                 )}
                 {canCreate && (
-                  <button
-                    onClick={() => {
-                      createAndSelect();
-                      setOpen(false);
-                    }}
-                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary transition-colors hover:bg-accent"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Criar etiqueta "{search.trim()}"
-                  </button>
+                  <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
+                    <button
+                      onClick={() => {
+                        createAndSelect();
+                        setOpen(false);
+                      }}
+                      className="flex flex-1 items-center gap-2 text-sm text-primary transition-colors hover:bg-accent rounded-md px-2 py-1.5 -ml-2"
+                    >
+                      <Plus className="h-4 w-4 shrink-0" />
+                      Criar etiqueta "{search.trim()}"
+                    </button>
+                    {setTagColor && (
+                      <input
+                        type="color"
+                        defaultValue="#6366f1"
+                        onChange={(e) => setTagColor(search.trim(), e.target.value)}
+                        className="h-5 w-5 cursor-pointer rounded border-0 p-0 shrink-0"
+                        title="Escolher cor"
+                      />
+                    )}
+                  </div>
                 )}
               </div>
             </div>

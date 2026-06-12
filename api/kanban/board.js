@@ -33,6 +33,7 @@ export default async function handler(req, res) {
       isdefaulttemplate: 'isDefaultTemplate',
       isarchived: 'isArchived',
       completed: 'completed',
+      completedestimatetaskids: 'completedEstimateTaskIds',
       parentid: 'parentId',
       cardid: 'cardId',
       criadoem: 'criadoEm',

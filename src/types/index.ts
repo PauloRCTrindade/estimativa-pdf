@@ -24,6 +24,7 @@ export interface KanbanColumn {
   id: string;
   title: string;
   position?: number;
+  color?: string;
 }
 
 export interface KanbanTask {
@@ -77,6 +78,7 @@ export interface KanbanCard {
   isDefaultTemplate?: boolean;
   isArchived?: boolean;
   completed?: boolean;
+  completedEstimateTaskIds?: string[];
   position?: number;
 }
 

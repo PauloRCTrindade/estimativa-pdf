@@ -61,9 +61,11 @@ CREATE TABLE IF NOT EXISTS kanban_columns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   position INTEGER DEFAULT 0,
+  color TEXT,
   criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+ALTER TABLE kanban_columns ADD COLUMN IF NOT EXISTS color TEXT;
 
 CREATE TABLE IF NOT EXISTS kanban_cards (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -80,10 +82,23 @@ CREATE TABLE IF NOT EXISTS kanban_cards (
   is_default_template BOOLEAN DEFAULT FALSE,
   is_archived BOOLEAN DEFAULT FALSE,
   completed BOOLEAN DEFAULT FALSE,
+  completed_estimate_task_ids TEXT[],
   position INTEGER DEFAULT 0,
   criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE;
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS is_template BOOLEAN DEFAULT FALSE;
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS is_default_template BOOLEAN DEFAULT FALSE;
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS tags TEXT[];
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS priority TEXT;
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS assignee TEXT;
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS due_date DATE;
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0;
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS completed_estimate_task_ids TEXT[];
 
 CREATE TABLE IF NOT EXISTS kanban_tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -103,6 +118,17 @@ CREATE TABLE IF NOT EXISTS kanban_tasks (
   criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+ALTER TABLE kanban_tasks ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE;
+ALTER TABLE kanban_tasks ADD COLUMN IF NOT EXISTS priority TEXT;
+ALTER TABLE kanban_tasks ADD COLUMN IF NOT EXISTS assignee TEXT;
+ALTER TABLE kanban_tasks ADD COLUMN IF NOT EXISTS due_date DATE;
+ALTER TABLE kanban_tasks ADD COLUMN IF NOT EXISTS tags TEXT[];
+ALTER TABLE kanban_tasks ADD COLUMN IF NOT EXISTS checklist JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE kanban_tasks ADD COLUMN IF NOT EXISTS comments JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE kanban_tasks ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE kanban_tasks ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0;
+ALTER TABLE kanban_tasks ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES kanban_tasks(id) ON DELETE CASCADE;
+ALTER TABLE kanban_tasks ADD COLUMN IF NOT EXISTS description TEXT;
 
 -- Índices Kanban
 CREATE INDEX IF NOT EXISTS idx_kanban_cards_column ON kanban_cards(column_id);

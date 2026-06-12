@@ -62,7 +62,11 @@ export async function atualizarColumn(
     headers: getHeaders(token),
     body: JSON.stringify(column),
   });
-  if (!response.ok) throw new Error("Erro ao atualizar coluna");
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    console.error("[atualizarColumn] HTTP", response.status, text);
+    throw new Error(`Erro ao atualizar coluna: ${response.status} ${text}`);
+  }
   return response.json();
 }
 
@@ -156,7 +160,11 @@ export async function atualizarTask(
     headers: getHeaders(token),
     body: JSON.stringify(task),
   });
-  if (!response.ok) throw new Error("Erro ao atualizar task");
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    console.error("[atualizarTask] HTTP", response.status, text);
+    throw new Error(`Erro ao atualizar task: ${response.status} ${text}`);
+  }
   return response.json();
 }
 

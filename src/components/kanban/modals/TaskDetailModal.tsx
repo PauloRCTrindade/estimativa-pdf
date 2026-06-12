@@ -83,11 +83,14 @@ export interface TaskDetailModalProps {
   feriados?: string[];
   releases?: string[];
   allTags?: string[];
+  getTagColor?: (tag: string) => { bg: string; text: string; border: string } | string;
+  setTagColor?: (tag: string, color: string) => void;
   onUpdateCard: (cardId: string, patch: Partial<Omit<KanbanCard, "id" | "tasks">>) => void;
   onUpdateCardNotes: (cardId: string, notes: string) => void;
   onAddCardTask: (cardId: string, task: Omit<KanbanCustomTask, "id" | "completed" | "subtasks">, parentTaskId?: string) => void;
   onUpdateCardTask: (cardId: string, taskId: string, patch: Partial<Omit<KanbanCustomTask, "id" | "subtasks">>) => void;
   onToggleCardTaskCompleted: (cardId: string, taskId: string) => void;
+  onToggleEstimateTaskCompleted: (cardId: string, taskId: string) => void;
   onRemoveCardTask: (cardId: string, taskId: string) => void;
   onReorderCardTask: (cardId: string, parentTaskId: string | null, sourceIndex: number, destIndex: number) => void;
   onRemoveCard: (cardId: string) => void;
@@ -112,11 +115,14 @@ export function TaskDetailModal({
   feriados,
   releases,
   allTags,
+  getTagColor,
+  setTagColor,
   onUpdateCard,
   onUpdateCardNotes,
   onAddCardTask,
   onUpdateCardTask,
   onToggleCardTaskCompleted,
+  onToggleEstimateTaskCompleted,
   onRemoveCardTask,
   onReorderCardTask,
   onRemoveCard,
@@ -146,7 +152,6 @@ export function TaskDetailModal({
   const [titleDraft, setTitleDraft] = useState("");
   const [showCalendar, setShowCalendar] = useState(false);
   const [largeCalendar, setLargeCalendar] = useState(false);
-  const [checkedEstimateTasks, setCheckedEstimateTasks] = useState<Record<string, boolean>>({});
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
 
@@ -309,7 +314,7 @@ export function TaskDetailModal({
         style={{ maxHeight: "90vh" }}
       >
         {/* Header: Parent navigation + close + template controls */}
-        <div className="flex items-center justify-between border-b px-5 py-3">
+        <div className="flex items-center justify-between border-b border-border/60 bg-muted/30 px-5 py-3">
           <div className="flex items-center gap-1 overflow-hidden text-xs text-muted-foreground min-w-0">
             {view.type === "task" && (
               <button
@@ -557,32 +562,33 @@ export function TaskDetailModal({
                   </button>
                   {expandedSections.estimativa && (
                     <div className="space-y-1">
-                      {estimateTasks.map((task) => (
-                        <div key={task.id} className="flex items-start gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent/30">
-                          <button
-                            onClick={() =>
-                              setCheckedEstimateTasks((prev) => ({ ...prev, [task.id]: !prev[task.id] }))
-                            }
-                            className={cn(
-                              "mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-all",
-                              checkedEstimateTasks[task.id]
-                                ? "border-emerald-500 bg-emerald-500 text-white"
-                                : "border-muted-foreground/25 hover:border-muted-foreground/50"
-                            )}
-                          >
-                            {checkedEstimateTasks[task.id] && <Check weight="bold" className="h-2.5 w-2.5" />}
-                          </button>
-                          <div className="min-w-0 flex-1">
-                            <span className={cn("font-medium", checkedEstimateTasks[task.id] && "text-muted-foreground line-through")}>
-                              {task.title}
-                            </span>
-                            <div className="mt-0.5 flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
-                              <span>Início: {formatDateBR(task.inicio)}</span>
-                              <span>Término: {formatDateBR(task.termino)}</span>
+                      {estimateTasks.map((task) => {
+                        const isChecked = card.completedEstimateTaskIds?.includes(task.id) ?? false;
+                        return (
+                          <div key={task.id} className="flex items-start gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent/30">
+                            <button
+                              onClick={() => onToggleEstimateTaskCompleted(card.id, task.id)}
+                              className={cn(
+                                "mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-all",
+                                isChecked
+                                  ? "border-emerald-500 bg-emerald-500 text-white"
+                                  : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                              )}
+                            >
+                              {isChecked && <Check weight="bold" className="h-2.5 w-2.5" />}
+                            </button>
+                            <div className="min-w-0 flex-1">
+                              <span className={cn("font-medium", isChecked && "text-muted-foreground line-through")}>
+                                {task.title}
+                              </span>
+                              <div className="mt-0.5 flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
+                                <span>Início: {formatDateBR(task.inicio)}</span>
+                                <span>Término: {formatDateBR(task.termino)}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -949,7 +955,7 @@ export function TaskDetailModal({
             </div>
 
             {/* ═════ Sidebar ═════ */}
-            <div className="border-t md:border-t-0 md:border-l bg-muted/20 p-5 space-y-5">
+            <div className="border-t md:border-t-0 md:border-l border-border/60 bg-muted/30 p-5 space-y-5">
               {/* Project / Column */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Projeto</label>
@@ -1045,6 +1051,8 @@ export function TaskDetailModal({
                 <TagSelector
                   availableTags={allTags ?? []}
                   selectedTags={displayTags ?? []}
+                  getTagColor={getTagColor}
+                  setTagColor={setTagColor}
                   onChange={(tags) => {
                     if (isTaskView && currentTask) {
                       onUpdateCardTask(card.id, currentTask.id, { tags });

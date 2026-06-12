@@ -1,4 +1,4 @@
-import { type DragEvent, useState, useMemo } from "react";
+import { type DragEvent, useState, useMemo, useCallback } from "react";
 import type { Estimativa, KanbanColumn, KanbanCard, KanbanCustomTask, TaskPriority } from "@/types";
 import {
   extractYMD,
@@ -8,6 +8,8 @@ import {
   countTasks,
   countCompleted,
   taskProgressPercent,
+  getCardProgress,
+  getTasksForEstimate,
   PRIORITY_CONFIG_SIMPLE,
 } from "@/components/kanban/shared/kanbanHelpers";
 import { HojeView } from "./hoje-view";
@@ -22,6 +24,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { DatePicker } from "@/components/date-picker";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
   Plus,
@@ -38,6 +45,96 @@ import {
 } from "@phosphor-icons/react";
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   Cores
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const COLUMN_COLORS: Record<string, { dot: string; border: string; badge: string; line: string; label: string }> = {
+  gray:    { dot: "bg-zinc-400",    border: "border-zinc-400/40",    badge: "bg-zinc-500/15 text-zinc-400",    line: "bg-zinc-400",    label: "Cinza" },
+  blue:    { dot: "bg-blue-400",    border: "border-blue-400/40",    badge: "bg-blue-500/15 text-blue-400",    line: "bg-blue-400",    label: "Azul" },
+  green:   { dot: "bg-emerald-400", border: "border-emerald-400/40", badge: "bg-emerald-500/15 text-emerald-400", line: "bg-emerald-400", label: "Verde" },
+  purple:  { dot: "bg-violet-400",  border: "border-violet-400/40",  badge: "bg-violet-500/15 text-violet-400", line: "bg-violet-400",  label: "Roxo" },
+  orange:  { dot: "bg-orange-400",  border: "border-orange-400/40",  badge: "bg-orange-500/15 text-orange-400", line: "bg-orange-400",  label: "Laranja" },
+  red:     { dot: "bg-red-400",     border: "border-red-400/40",     badge: "bg-red-500/15 text-red-400",     line: "bg-red-400",     label: "Vermelho" },
+  pink:    { dot: "bg-pink-400",    border: "border-pink-400/40",    badge: "bg-pink-500/15 text-pink-400",    line: "bg-pink-400",    label: "Rosa" },
+  cyan:    { dot: "bg-cyan-400",    border: "border-cyan-400/40",    badge: "bg-cyan-500/15 text-cyan-400",    line: "bg-cyan-400",    label: "Turquesa" },
+  yellow:  { dot: "bg-yellow-400",  border: "border-yellow-400/40",  badge: "bg-yellow-500/15 text-yellow-400", line: "bg-yellow-400",  label: "Amarelo" },
+};
+
+function isHexColor(value?: string): boolean {
+  return !!value && /^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})$/.test(value);
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const m = hex.match(/^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})$/);
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  const n = parseInt(h, 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function getColumnColorClasses(colorKey?: string): {
+  dot: string;
+  border: string;
+  badge: string;
+  line: string;
+  label: string;
+  style?: { backgroundColor: string };
+} {
+  if (isHexColor(colorKey)) {
+    const rgb = hexToRgb(colorKey!);
+    if (!rgb) return { ...COLUMN_COLORS.gray };
+    const css = `rgb(${rgb.r},${rgb.g},${rgb.b})`;
+    return {
+      dot: "",
+      border: "",
+      badge: "",
+      line: "",
+      label: "Personalizado",
+      style: { backgroundColor: css },
+    };
+  }
+  const preset = COLUMN_COLORS[colorKey || "gray"] || COLUMN_COLORS.gray;
+  return { ...preset };
+}
+
+const PRIORITY_BAR_CLASSES: Record<TaskPriority, string> = {
+  p1: "bg-red-500/70",
+  p2: "bg-orange-500/70",
+  p3: "bg-blue-500/70",
+  p4: "bg-zinc-500/40",
+};
+
+const TAG_COLOR_PALETTE = [
+  { bg: "bg-red-500/15",    text: "text-red-400",    border: "border-red-500/25" },
+  { bg: "bg-orange-500/15", text: "text-orange-400", border: "border-orange-500/25" },
+  { bg: "bg-amber-500/15",  text: "text-amber-400",  border: "border-amber-500/25" },
+  { bg: "bg-emerald-500/15",text: "text-emerald-400",border: "border-emerald-500/25" },
+  { bg: "bg-cyan-500/15",   text: "text-cyan-400",   border: "border-cyan-500/25" },
+  { bg: "bg-blue-500/15",   text: "text-blue-400",   border: "border-blue-500/25" },
+  { bg: "bg-violet-500/15", text: "text-violet-400", border: "border-violet-500/25" },
+  { bg: "bg-pink-500/15",   text: "text-pink-400",   border: "border-pink-500/25" },
+  { bg: "bg-rose-500/15",   text: "text-rose-400",   border: "border-rose-500/25" },
+  { bg: "bg-sky-500/15",    text: "text-sky-400",    border: "border-sky-500/25" },
+  { bg: "bg-teal-500/15",   text: "text-teal-400",   border: "border-teal-500/25" },
+  { bg: "bg-lime-500/15",   text: "text-lime-400",   border: "border-lime-500/25" },
+];
+
+function getDueDateHighlight(dueDate: string | undefined): { text: string; color: string; icon?: string } {
+  if (!dueDate) return { text: "", color: "" };
+  const ymd = extractYMD(dueDate);
+  if (!ymd) return { text: "", color: "" };
+  const target = makeLocalDate(ymd[0], ymd[1], ymd[2]);
+  const today = todayLocal();
+  const diff = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diff < 0) return { text: formatDateRelative(dueDate), color: "text-red-400" };
+  if (diff === 0) return { text: "Hoje", color: "text-sky-400" };
+  if (diff <= 7) return { text: formatDateRelative(dueDate), color: "text-yellow-400" };
+  return { text: formatDateRelative(dueDate), color: "text-muted-foreground" };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    Tipos
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -51,8 +148,11 @@ interface KanbanPageProps {
   releases?: string[];
   allTags?: string[];
   loading?: boolean;
+  getTagColor?: (tag: string) => { bg: string; text: string; border: string } | string;
+  setTagColor?: (tag: string, color: string) => void;
   onAddColumn: (title: string) => void;
   onUpdateColumnTitle: (id: string, title: string) => void;
+  onUpdateColumnColor: (id: string, color: string) => void;
   onRemoveColumn: (id: string) => void;
   onMoveCard: (cardId: string, columnId: string) => void;
   onUpdateCard: (cardId: string, patch: Partial<Omit<KanbanCard, "id" | "tasks">>) => void;
@@ -60,6 +160,7 @@ interface KanbanPageProps {
   onAddCardTask: (cardId: string, task: Omit<KanbanCustomTask, "id" | "completed" | "subtasks">, parentTaskId?: string) => void;
   onUpdateCardTask: (cardId: string, taskId: string, patch: Partial<Omit<KanbanCustomTask, "id" | "subtasks">>) => void;
   onToggleCardTaskCompleted: (cardId: string, taskId: string) => void;
+  onToggleEstimateTaskCompleted: (cardId: string, taskId: string) => void;
   onRemoveCardTask: (cardId: string, taskId: string) => void;
   onReorderCardTask: (cardId: string, parentTaskId: string | null, sourceIndex: number, destIndex: number) => void;
   onRemoveCard: (cardId: string) => void;
@@ -93,8 +194,11 @@ export function KanbanPage({
   feriados,
   releases,
   allTags,
+  getTagColor: getTagColorProp,
+  setTagColor: setTagColorProp,
   onAddColumn,
   onUpdateColumnTitle,
+  onUpdateColumnColor,
   onRemoveColumn,
   onReorderColumn,
   onMoveCard,
@@ -103,6 +207,7 @@ export function KanbanPage({
   onAddCardTask,
   onUpdateCardTask,
   onToggleCardTaskCompleted,
+  onToggleEstimateTaskCompleted,
   onRemoveCardTask,
   onReorderCardTask,
   onRemoveCard,
@@ -114,6 +219,20 @@ export function KanbanPage({
   onCreateTemplate,
   onDuplicateCard,
 }: KanbanPageProps) {
+  const getTagColor = useCallback((tag: string) => {
+    if (getTagColorProp) {
+      const result = getTagColorProp(tag);
+      if (typeof result === "string") {
+        return { bg: result + "20", text: result, border: result + "40" };
+      }
+      return result as { bg: string; text: string; border: string };
+    }
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+    const idx = Math.abs(hash) % TAG_COLOR_PALETTE.length;
+    return TAG_COLOR_PALETTE[idx];
+  }, [getTagColorProp]);
+
   const [newColumnName, setNewColumnName] = useState("");
   const [error, setError] = useState("");
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
@@ -595,51 +714,115 @@ export function KanbanPage({
                   onDrop={(e) => handleColumnDrop(e, column.id)}
                   onDragLeave={handleColumnDragLeave}
                 >
-                  {editingColumnId === column.id ? (
-                    <div className="space-y-2">
-                      <Input
-                        autoFocus
-                        value={editingColumnTitle}
-                        onChange={(e) => setEditingColumnTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") saveEditingColumn();
-                          if (e.key === "Escape") cancelEditingColumn();
-                        }}
-                        className="h-8 text-sm font-semibold bg-background"
-                      />
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" className="h-7 text-xs" onClick={saveEditingColumn}>
-                          Salvar
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={cancelEditingColumn}>
-                          Cancelar
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <DotsSixVertical className="h-4 w-4 text-muted-foreground/60" />
-                        <div className="h-2 w-2 rounded-full bg-primary/70" />
-                        <button
-                          onClick={() => startEditingColumn(column)}
-                          className="text-sm font-semibold hover:bg-accent/40 rounded px-1 -ml-1 py-0.5 transition-colors text-left"
-                        >
-                          {column.title}
-                        </button>
-                        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[11px] font-medium text-muted-foreground">
-                          {columnCards.length}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => setDeletingColumnId(column.id)}
-                        className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                        title="Deletar coluna"
-                      >
-                        <Trash className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  )}
+                  {(() => {
+                    const colColor = getColumnColorClasses(column.color);
+                    const isCustom = isHexColor(column.color);
+                    return (
+                      <>
+                        {/* Color line on top */}
+                        <div
+                          className={cn("h-0.5 w-full rounded-full mb-1.5", colColor.line)}
+                          style={isCustom && colColor.style ? { backgroundColor: colColor.style.backgroundColor } : undefined}
+                        />
+                        {editingColumnId === column.id ? (
+                          <div className="space-y-2">
+                            <Input
+                              autoFocus
+                              value={editingColumnTitle}
+                              onChange={(e) => setEditingColumnTitle(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveEditingColumn();
+                                if (e.key === "Escape") cancelEditingColumn();
+                              }}
+                              className="h-8 text-sm font-semibold bg-background"
+                            />
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" className="h-7 text-xs" onClick={saveEditingColumn}>
+                                Salvar
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={cancelEditingColumn}>
+                                Cancelar
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <DotsSixVertical className="h-4 w-4 text-muted-foreground/60" />
+                              <div
+                                className={cn("h-2 w-2 rounded-full", colColor.dot)}
+                                style={isCustom && colColor.style ? { backgroundColor: colColor.style.backgroundColor } : undefined}
+                              />
+                              <button
+                                onClick={() => startEditingColumn(column)}
+                                className="text-sm font-semibold hover:bg-accent/40 rounded px-1 -ml-1 py-0.5 transition-colors text-left"
+                              >
+                                {column.title}
+                              </button>
+                              <span
+                                className={cn("flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-medium", colColor.badge)}
+                                style={isCustom && colColor.style ? { backgroundColor: colColor.style.backgroundColor + "20", color: colColor.style.backgroundColor } : undefined}
+                              >
+                                {columnCards.length}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {/* Color picker */}
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                    title="Alterar cor"
+                                  >
+                                    <div
+                                      className={cn("h-3 w-3 rounded-full border border-foreground/20", colColor.dot)}
+                                      style={isCustom && colColor.style ? { backgroundColor: colColor.style.backgroundColor } : undefined}
+                                    />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-2" align="end">
+                                  <div className="grid grid-cols-3 gap-1.5">
+                                    {Object.entries(COLUMN_COLORS).map(([key, cfg]) => (
+                                      <button
+                                        key={key}
+                                        onClick={() => onUpdateColumnColor(column.id, key)}
+                                        className={cn(
+                                          "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors",
+                                          column.color === key ? "bg-accent" : "hover:bg-accent/40"
+                                        )}
+                                      >
+                                        <div className={cn("h-3 w-3 rounded-full", cfg.dot)} />
+                                        {cfg.label}
+                                      </button>
+                                    ))}
+                                    <div className="col-span-3 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent/40 transition-colors">
+                                      <input
+                                        type="color"
+                                        value={isCustom ? column.color : "#6366f1"}
+                                        onChange={(e) => {
+                                          const hex = e.target.value;
+                                          if (isHexColor(hex)) onUpdateColumnColor(column.id, hex);
+                                        }}
+                                        className="h-5 w-5 cursor-pointer rounded border-0 p-0"
+                                      />
+                                      Personalizado
+                                    </div>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                              <button
+                                onClick={() => setDeletingColumnId(column.id)}
+                                className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                title="Deletar coluna"
+                              >
+                                <Trash className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Column body */}
@@ -648,9 +831,9 @@ export function KanbanPage({
                   "bg-muted/40 dark:bg-muted/20"
                 )}>
                   {columnCards.map((card) => {
-                    const total = countTasks(card.tasks);
-                    const completed = countCompleted(card.tasks);
-                    const percent = taskProgressPercent(card.tasks);
+                    const estimate = estimativas.find((e) => e.id === card.estimateId && e.tipo === "estimativa-pacotes");
+                    const estimateTasks = estimate ? getTasksForEstimate(estimate) : [];
+                    const { total, completed, percent } = getCardProgress(card, estimateTasks);
                     const isDragOver = dragOverCardId === card.id;
 
                     return (
@@ -666,104 +849,131 @@ export function KanbanPage({
                           onDrop={(e) => handleDropOnCard(e, card.id)}
                           onClick={() => setSelectedCardId(card.id)}
                           className={cn(
-                            "group cursor-pointer rounded-xl shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 active:cursor-grabbing",
+                            "group cursor-pointer rounded-xl shadow-sm transition-all hover:shadow-lg hover:shadow-foreground/5 hover:-translate-y-0.5 hover:brightness-105 active:cursor-grabbing relative overflow-hidden",
                             card.isTemplate
                               ? "border-dashed border-amber-500/40 bg-amber-500/[0.02] dark:bg-amber-500/[0.03]"
                               : "border-border/60 bg-card",
                             isDragOver && "ring-2 ring-primary/40",
-                            card.completed && "opacity-75"
+                            card.completed && "opacity-70"
                           )}
                         >
-                        <CardContent className="space-y-2 p-3">
-                          {/* Top row: priority + template badge + due date */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                              {card.priority ? (
-                                <PriorityFlagSimple priority={card.priority} size={12} />
-                              ) : (
-                                <span />
-                              )}
-                              {card.isTemplate && (
-                                <span className="rounded bg-amber-500/10 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
-                                  Template
-                                </span>
-                              )}
-                              {card.isDefaultTemplate && (
-                                <span className="rounded bg-emerald-500/10 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
-                                  Padrão
-                                </span>
-                              )}
-                            </div>
-                            {card.dueDate && (
-                              <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                                <CalendarBlank className="h-3 w-3" />
-                                {formatDateRelative(card.dueDate)}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Title + completed checkbox */}
-                          <div className="flex items-start gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onUpdateCard(card.id, { completed: !card.completed });
-                              }}
-                              className={cn(
-                                "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all",
-                                card.completed
-                                  ? "border-emerald-500 bg-emerald-500 text-white"
-                                  : "border-muted-foreground/30 hover:border-muted-foreground/60"
-                              )}
-                            >
-                              {card.completed && <Check weight="bold" className="h-3 w-3" />}
-                            </button>
-                            <p className={cn(
-                              "text-sm font-medium leading-snug",
-                              card.completed ? "text-muted-foreground line-through" : "text-foreground"
-                            )}>{card.title}</p>
-                          </div>
-
-                          {/* Tags */}
-                          {card.tags && card.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {card.tags.map((tag) => (
-                                <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0">
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
+                          {/* Priority bar */}
+                          {card.priority && (
+                            <div className={cn("absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl", PRIORITY_BAR_CLASSES[card.priority])} />
                           )}
-
-                          {/* Footer */}
-                          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                            <div className="flex items-center gap-2">
-                              {total > 0 && (
-                                <span className="inline-flex items-center gap-1">
-                                  <ListChecks className="h-3 w-3" />
-                                  {completed}/{total}
-                                </span>
-                              )}
-                              {card.assignee && (
-                                <span className="inline-flex items-center gap-1">
-                                  <User className="h-3 w-3" />
-                                  {card.assignee}
-                                </span>
+                          <CardContent className="space-y-2 p-3 pl-3.5">
+                            {/* Top row: priority + template badge + due date */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                {card.priority && (
+                                  <span className={cn("text-[10px] font-bold tabular-nums", PRIORITY_CONFIG_SIMPLE[card.priority].color)}>
+                                    {card.priority.toUpperCase()}
+                                  </span>
+                                )}
+                                {card.isTemplate && (
+                                  <span className="rounded bg-amber-500/10 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                                    Template
+                                  </span>
+                                )}
+                                {card.isDefaultTemplate && (
+                                  <span className="rounded bg-emerald-500/10 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                                    Padrão
+                                  </span>
+                                )}
+                              </div>
+                              {card.dueDate && (
+                                (() => {
+                                  const dd = getDueDateHighlight(card.dueDate);
+                                  return (
+                                    <span className={cn("inline-flex items-center gap-1 text-[11px] font-medium", dd.color)}>
+                                      <CalendarBlank className="h-3 w-3" />
+                                      {dd.text}
+                                    </span>
+                                  );
+                                })()
                               )}
                             </div>
-                            {percent > 0 && (
-                              <div className="flex items-center gap-1.5">
-                                <div className="h-1.5 w-8 overflow-hidden rounded-full bg-muted">
-                                  <div
-                                    className={cn("h-full rounded-full transition-all", percent === 100 ? "bg-emerald-500" : "bg-primary")}
-                                    style={{ width: `${percent}%` }}
-                                  />
-                                </div>
-                                {percent === 100 && <Check weight="bold" className="h-3 w-3 text-emerald-500" />}
+
+                            {/* Title + completed checkbox */}
+                            <div className="flex items-start gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onUpdateCard(card.id, { completed: !card.completed });
+                                }}
+                                className={cn(
+                                  "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all",
+                                  card.completed
+                                    ? "border-emerald-500 bg-emerald-500 text-white"
+                                    : "border-muted-foreground/30 hover:border-muted-foreground/60"
+                                )}
+                              >
+                                {card.completed && <Check weight="bold" className="h-3 w-3" />}
+                              </button>
+                              <p className={cn(
+                                "text-sm font-medium leading-snug transition-colors",
+                                card.completed ? "text-muted-foreground line-through" : "text-foreground"
+                              )}>{card.title}</p>
+                            </div>
+
+                            {/* Tags */}
+                            {card.tags && card.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {card.tags.map((tag) => {
+                                  const tc = getTagColor(tag);
+                                  const isHex = !tc.text.startsWith("text-");
+                                  return (
+                                    <span
+                                      key={tag}
+                                      className={cn(
+                                        "inline-flex items-center rounded px-1.5 py-0 text-[10px] font-medium border",
+                                        !isHex && tc.bg,
+                                        !isHex && tc.text,
+                                        !isHex && tc.border
+                                      )}
+                                      style={isHex ? {
+                                        backgroundColor: tc.bg,
+                                        color: tc.text,
+                                        borderColor: tc.border,
+                                      } : undefined}
+                                    >
+                                      {tag}
+                                    </span>
+                                  );
+                                })}
                               </div>
                             )}
-                          </div>
-                        </CardContent>
+
+                            {/* Footer */}
+                            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                              <div className="flex items-center gap-2">
+                                {total > 0 && (
+                                  <span className="inline-flex items-center gap-1">
+                                    <ListChecks className="h-3 w-3" />
+                                    {completed}/{total}
+                                  </span>
+                                )}
+                                {card.assignee && (
+                                  <span className="inline-flex items-center gap-1">
+                                    <User className="h-3 w-3" />
+                                    {card.assignee}
+                                  </span>
+                                )}
+                              </div>
+                              {percent > 0 && (
+                                <div className="flex items-center gap-1.5">
+                                  <div className="h-1.5 w-10 overflow-hidden rounded-full bg-muted">
+                                    <div
+                                      className={cn("h-full rounded-full transition-all", percent === 100 ? "bg-emerald-500" : "bg-primary")}
+                                      style={{ width: `${percent}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] tabular-nums">{percent}%</span>
+                                  {percent === 100 && <Check weight="bold" className="h-3 w-3 text-emerald-500" />}
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
                         </Card>
                       </div>
                     );
@@ -888,6 +1098,7 @@ export function KanbanPage({
         <HojeView
           cards={cards}
           columns={columns}
+          estimativas={estimativas}
           onUpdateCard={onUpdateCard}
           onToggleCardTaskCompleted={onToggleCardTaskCompleted}
           onRemoveCard={onRemoveCard}
@@ -948,11 +1159,14 @@ export function KanbanPage({
           feriados={feriados}
           releases={releases}
           allTags={allTags}
+          getTagColor={getTagColor}
+          setTagColor={setTagColorProp}
           onUpdateCard={onUpdateCard}
           onUpdateCardNotes={onUpdateCardNotes}
           onAddCardTask={onAddCardTask}
           onUpdateCardTask={onUpdateCardTask}
           onToggleCardTaskCompleted={onToggleCardTaskCompleted}
+          onToggleEstimateTaskCompleted={onToggleEstimateTaskCompleted}
           onRemoveCardTask={onRemoveCardTask}
           onReorderCardTask={onReorderCardTask}
           onRemoveCard={onRemoveCard}

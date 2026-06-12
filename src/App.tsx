@@ -135,6 +135,7 @@ function GeradorEstimativaPDF({
     isAddingFavorite,
     addColumn: addKanbanColumn,
     updateColumnTitle: updateKanbanColumnTitle,
+    updateColumnColor: updateKanbanColumnColor,
     removeColumn: removeKanbanColumn,
     reorderColumn: reorderKanbanColumn,
     moveCard: moveKanbanCard,
@@ -144,6 +145,7 @@ function GeradorEstimativaPDF({
     addCardTask: addKanbanCardTask,
     updateCardTask: updateKanbanCardTask,
     toggleCardTaskCompleted: toggleKanbanCardTaskCompleted,
+    toggleEstimateTaskCompleted: toggleKanbanEstimateTaskCompleted,
     removeCardTask: removeKanbanCardTask,
     reorderCardTask: reorderKanbanCardTask,
     removeCard: removeKanbanCard,
@@ -154,6 +156,8 @@ function GeradorEstimativaPDF({
     duplicateCard: duplicateKanbanCard,
     archiveCard: archiveKanbanCard,
     unarchiveCard: unarchiveKanbanCard,
+    getTagColor: getKanbanTagColor,
+    setTagColor: setKanbanTagColor,
   } = useKanban(estimativas);
 
   // Carregar estimativas no mount
@@ -331,8 +335,11 @@ function GeradorEstimativaPDF({
           releases={releases}
           allTags={kanbanAllTags}
           loading={kanbanLoading}
+          getTagColor={getKanbanTagColor}
+          setTagColor={setKanbanTagColor}
           onAddColumn={addKanbanColumn}
           onUpdateColumnTitle={updateKanbanColumnTitle}
+          onUpdateColumnColor={updateKanbanColumnColor}
           onRemoveColumn={removeKanbanColumn}
           onReorderColumn={reorderKanbanColumn}
           onMoveCard={moveKanbanCard}
@@ -342,6 +349,7 @@ function GeradorEstimativaPDF({
           onAddCardTask={addKanbanCardTask}
           onUpdateCardTask={updateKanbanCardTask}
           onToggleCardTaskCompleted={toggleKanbanCardTaskCompleted}
+          onToggleEstimateTaskCompleted={toggleKanbanEstimateTaskCompleted}
           onRemoveCardTask={removeKanbanCardTask}
           onReorderCardTask={reorderKanbanCardTask}
           onRemoveCard={removeKanbanCard}

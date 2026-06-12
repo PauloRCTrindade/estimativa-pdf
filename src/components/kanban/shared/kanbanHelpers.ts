@@ -1,4 +1,4 @@
-import type { KanbanCustomTask, TaskPriority } from "@/types";
+import type { KanbanCustomTask, KanbanCard, TaskPriority } from "@/types";
 import {
   parseDateBR,
   isValidDate,
@@ -335,3 +335,17 @@ export const PRIORITY_CONFIG_SIMPLE: Record<TaskPriority, { color: string }> = {
   p3: { color: "text-blue-400" },
   p4: { color: "text-muted-foreground" },
 };
+
+export function getCardProgress(
+  card: KanbanCard,
+  estimateTasks: Array<{ id: string }>
+): { total: number; completed: number; percent: number } {
+  const customTotal = countTasks(card.tasks);
+  const customCompleted = countCompleted(card.tasks);
+  const estimateTotal = estimateTasks.length;
+  const estimateCompleted =
+    card.completedEstimateTaskIds?.filter((id) => estimateTasks.some((t) => t.id === id)).length ?? 0;
+  const total = customTotal + estimateTotal;
+  const completed = customCompleted + estimateCompleted;
+  return { total, completed, percent: total > 0 ? Math.round((completed / total) * 100) : 0 };
+}
