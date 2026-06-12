@@ -67,6 +67,7 @@ Node.js requerido: **22.22.2** (definido em `.nvmrc`).
 │   │   ├── date-picker/
 │   │   ├── date-range-input/
 │   │   ├── date-range-list/
+│   │   ├── documentos-exportacao/
 │   │   ├── estimativa-historico/
 │   │   ├── estimativa-pacotes/
 │   │   ├── form-field/
@@ -315,7 +316,7 @@ SUPABASE_URL
 SUPABASE_ANON_KEY
 VITE_SUPABASE_URL
 VITE_SUPABASE_ANON_KEY
-# VITE_API_URL deve ficar VAZIO ou não ser definida
+# VITE_API_URL deve ficar VAZIA ou não ser definida
 ```
 
 ---

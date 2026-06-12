@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Copy, Trash, Stack, Plus } from "@phosphor-icons/react";
+import { Copy, Trash, Stack, Plus, Check } from "@phosphor-icons/react";
 import type { KanbanCard, KanbanColumn } from "@/types";
 
 interface TemplatesViewProps {
@@ -8,7 +9,7 @@ interface TemplatesViewProps {
   columns: KanbanColumn[];
   onOpenCard: (cardId: string) => void;
   onRemoveCard: (cardId: string) => void;
-  onUseTemplate: (templateCardId: string) => void;
+  onUseTemplate: (templateCardId: string) => Promise<void> | void;
   onCreateTemplate: () => void;
 }
 
@@ -20,9 +21,20 @@ export function TemplatesView({
   onUseTemplate,
   onCreateTemplate,
 }: TemplatesViewProps) {
+  const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
+
   const templateCards = cards
     .filter((c) => c.isTemplate)
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
+  const handleUseTemplate = async (cardId: string) => {
+    setSettingDefaultId(cardId);
+    try {
+      await onUseTemplate(cardId);
+    } finally {
+      setSettingDefaultId(null);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -76,16 +88,21 @@ export function TemplatesView({
 
               <div className="mt-auto flex items-center gap-2">
                 <Button
-                  variant="outline"
+                  variant={card.isDefaultTemplate ? "default" : "outline"}
                   size="sm"
                   className="h-7 flex-1 text-xs gap-1"
+                  disabled={card.isDefaultTemplate || settingDefaultId === card.id}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onUseTemplate(card.id);
+                    handleUseTemplate(card.id);
                   }}
                 >
-                  <Copy className="h-3.5 w-3.5" />
-                  Usar como base
+                  {card.isDefaultTemplate ? (
+                    <Check className="h-3.5 w-3.5" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                  {card.isDefaultTemplate ? "Padrão" : settingDefaultId === card.id ? "Definindo..." : "Usar como base"}
                 </Button>
                 <Button
                   variant="ghost"

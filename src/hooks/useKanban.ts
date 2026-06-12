@@ -762,59 +762,12 @@ export function useKanban(estimativas: Estimativa[]) {
     const template = cards.find((c) => c.id === templateCardId);
     if (!template) {
       notify("Template não encontrado.");
-      return null;
+      return;
     }
 
-    let targetColumnId = columns[0]?.id;
-    if (!targetColumnId) {
-      const defaultCol = await criarColumn({ title: "Backlog", position: 0 }, await getToken());
-      targetColumnId = defaultCol.id;
-      setColumns((prev) => [...prev, defaultCol]);
-    }
-
-    const newCardPayload: Omit<KanbanCard, "id" | "tasks"> = {
-      columnId: targetColumnId,
-      title: `Cópia de ${template.title}`,
-      description: template.description,
-      tags: template.tags,
-      dueDate: template.dueDate,
-      priority: template.priority,
-      assignee: template.assignee,
-      completedEstimateTaskIds: template.completedEstimateTaskIds,
-    };
-
-    try {
-      const created = await criarCard(newCardPayload, await getToken());
-
-      let clonedCount = 0;
-      if (template.tasks && template.tasks.length > 0) {
-        try {
-          const { count, createdTasks: newTasks } = await cloneTaskTree(
-            template.tasks,
-            created.id,
-            null,
-            await getToken()
-          );
-          clonedCount = count;
-          setTasks((prev) => [...prev, ...newTasks]);
-          setCards((prev) => [
-            ...prev,
-            { ...created, tasks: buildTaskTree(newTasks) },
-          ]);
-        } catch {
-          setCards((prev) => [...prev, { ...created, tasks: [] }]);
-        }
-      } else {
-        setCards((prev) => [...prev, { ...created, tasks: [] }]);
-      }
-
-      notify(`Card criado a partir do template. ${clonedCount > 0 ? `${clonedCount} tarefas copiadas.` : ""}`);
-      return created.id;
-    } catch {
-      notify("Erro ao usar template como base");
-      return null;
-    }
-  }, [columns, cards]);
+    await setDefaultTemplate(templateCardId);
+    notify(`Template "${template.title}" definido como padrão.`);
+  }, [cards, setDefaultTemplate]);
 
   const createTemplate = useCallback(async () => {
     let targetColumnId = columns[0]?.id;

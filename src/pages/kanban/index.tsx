@@ -169,7 +169,7 @@ interface KanbanPageProps {
   onReorderColumn: (columnId: string, targetColumnId: string, placement: "before" | "after") => void;
   onArchiveCard: (cardId: string) => void;
   onUnarchiveCard: (cardId: string) => void;
-  onUseTemplate: (templateCardId: string) => Promise<string | null>;
+  onUseTemplate: (templateCardId: string) => Promise<void> | void;
   onCreateTemplate: () => Promise<string | null>;
   onDuplicateCard?: (cardId: string) => Promise<string | null>;
 }
