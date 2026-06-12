@@ -11,23 +11,12 @@ const keyMap = {
 };
 
 function lowercaseToCamel(obj) {
-  return snakeToCamelObj(obj, keyMap);
-}
-
-function lowercaseToCamel(obj) {
   if (!obj || typeof obj !== 'object') return obj;
-  const keyMap = {
-    cardid: 'cardId',
-    parentid: 'parentId',
-    duedate: 'dueDate',
-    criadoem: 'criadoEm',
-    atualizadoem: 'atualizadoEm',
-  };
   const converted = {};
   for (const [key, value] of Object.entries(obj)) {
     const camelKey = keyMap[key] || key;
     if (Array.isArray(value)) {
-      converted[camelKey] = value.map(item => typeof item === 'object' ? lowercaseToCamel(item) : item);
+      converted[camelKey] = value.map(item => typeof item === 'object' && item !== null ? lowercaseToCamel(item) : item);
     } else if (typeof value === 'object' && value !== null) {
       converted[camelKey] = lowercaseToCamel(value);
     } else {
@@ -58,6 +47,11 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const user = await verifyAuth(req);
       if (!user) return unauthorized(res);
+
+      if (!req.body || typeof req.body !== 'object') {
+        return res.status(400).json({ error: 'Request body is required' });
+      }
+
       const convertedBody = camelToSnakeObj(req.body);
       const { data, error } = await supabase
         .from('kanban_tasks')
