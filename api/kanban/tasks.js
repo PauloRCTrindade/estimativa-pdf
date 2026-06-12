@@ -3,11 +3,11 @@ import { setCorsHeaders, verifyAuth, unauthorized } from '../lib/auth.js';
 import { camelToSnakeObj, snakeToCamelObj } from '../lib/case-converter.js';
 
 const keyMap = {
-  cardid: 'cardId',
-  parentid: 'parentId',
-  duedate: 'dueDate',
-  criadoem: 'criadoEm',
-  atualizadoem: 'atualizadoEm',
+  card_id: 'cardId',
+  parent_id: 'parentId',
+  due_date: 'dueDate',
+  criado_em: 'criadoEm',
+  atualizado_em: 'atualizadoEm',
 };
 
 function lowercaseToCamel(obj) {

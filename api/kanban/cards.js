@@ -3,15 +3,15 @@ import { setCorsHeaders, verifyAuth, unauthorized } from '../lib/auth.js';
 import { camelToSnakeObj } from '../lib/case-converter.js';
 
 const keyMap = {
-  estimateid: 'estimateId',
-  columnid: 'columnId',
-  duedate: 'dueDate',
-  istemplate: 'isTemplate',
-  isdefaulttemplate: 'isDefaultTemplate',
-  isarchived: 'isArchived',
+  estimate_id: 'estimateId',
+  column_id: 'columnId',
+  due_date: 'dueDate',
+  is_template: 'isTemplate',
+  is_default_template: 'isDefaultTemplate',
+  is_archived: 'isArchived',
   completed: 'completed',
-  criadoem: 'criadoEm',
-  atualizadoem: 'atualizadoEm',
+  criado_em: 'criadoEm',
+  atualizado_em: 'atualizadoEm',
 };
 
 function lowercaseToCamel(obj) {

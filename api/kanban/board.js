@@ -26,18 +26,18 @@ export default async function handler(req, res) {
     if (taskError) throw taskError;
 
     const keyMap = {
-      estimateid: 'estimateId',
-      columnid: 'columnId',
-      duedate: 'dueDate',
-      istemplate: 'isTemplate',
-      isdefaulttemplate: 'isDefaultTemplate',
-      isarchived: 'isArchived',
+      estimate_id: 'estimateId',
+      column_id: 'columnId',
+      due_date: 'dueDate',
+      is_template: 'isTemplate',
+      is_default_template: 'isDefaultTemplate',
+      is_archived: 'isArchived',
       completed: 'completed',
-      completedestimatetaskids: 'completedEstimateTaskIds',
-      parentid: 'parentId',
-      cardid: 'cardId',
-      criadoem: 'criadoEm',
-      atualizadoem: 'atualizadoEm',
+      completed_estimate_task_ids: 'completedEstimateTaskIds',
+      parent_id: 'parentId',
+      card_id: 'cardId',
+      criado_em: 'criadoEm',
+      atualizado_em: 'atualizadoEm',
     };
     const lowercaseToCamel = (obj) => snakeToCamelObj(obj, keyMap);
 

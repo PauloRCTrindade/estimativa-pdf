@@ -3,8 +3,8 @@ import { setCorsHeaders, verifyAuth, unauthorized } from '../../lib/auth.js';
 import { camelToSnakeObj, snakeToCamelObj } from '../../lib/case-converter.js';
 
 const keyMap = {
-  criadoem: 'criadoEm',
-  atualizadoem: 'atualizadoEm',
+  criado_em: 'criadoEm',
+  atualizado_em: 'atualizadoEm',
 };
 
 function lowercaseToCamel(obj) {
