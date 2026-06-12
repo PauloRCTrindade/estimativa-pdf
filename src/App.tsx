@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   StackSimple,
-  ChartBar,
   Sliders,
   Stack,
   Tabs,
@@ -27,7 +26,6 @@ import { DetailsPage } from "@/pages/details";
 import { DocumentPage } from "@/pages/document";
 import { OverviewPage } from "@/pages/overview";
 import { SavePage } from "@/pages/save";
-import { FinancialPage } from "@/pages/financial";
 import { KanbanPage } from "@/pages/kanban";
 import {
   useEstimativaForm,
@@ -39,7 +37,7 @@ import { runSelfTests } from "@/utils";
 
 if (typeof window !== "undefined") runSelfTests();
 
-type Page = "estimativa" | "financeiro" | "kanban";
+type Page = "estimativa" | "kanban";
 
 function GeradorEstimativaPDF({
   page,
@@ -97,8 +95,6 @@ function GeradorEstimativaPDF({
     calculoPreviaPacotes,
     timelineRowsPreviaPacotes,
   } = useTimelineCalculations(form, atividades, pacotes);
-
-  const [estimativaFinanceiro, setEstimativaFinanceiro] = useState<any | null>(null);
 
   const { gerarPDF, abrirPDF, gerarPDFCalendario, abrirCalendario } = usePdfGeneration(form.titulo);
 
@@ -170,23 +166,6 @@ function GeradorEstimativaPDF({
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Página: Cálculo Financeiro */}
-      {page === "financeiro" && (
-        <FinancialPage
-          tipoFiltro={tipoFiltro}
-          setTipoFiltro={setTipoFiltro}
-          valorFiltro={valorFiltro}
-          setValorFiltro={setValorFiltro}
-          estimativasFiltradas={estimativasFiltradas}
-          carregandoFiltro={carregandoFiltro}
-          executarBusca={executarBusca}
-          estimativaFinanceiro={estimativaFinanceiro}
-          setEstimativaFinanceiro={setEstimativaFinanceiro}
-          form={form}
-          atividades={atividades}
-        />
-      )}
-
       {/* Página: Estimativa */}
       {page === "estimativa" && (
         <div className={`mx-auto max-w-[1800px] px-4 ${viewMode === "pagina-unica" ? "space-y-4" : ""}`}>
@@ -539,17 +518,6 @@ export default function App() {
       >
         <Stack className="h-3.5 w-3.5" />
         Kanban
-      </button>
-      <button
-        onClick={() => setPage("financeiro")}
-        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
-          page === "financeiro"
-            ? "bg-background text-foreground shadow-sm"
-            : "text-muted-foreground hover:bg-accent hover:text-foreground"
-        }`}
-      >
-        <ChartBar className="h-3.5 w-3.5" />
-        Financeiro
       </button>
     </nav>
   );
