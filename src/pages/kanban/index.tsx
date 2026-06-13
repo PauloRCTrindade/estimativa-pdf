@@ -6,14 +6,14 @@ import {
   makeLocalDate,
   todayLocal,
   formatDateRelative,
-  countTasks,
-  countCompleted,
-  taskProgressPercent,
   getCardProgress,
   getTasksForEstimate,
   PRIORITY_CONFIG_SIMPLE,
+  buildRealCalendar,
+  diffDiasCorridos,
 } from "@/components/kanban/shared/kanbanHelpers";
 import { HojeView } from "./hoje-view";
+import { ImpactManager } from "./impact-manager";
 import { TaskDetailModal } from "@/components/kanban/modals/TaskDetailModal";
 import { TemplateDetailModal } from "@/components/kanban/modals/TemplateDetailModal";
 import { ConfirmDeleteDialog } from "@/components/kanban/shared/ConfirmDeleteDialog";
@@ -23,7 +23,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { DatePicker } from "@/components/date-picker";
 import {
   Popover,
@@ -42,7 +41,6 @@ import {
   DotsSixVertical,
   Faders,
   X,
-  Flag,
 } from "@phosphor-icons/react";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -175,15 +173,6 @@ interface KanbanPageProps {
   onDuplicateCard?: (cardId: string) => Promise<string | null>;
 }
 
-function PriorityFlagSimple({ priority, size = 12 }: { priority?: import("@/types").TaskPriority; size?: number }) {
-  const cfg = PRIORITY_CONFIG_SIMPLE[priority || "p4"];
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={cfg.color}>
-      <path d="M4 3h16v2.5l-2 1.5v8l2 1.5V19H4v-2.5l2-1.5v-8L4 5.5V3z" />
-    </svg>
-  );
-}
-
 /* ═══════════════════════════════════════════════════════════════════════════
    KanbanPage
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -240,6 +229,7 @@ export function KanbanPage({
   const [dragOverCardId, setDragOverCardId] = useState<string | null>(null);
   const [dragOverColumnReorderId, setDragOverColumnReorderId] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [impactManagerCardId, setImpactManagerCardId] = useState<string | null>(null);
   const [addingColumn, setAddingColumn] = useState(false);
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
   const [editingColumnTitle, setEditingColumnTitle] = useState("");
@@ -261,6 +251,11 @@ export function KanbanPage({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const selectedTemplate = useMemo(() => cards.find((c) => c.id === selectedTemplateId && c.isTemplate) ?? null, [cards, selectedTemplateId]);
   const selectedCard = useMemo(() => cards.find((c) => c.id === selectedCardId) ?? null, [cards, selectedCardId]);
+  const impactManagerCard = useMemo(() => cards.find((c) => c.id === impactManagerCardId) ?? null, [cards, impactManagerCardId]);
+  const impactManagerEstimate = useMemo(
+    () => (impactManagerCard ? estimativas.find((e) => e.id === impactManagerCard.estimateId && e.tipo === "estimativa-pacotes") ?? null : null),
+    [estimativas, impactManagerCard]
+  );
   const boardRef = useDragScroll<HTMLDivElement>();
 
   /* ── Filtros ───────────────────────────────────────────────────────────── */
@@ -963,6 +958,20 @@ export function KanbanPage({
                                     {card.assignee}
                                   </span>
                                 )}
+                                {card.dataRealInicio && card.estimateId && (() => {
+                                  const estimate = estimativas.find((e) => e.id === card.estimateId && e.tipo === "estimativa-pacotes");
+                                  if (!estimate) return null;
+                                  const estimateCal = buildRealCalendar(estimate, estimate.inicio, estimate.diasParados, estimate.chgDias, estimate.esteiraPreProd, feriados, releases);
+                                  const realCal = buildRealCalendar(estimate, card.dataRealInicio, card.diasImpactados, card.chgDias, card.esteiraPreProd, feriados, releases);
+                                  const diff = diffDiasCorridos(estimateCal.rangeEnd, realCal.rangeEnd);
+                                  if (diff === null) return null;
+                                  return (
+                                    <span className={cn("inline-flex items-center gap-1 font-medium", diff > 0 ? "text-red-500" : diff < 0 ? "text-emerald-500" : "text-muted-foreground")}>
+                                      <CalendarBlank className="h-3 w-3" />
+                                      Real: {diff > 0 ? `+${diff}` : diff} dias
+                                    </span>
+                                  );
+                                })()}
                               </div>
                               {percent > 0 && (
                                 <div className="flex items-center gap-1.5">
@@ -1179,6 +1188,10 @@ export function KanbanPage({
           onUnarchiveCard={onUnarchiveCard}
           onRequestDelete={(cardId) => setDeletingCardId(cardId)}
           onMoveCard={onMoveCard}
+          onOpenImpactManager={(cardId) => {
+            setSelectedCardId(null);
+            setImpactManagerCardId(cardId);
+          }}
         />
       )}
 
@@ -1215,6 +1228,18 @@ export function KanbanPage({
         }}
         onCancel={() => setDeletingColumnId(null)}
       />
+
+      {/* Impact Manager */}
+      {impactManagerCard && impactManagerEstimate && (
+        <ImpactManager
+          card={impactManagerCard}
+          estimate={impactManagerEstimate}
+          feriados={feriados}
+          releases={releases}
+          onUpdateCard={onUpdateCard}
+          onClose={() => setImpactManagerCardId(null)}
+        />
+      )}
     </div>
   );
 }

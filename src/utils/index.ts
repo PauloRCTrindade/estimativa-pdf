@@ -1,5 +1,5 @@
 import { holydaysYear, releasesYear } from '@/data';
-import { COLORS, pdfStyles } from '../styles'
+import { COLORS, pdfStyles, CALENDAR_CATEGORIES, getCalendarCategory } from '../styles'
 
 export function createId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -191,15 +191,18 @@ export function getWorkingDays(startDate, totalDays, releases, holidays, paradoR
 
 
 export function getTimelineColor(activityType) {
-  if (activityType === "desenvolvimento") return COLORS.desenvolvimento;
-  if (activityType === "subida") return COLORS.subida;
-  if (activityType === "testes") return COLORS.testes;
+  if (activityType === "desenvolvimento") return CALENDAR_CATEGORIES.desenvolvimento.color;
+  if (activityType === "subida") return CALENDAR_CATEGORIES.subida.color;
+  if (activityType === "testes") return CALENDAR_CATEGORIES.testes.color;
   return COLORS.white;
 }
 
 export function getTimelineLabel(activityType, activityName) {
-  if (activityType === "desenvolvimento") return "Desenvolvimento";
-  return activityName || "";
+  if (activityType === "desenvolvimento") return CALENDAR_CATEGORIES.desenvolvimento.label;
+  if (activityType === "subida") return CALENDAR_CATEGORIES.subida.label;
+  if (activityType === "testes") return CALENDAR_CATEGORIES.testes.label;
+  const category = getCalendarCategory(activityName);
+  return category?.label || activityName || "";
 }
 export function getChgDates(releaseDate, chgDias, holidays) {
   const total = Number(chgDias || 0);

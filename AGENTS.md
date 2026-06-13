@@ -1,19 +1,23 @@
 # AGENTS.md — Guia para Agentes de Código
 
-Este documento descreve a arquitetura, convenções e fluxos do projeto `estimativa-pdf`.
-A linguagem principal do projeto é o **português brasileiro** (nomenclatura de domínio, documentação e comentários).
+Este documento descreve a arquitetura, convenções e fluxos do projeto `estimativa-pdf`, com base no conteúdo real dos arquivos do repositório. A linguagem principal do projeto é o **português brasileiro** (nomenclatura de domínio, documentação e comentários).
+
+Leia este arquivo antes de fazer qualquer alteração de código. Ele substitui qualquer versão anterior.
 
 ---
 
 ## Visão Geral do Projeto
 
-`estimativa-pdf` é uma aplicação web para criar, gerenciar e exportar estimativas de projetos de desenvolvimento em PDF.
+`estimativa-pdf` é uma aplicação web para criar, gerenciar e exportar estimativas de projetos de desenvolvimento em PDF. A aplicação possui duas grandes áreas:
+
+1. **Estimativa**: formulário com informações do projeto, detalhamento de pacotes e atividades, documento com premissas/restricoes/pontos, visão geral com timeline visual colorida e salvamento no Supabase.
+2. **Kanban**: quadro de acompanhamento de tarefas vinculado às estimativas, com colunas, cards, tarefas aninhadas, templates, arquivamento e filtros.
 
 Funcionalidades principais:
 - Formulário de estimativa com datas, releases, feriados, atividades e pacotes de trabalho.
-- Cálculo automático de dias úteis e timeline visual colorida.
+- Cálculo automático de dias úteis, considerando feriados, releases, dias parados, esteira de pré-produção e janelas de CHG.
+- Timeline visual colorida e exportação do documento em PDF via `html2canvas` + `jsPDF`.
 - Histórico de estimativas com busca por arquiteto/título.
-- Exportação do documento em PDF via `html2canvas` + `jsPDF`.
 - Quadro Kanban para acompanhamento de tarefas vinculado às estimativas.
 - Autenticação por email/senha via Supabase Auth.
 
@@ -23,17 +27,18 @@ Funcionalidades principais:
 
 | Camada | Tecnologia |
 |--------|-----------|
-| Frontend | React 19.2.5 + TypeScript (~6.0.2) |
+| Frontend | React 19.2.5 + TypeScript ~6.0.2 |
 | Build Tool | Vite 8.0.10 |
-| Estilos | Tailwind CSS 4.2.4 + PostCSS |
-| Componentes UI | shadcn/ui (style: `radix-nova`, baseColor: `neutral`) |
+| Estilos | Tailwind CSS 4.2.4 + PostCSS (`@tailwindcss/postcss`) |
+| Componentes UI | shadcn/ui 4.7.0 (style: `radix-nova`, baseColor: `neutral`, iconLibrary: `lucide`) |
 | Ícones | Phosphor Icons (`@phosphor-icons/react`) e Lucide React |
 | Fonte | Geist Variable (`@fontsource-variable/geist`) |
 | Backend local | Express em `dev-server.js` |
 | Backend produção | Vercel Serverless Functions na pasta `api/` |
 | Banco de dados | Supabase PostgreSQL |
 | Auth | Supabase Auth (`@supabase/supabase-js`) |
-| PDF | `html2canvas` + `jspdf` |
+| PDF | `html2canvas` 1.4.1 + `jspdf` 4.2.1 |
+| Data utility | `date-fns` 4.1.0 |
 
 Node.js requerido: **22.22.2** (definido em `.nvmrc`).
 
@@ -91,6 +96,7 @@ Node.js requerido: **22.22.2** (definido em `.nvmrc`).
 │   │   └── useEstimativaCrud.ts
 │   ├── hooks/                  # Hooks customizados
 │   │   ├── useAuth.ts
+│   │   ├── useDragScroll.ts
 │   │   ├── useEstimativas.ts
 │   │   └── useKanban.ts
 │   ├── services/               # Clientes HTTP
@@ -182,7 +188,7 @@ npm run setup:db         # Valida conexão e schema no Supabase
 
 ### Estilos
 - UI geral: Tailwind CSS + classes shadcn/ui.
-- Área de preview do PDF: mantém estilos inline (`CSSProperties` em `src/styles/index.ts`) para compatibilidade com `html2canvas`/`jsPDF`.
+- Área de preview do PDF mantém estilos inline (`CSSProperties` em `src/styles/index.ts`) para compatibilidade com `html2canvas`/`jsPDF`.
 - Cores no PDF devem ser HEX (ex: `#10b981`) — `oklch` causa erro no `html2canvas`. A função `assertHexColor` valida isso em `src/utils/index.ts`.
 
 ---
@@ -207,7 +213,7 @@ O frontend trabalha em **camelCase**:
 - `api/lib/case-converter.js`: exporta `camelToSnakeObj` e `snakeToCamelObj` usados pelas rotas do Kanban (`api/kanban/`).
 - `dev-server.js`: usa `camelToSnakeCase` (conversão real com underscore) para estimativas e `toCamelKanban` (com `kanbanKeyMap`) para Kanban.
 
-- Campo especial: `pacotes` é armazenado como JSONB e deve preservar sua estrutura interna em camelCase — não converter recursivamente.
+- Campo especial: `pacotes` é armazenado como JSONB e deve preservar sua estrutura interna em camelCase — **nunca converter recursivamente**.
 
 ### Schema SQL
 O schema completo está em `database.sql`. Ele inclui:
@@ -262,6 +268,9 @@ DELETE /api/kanban/tasks/:id           deletar task
 - Nos handlers serverless (`api/`), as rotas de mutação (POST, PUT, DELETE) exigem autenticação via `verifyAuth`. As rotas GET são públicas no momento.
 - O `dev-server.js` não exige autenticação (uso local apenas).
 
+### Comportamento especial do backend local
+`dev-server.js` implementa `safeEstimativaInsert` e `safeEstimativaUpdate`, que tentam inserir/atualizar no Supabase e removem automaticamente campos desconhecidos caso o erro indique `Could not find the '...' column`. Esse mecanismo existe para lidar com diferenças entre o payload enviado e o schema real.
+
 ---
 
 ## Autenticação
@@ -275,7 +284,7 @@ Componentes:
 - `src/components/auth/AuthPage.tsx` — alternador entre login/signup.
 - `src/components/auth/ProtectedRoute.tsx` — envolve rotas protegidas e exibe header com logout.
 
-Variáveis de ambiente necessárias:
+Variáveis de ambiente necessárias (frontend):
 ```env
 VITE_SUPABASE_URL=https://seu-projeto.supabase.co
 VITE_SUPABASE_ANON_KEY=sua-chave-publica
@@ -328,6 +337,7 @@ VITE_SUPABASE_ANON_KEY
 - Tokens JWT de autenticação são gerenciados pelo Supabase e armazenados automaticamente.
 - O `dev-server.js` lê variáveis de ambiente (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) e não possui credenciais hardcoded. Sempre prefira variáveis de ambiente.
 - O CORS está configurado tanto no `dev-server.js` quanto em `api/lib/auth.js`, permitindo origins locais e `process.env.FRONTEND_URL`/`VERCEL_URL` em produção.
+- **Nunca commite arquivos `.env`, `.env.local` ou `.env.production`** — eles contêm credenciais e já estão no `.gitignore`.
 
 ---
 
@@ -355,3 +365,4 @@ VITE_SUPABASE_ANON_KEY
 - Ao adicionar rotas de API, siga o padrão de CORS já existente nos handlers (`setCorsHeaders` + `OPTIONS` preflight).
 - Não altere `App.tsx` de forma a quebrar as regras relaxadas do ESLint sem atualizar `eslint.config.js`.
 - O campo `pacotes` é JSONB — nunca aplique conversão recursiva de camelCase nele.
+- `dev-server.js` roda na porta 3003 via `npm run dev:api`, enquanto `vite.config.ts` espera o proxy em `localhost:3003`.

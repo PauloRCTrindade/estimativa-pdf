@@ -84,6 +84,13 @@ CREATE TABLE IF NOT EXISTS kanban_cards (
   completed BOOLEAN DEFAULT FALSE,
   completed_estimate_task_ids TEXT[],
   position INTEGER DEFAULT 0,
+
+  -- Dados reais de execução
+  data_real_inicio DATE,
+  dias_impactados TEXT,
+  chg_dias INTEGER DEFAULT 0,
+  esteira_pre_prod TEXT,
+
   criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -99,6 +106,10 @@ ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0;
 ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS completed_estimate_task_ids TEXT[];
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS data_real_inicio DATE;
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS dias_impactados TEXT;
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS chg_dias INTEGER DEFAULT 0;
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS esteira_pre_prod TEXT;
 
 CREATE TABLE IF NOT EXISTS kanban_tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

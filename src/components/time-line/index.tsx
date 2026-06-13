@@ -1,11 +1,12 @@
 import { pdfStyles } from '../../styles'
 import { weekLabels } from '../../data'
-import { COLORS } from '../../styles'
+import { COLORS, getCalendarCategory } from '../../styles'
 
-function isReleaseDeploymentDay(day: Date, releaseAlvoStr: string): boolean {
-  if (!releaseAlvoStr) return false;
-  const [dia, mes, ano] = releaseAlvoStr.split('/').map(Number);
-  return day.getDate() === dia && day.getMonth() === mes - 1 && day.getFullYear() === ano;
+function getTimelineIcon(tipo: string): string {
+  const category = getCalendarCategory(tipo);
+  if (category?.key === "producao") return "🚀";
+  if (category?.key === "impactado") return "⚠";
+  return "";
 }
 
 export function TimeLine({ form, timelineRows, visible = false }) {
@@ -91,23 +92,26 @@ export function TimeLine({ form, timelineRows, visible = false }) {
               }}>
                 <tbody>
                   <tr>
-                    {row.map((day, index) => (
-                      <td key={`cal-rocket-${rowIndex}-${index}`} style={{
-                        ...pdfStyles.timelineCell,
-                        width: "64px",
-                        height: "24px",
-                        lineHeight: "24px",
-                        fontSize: "16px",
-                        backgroundColor: "transparent",
-                        textAlign: "center",
-                        verticalAlign: "middle",
-                        border: "none",
-                        borderBottom: "none",
-                        color: isReleaseDeploymentDay(day.date, form.releaseAlvo) ? COLORS.releaseTarget : "transparent",
-                      }}>
-                        {isReleaseDeploymentDay(day.date, form.releaseAlvo) ? "🚀" : ""}
-                      </td>
-                    ))}
+                    {row.map((day, index) => {
+                      const icon = getTimelineIcon(day.tipo);
+                      return (
+                        <td key={`cal-icon-${rowIndex}-${index}`} style={{
+                          ...pdfStyles.timelineCell,
+                          width: "64px",
+                          height: "24px",
+                          lineHeight: "24px",
+                          fontSize: "14px",
+                          backgroundColor: "transparent",
+                          textAlign: "center",
+                          verticalAlign: "middle",
+                          border: "none",
+                          borderBottom: "none",
+                          color: icon ? COLORS.text : "transparent",
+                        }}>
+                          {icon}
+                        </td>
+                      );
+                    })}
                   </tr>
                   <tr>
                     {row.map((day, index) => (

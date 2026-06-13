@@ -11,6 +11,10 @@ const keyMap = {
   is_archived: 'isArchived',
   completed: 'completed',
   completed_estimate_task_ids: 'completedEstimateTaskIds',
+  data_real_inicio: 'dataRealInicio',
+  dias_impactados: 'diasImpactados',
+  chg_dias: 'chgDias',
+  esteira_pre_prod: 'esteiraPreProd',
   criado_em: 'criadoEm',
   atualizado_em: 'atualizadoEm',
 };

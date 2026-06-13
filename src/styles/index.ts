@@ -1,5 +1,9 @@
 import type { CSSProperties } from "react";
 type PdfStyles = Record<string, CSSProperties>;
+/*
+ * Cores HEX usadas nos calendários e na exportação PDF.
+ * Mantidas em HEX por compatibilidade com html2canvas / jsPDF.
+ */
 export const COLORS = {
   desenvolvimento: "#10b981",
   subida: "#8b5cf6",
@@ -13,12 +17,171 @@ export const COLORS = {
   mediumGray: "#e5e7eb",
   orange: "#f97316",
   text: "#111111",
-  blocked: "#6b7280",
+  blocked: "#4b5563",
   esteiraPreProd: "#f59e0b",
   chg: "#06b6d4",
-  releaseTarget: "#22c55e",
+  releaseTarget: "#166534",
   releaseDay: "#1e40af",
 };
+
+export type CalendarCategoryKey =
+  | "desenvolvimento"
+  | "testes"
+  | "subida"
+  | "producao"
+  | "chg"
+  | "esteiraPreProd"
+  | "impactado"
+  | "tombamento"
+  | "feriado"
+  | "weekend"
+  | "releaseDay";
+
+export interface CalendarCategory {
+  key: CalendarCategoryKey;
+  label: string;
+  shortLabel: string;
+  icon: string;
+  color: string;
+  group: "work" | "process" | "impact" | "calendar";
+  groupLabel: string;
+}
+
+export const CALENDAR_CATEGORIES: Record<CalendarCategoryKey, CalendarCategory> = {
+  desenvolvimento: {
+    key: "desenvolvimento",
+    label: "Desenvolvimento",
+    shortLabel: "Dev",
+    icon: "🛠",
+    color: COLORS.desenvolvimento,
+    group: "work",
+    groupLabel: "Trabalho",
+  },
+  testes: {
+    key: "testes",
+    label: "QA",
+    shortLabel: "QA",
+    icon: "🧪",
+    color: COLORS.testes,
+    group: "work",
+    groupLabel: "Trabalho",
+  },
+  subida: {
+    key: "subida",
+    label: "Pre Prod",
+    shortLabel: "Pre",
+    icon: "📦",
+    color: COLORS.subida,
+    group: "work",
+    groupLabel: "Trabalho",
+  },
+  producao: {
+    key: "producao",
+    label: "Produção",
+    shortLabel: "Prod",
+    icon: "🚀",
+    color: COLORS.releaseTarget,
+    group: "work",
+    groupLabel: "Trabalho",
+  },
+  chg: {
+    key: "chg",
+    label: "CHG",
+    shortLabel: "CHG",
+    icon: "📋",
+    color: COLORS.chg,
+    group: "process",
+    groupLabel: "Processos",
+  },
+  esteiraPreProd: {
+    key: "esteiraPreProd",
+    label: "Esteira",
+    shortLabel: "Esteira",
+    icon: "⚙",
+    color: COLORS.esteiraPreProd,
+    group: "process",
+    groupLabel: "Processos",
+  },
+  impactado: {
+    key: "impactado",
+    label: "Impactado",
+    shortLabel: "Impacto",
+    icon: "⚠",
+    color: COLORS.blocked,
+    group: "impact",
+    groupLabel: "Impactos",
+  },
+  tombamento: {
+    key: "tombamento",
+    label: "Tombamento",
+    shortLabel: "Tomba",
+    icon: "🔒",
+    color: COLORS.postRelease,
+    group: "impact",
+    groupLabel: "Impactos",
+  },
+  feriado: {
+    key: "feriado",
+    label: "Feriado",
+    shortLabel: "Feriado",
+    icon: "🏖",
+    color: COLORS.holiday,
+    group: "impact",
+    groupLabel: "Impactos",
+  },
+  weekend: {
+    key: "weekend",
+    label: "Final de Semana",
+    shortLabel: "FDS",
+    icon: "📅",
+    color: COLORS.weekend,
+    group: "calendar",
+    groupLabel: "Calendário",
+  },
+  releaseDay: {
+    key: "releaseDay",
+    label: "Domingo da Release",
+    shortLabel: "Release",
+    icon: "🔷",
+    color: COLORS.releaseDay,
+    group: "calendar",
+    groupLabel: "Calendário",
+  },
+};
+
+export const CALENDAR_GROUPS: Array<{ key: CalendarCategory["group"]; label: string }> = [
+  { key: "work", label: "Trabalho" },
+  { key: "process", label: "Processos" },
+  { key: "impact", label: "Impactos" },
+  { key: "calendar", label: "Calendário" },
+];
+
+export function getCalendarCategory(tipo?: string): CalendarCategory | null {
+  if (!tipo) return null;
+  const t = String(tipo).toLowerCase();
+  if (t === "release alvo" || t === "release" || t === "subida em produção" || t === "produção") {
+    return CALENDAR_CATEGORIES.producao;
+  }
+  if (t === "desenvolvimento") return CALENDAR_CATEGORIES.desenvolvimento;
+  if (t === "testes" || t === "qa" || t === "qa compass" || t === "testes internos" || t === "teste") {
+    return CALENDAR_CATEGORIES.testes;
+  }
+  if (t === "subida" || t === "subida em pre prod" || t === "subida dos repositórios em pre prod" || t === "pre prod") {
+    return CALENDAR_CATEGORIES.subida;
+  }
+  if (t === "chg" || t === "trâmite chg" || t === "tramite chg") return CALENDAR_CATEGORIES.chg;
+  if (t === "esteira" || t === "esteira pre prod" || t === "esteira pré-prod") {
+    return CALENDAR_CATEGORIES.esteiraPreProd;
+  }
+  if (t === "projeto impactado" || t === "projeto parado" || t === "impactado" || t === "parado") {
+    return CALENDAR_CATEGORIES.impactado;
+  }
+  if (t === "tombamento" || t === "pós-release" || t === "pos-release") return CALENDAR_CATEGORIES.tombamento;
+  if (t === "feriado") return CALENDAR_CATEGORIES.feriado;
+  if (t === "fim de semana" || t === "final de semana" || t === "weekend") return CALENDAR_CATEGORIES.weekend;
+  if (t === "domingo da release" || t === "release day") return CALENDAR_CATEGORIES.releaseDay;
+  return null;
+}
 export const pdfStyles: PdfStyles = {
   page: {
     width: "794px",

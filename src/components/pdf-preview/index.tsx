@@ -1,9 +1,15 @@
 import { Section } from '../section'
-import { Legend } from '../legend'
 import { pdfStyles } from '../../styles'
-import { formatBR, getTimelineBorder, } from '../../utils'
+import { formatBR } from '../../utils'
 import { weekLabels } from '../../data'
-import { COLORS } from '../../styles'
+import { COLORS, CALENDAR_CATEGORIES, CALENDAR_GROUPS, getCalendarCategory } from '../../styles'
+
+function getTimelineIcon(tipo: string): string {
+  const category = getCalendarCategory(tipo);
+  if (category?.key === "producao") return "🚀";
+  if (category?.key === "impactado") return "⚠";
+  return "";
+}
 
 function processEtapaGroups(atividades: any[]) {
   const result: Array<any> = [];
@@ -31,12 +37,6 @@ function processEtapaGroups(atividades: any[]) {
     i = j;
   }
   return result;
-}
-
-function isReleaseDeploymentDay(day: Date, releaseAlvoStr: string): boolean {
-  if (!releaseAlvoStr) return false;
-  const [dia, mes, ano] = releaseAlvoStr.split('/').map(Number);
-  return day.getDate() === dia && day.getMonth() === mes - 1 && day.getFullYear() === ano;
 }
 
 export function PdfPreview({ form, totalDias, calculo, timelineRows, hideTimeline = false, pdfId = "pdf-area", fullWidth = false }) {
@@ -185,22 +185,25 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows, hideTimelin
               }}>
                 <tbody>
                   <tr>
-                    {row.map((day, index) => (
-                      <td key={`rocket-${rowIndex}-${index}`} style={{
-                        ...pdfStyles.timelineCell,
-                        height: "24px",
-                        lineHeight: "24px",
-                        fontSize: "16px",
-                        backgroundColor: "transparent",
-                        textAlign: "center",
-                        verticalAlign: "middle",
-                        border: "none",
-                        borderBottom: "none",
-                        color: isReleaseDeploymentDay(day.date, form.releaseAlvo) ? COLORS.releaseTarget : "transparent",
-                      }}>
-                        {isReleaseDeploymentDay(day.date, form.releaseAlvo) ? "🚀" : ""}
-                      </td>
-                    ))}
+                    {row.map((day, index) => {
+                      const icon = getTimelineIcon(day.tipo);
+                      return (
+                        <td key={`icon-${rowIndex}-${index}`} style={{
+                          ...pdfStyles.timelineCell,
+                          height: "24px",
+                          lineHeight: "24px",
+                          fontSize: "14px",
+                          backgroundColor: "transparent",
+                          textAlign: "center",
+                          verticalAlign: "middle",
+                          border: "none",
+                          borderBottom: "none",
+                          color: icon ? COLORS.text : "transparent",
+                        }}>
+                          {icon}
+                        </td>
+                      );
+                    })}
                   </tr>
                   <tr>
                     {row.map((day, index) => (
@@ -293,43 +296,62 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows, hideTimelin
 
       {!hideTimeline && <div style={{ marginTop: "24px", backgroundColor: "#f9fafb", padding: "16px", borderRadius: "4px", border: "1px solid #e5e7eb", fontSize: "11px" }}>
         {(() => {
-          const items = [
-            { color: COLORS.desenvolvimento, label: "✓ Desenvolvimento", type: "fill" },
-            { color: COLORS.subida, label: "✓ Subida em Pre Prod", type: "fill" },
-            { color: COLORS.testes, label: "✓ QA Compass", type: "fill" },
-            { color: COLORS.weekend, label: "✗ Fim de semana", type: "fill" },
-            { color: COLORS.postRelease, label: "✗ Tombamento", type: "fill" },
-            { color: COLORS.holiday, label: "✗ Feriado", type: "fill" },
-            { color: COLORS.blocked, label: "✗ Projeto Impactado", type: "fill" },
-            { color: COLORS.releaseTarget, label: "🚀 Subida em Produção", type: "fill" },
-            { color: COLORS.esteiraPreProd, label: "▬ Esteira Pre Prod", type: "border" },
-            { color: COLORS.chg, label: "▬ Trâmite CHG", type: "border" },
-            { color: COLORS.releaseDay, label: "● Domingo da release", type: "fill" },
-          ];
-          const rows: typeof items[] = [];
-          for (let i = 0; i < items.length; i += 2) rows.push(items.slice(i, i + 2));
+          const groups = CALENDAR_GROUPS.map((group) => ({
+            ...group,
+            items: Object.values(CALENDAR_CATEGORIES).filter((c) => c.group === group.key),
+          }));
+
+          function badgeTextColor(hex: string): string {
+            const normalized = hex.replace("#", "");
+            const r = parseInt(normalized.slice(0, 2), 16);
+            const g = parseInt(normalized.slice(2, 4), 16);
+            const b = parseInt(normalized.slice(4, 6), 16);
+            const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+            return yiq < 128 ? "#ffffff" : "#111827";
+          }
+
           return (
             <table style={{ borderCollapse: "collapse", width: "100%" }}>
               <tbody>
-                {rows.map((row, ri) => (
-                  <tr key={ri}>
-                    {row.map((item, ci) => (
-                      <td key={ci} style={{ width: "50%", padding: "4px 8px", verticalAlign: "middle" }}>
-                        <table style={{ borderCollapse: "collapse" }}>
-                          <tbody>
-                            <tr>
-                              <td style={{ width: "1px", paddingRight: "6px", verticalAlign: "middle" }}>
-                                <div data-legend-color="true" style={{ width: "13px", height: "13px", borderRadius: "3px", backgroundColor: item.type === "fill" ? item.color : "transparent", border: `3px solid ${item.color}`, boxSizing: "border-box" }} />
-                              </td>
-                              <td style={{ verticalAlign: "middle", fontFamily: "Arial, Helvetica, sans-serif", color: item.color, whiteSpace: "nowrap" }}>
-                                {item.label}
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </td>
-                    ))}
-                    {row.length === 1 && <td style={{ width: "50%" }} />}
+                {groups.map((group) => (
+                  <tr key={group.key}>
+                    <td style={{ width: "1px", padding: "6px 10px 6px 0", verticalAlign: "middle", whiteSpace: "nowrap", fontFamily: "Arial, Helvetica, sans-serif", fontWeight: 700, fontSize: "10px", textTransform: "uppercase", color: "#6b7280" }}>
+                      {group.label}
+                    </td>
+                    <td style={{ padding: "4px 0", verticalAlign: "middle" }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                        {group.items.map((category) => (
+                          <span
+                            key={category.key}
+                            data-legend-color="true"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              fontFamily: "Arial, Helvetica, sans-serif",
+                            }}
+                          >
+                            <span style={{ fontSize: "10px" }}>{category.icon}</span>
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                padding: "3px 8px",
+                                borderRadius: "999px",
+                                backgroundColor: category.color,
+                                border: `1px solid ${category.color}`,
+                                color: badgeTextColor(category.color),
+                                fontSize: "10px",
+                                fontWeight: 600,
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {category.label}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

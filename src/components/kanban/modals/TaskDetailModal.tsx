@@ -4,28 +4,27 @@ import {
   formatDateBR,
   formatDateRelative,
   buildEstimateCalendar,
+  buildRealCalendar,
+  diffDiasCorridos,
   getTasksForEstimate,
   PRIORITY_CONFIG,
   countTasks,
   countCompleted,
-  findTaskInTree,
-  getTaskPath,
 } from "@/components/kanban/shared/kanbanHelpers";
+import { CalendarGrid } from "@/components/kanban/shared/CalendarGrid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DatePicker } from "@/components/date-picker";
 import { TagSelector } from "@/components/kanban/shared/TagSelector";
-import { COLORS } from "@/styles";
 import { cn } from "@/lib/utils";
 import {
   Plus, Trash, CaretRight, Check, CalendarBlank, Note, ListChecks,
-  Clock, X, Flag, User, Tag, Paperclip, ChatText,
+  Clock, X, Flag, User, Paperclip, ChatText,
   CheckCircle, CaretDown, ArrowLeft, Archive, ArrowCounterClockwise, Copy,
-  SquareSplitHorizontal,
+  SquareSplitHorizontal, ChartLineUp,
 } from "@phosphor-icons/react";
 
 function createId() {
@@ -99,6 +98,7 @@ export interface TaskDetailModalProps {
   onUnarchiveCard: (cardId: string) => void;
   onRequestDelete?: (cardId: string) => void;
   onMoveCard?: (cardId: string, columnId: string) => void;
+  onOpenImpactManager?: (cardId: string) => void;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -131,6 +131,7 @@ export function TaskDetailModal({
   onUnarchiveCard,
   onRequestDelete,
   onMoveCard,
+  onOpenImpactManager,
 }: TaskDetailModalProps) {
   const [view, setView] = useState<ModalView>({ type: "card", cardId: card.id });
   const [animationKey, setAnimationKey] = useState(0);
@@ -151,7 +152,6 @@ export function TaskDetailModal({
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [showCalendar, setShowCalendar] = useState(false);
-  const [largeCalendar, setLargeCalendar] = useState(false);
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
 
@@ -280,13 +280,33 @@ export function TaskDetailModal({
   const estimate = useMemo(() => estimativas.find((e) => e.id === card.estimateId && e.tipo === "estimativa-pacotes"), [estimativas, card.estimateId]);
   const estimateTasks = useMemo(() => (estimate ? getTasksForEstimate(estimate) : []), [estimate]);
 
+  const estimateCalendar = useMemo(() => (estimate ? buildEstimateCalendar(estimate) : null), [estimate]);
+  const realCalendar = useMemo(
+    () =>
+      estimate
+        ? buildRealCalendar(
+            estimate,
+            card.dataRealInicio,
+            card.diasImpactados,
+            card.chgDias,
+            card.esteiraPreProd,
+            feriados,
+            releases
+          )
+        : null,
+    [estimate, card.dataRealInicio, card.diasImpactados, card.chgDias, card.esteiraPreProd, feriados, releases]
+  );
+
+  const terminoEstimado = estimateCalendar?.rangeEnd;
+  const terminoReal = realCalendar?.rangeEnd;
+  const diferencaDias = diffDiasCorridos(terminoEstimado, terminoReal);
+
   const isTaskView = view.type === "task" && currentTask;
   const displayTitle = isTaskView ? currentTask.title : card.title;
   const displayDescription = isTaskView ? currentTask.description : card.notes;
   const displayCompleted = isTaskView ? currentTask.completed : false;
   const displayPriority = isTaskView ? currentTask.priority : card.priority;
   const displayAssignee = isTaskView ? currentTask.assignee : card.assignee;
-  const displayDueDate = isTaskView ? currentTask.dueDate : card.dueDate;
   const displayTags = isTaskView ? currentTask.tags : card.tags;
   const displayChecklist = isTaskView ? currentTask.checklist : [];
   const displayComments = isTaskView ? currentTask.comments : [];
@@ -753,89 +773,105 @@ export function TaskDetailModal({
                 )}
               </div>
 
-              {/* Calendar - only at card level and not template */}
+              {/* Calendars - only at card level and not template */}
               {!isTaskView && !card.isTemplate && estimate && (
-                <div className="rounded-lg border border-border/60 bg-card">
-                  <div className="flex items-center justify-between px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <CalendarBlank className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Calendário</span>
+                <div className="space-y-4">
+                  {/* Comparative summary */}
+                  {estimateCalendar && (
+                    <div className="rounded-lg border border-border/60 bg-card p-3">
+                      <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
+                        <ChartLineUp className="h-4 w-4 text-muted-foreground" />
+                        Comparativo estimado × real
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                        <div>
+                          <span className="text-muted-foreground">Início estimado:</span>{" "}
+                          <span className="font-medium text-foreground">{formatDateBR(estimate.inicio)}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Início real:</span>{" "}
+                          <span className="font-medium text-foreground">{formatDateBR(card.dataRealInicio)}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Término estimado:</span>{" "}
+                          <span className="font-medium text-foreground">{formatDateBR(terminoEstimado?.toISOString() || "")}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Término real previsto:</span>{" "}
+                          <span className="font-medium text-foreground">{formatDateBR(terminoReal?.toISOString() || "")}</span>
+                        </div>
+                      </div>
+                      {typeof diferencaDias === "number" && (
+                        <div className={cn("mt-2 text-xs font-semibold", diferencaDias > 0 ? "text-red-500" : diferencaDias < 0 ? "text-emerald-500" : "text-muted-foreground")}>
+                          Impacto: {diferencaDias > 0 ? `+${diferencaDias}` : diferencaDias} dias
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1.5">
+                  )}
+
+                  {/* Estimate calendar */}
+                  <div className="rounded-lg border border-border/60 bg-card">
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <CalendarBlank className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Calendário da Estimativa</span>
+                      </div>
                       <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowCalendar((prev) => !prev)}>
                         {showCalendar ? "Ocultar" : "Visualizar"}
                       </Button>
-                      {showCalendar && (
-                        <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={() => setLargeCalendar((prev) => !prev)}>
-                          {largeCalendar ? "Reduzir" : "Expandir"}
-                        </Button>
-                      )}
                     </div>
+                    {showCalendar && (
+                      <div className="overflow-x-auto border-t border-border/60 px-3 py-3 text-[11px] max-h-[320px]">
+                        <CalendarGrid
+                          rows={estimateCalendar?.rows ?? []}
+                          rangeStart={estimateCalendar?.rangeStart}
+                          rangeEnd={estimateCalendar?.rangeEnd}
+                          showPeriod
+                        />
+                      </div>
+                    )}
                   </div>
-                  {showCalendar && (
-                    <div className={cn("overflow-x-auto border-t border-border/60 px-3 py-3 text-[11px]", largeCalendar ? "max-h-[420px]" : "max-h-[240px]")}>
-                      {(() => {
-                        const calendar = buildEstimateCalendar(estimate);
-                        if (!calendar || calendar.rows.length === 0) {
-                          return <p className="text-xs text-muted-foreground">Calendário indisponível.</p>;
-                        }
-                        return (
-                          <div className="space-y-3">
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                              <span>Período:</span>
-                              <span className="font-medium text-foreground">{formatDateBR(calendar.rangeStart?.toISOString() || "")}</span>
-                              <span>→</span>
-                              <span className="font-medium text-foreground">{formatDateBR(calendar.rangeEnd?.toISOString() || "")}</span>
-                            </div>
-                            {calendar.rows.map((row, rowIndex) => (
-                              <div key={rowIndex} className="space-y-1">
-                                <div className="grid gap-1 text-[10px] uppercase tracking-wider text-muted-foreground" style={{ gridTemplateColumns: "repeat(15, minmax(0, 1fr))" }}>
-                                  {row.map((day, index) => {
-                                    const prevDay = index > 0 ? row[index - 1] : null;
-                                    const showMonth = day && (!prevDay || prevDay.date.getMonth() !== day.date.getMonth());
-                                    return <div key={index} className="h-4 text-center">{showMonth ? day.date.toLocaleString("pt-BR", { month: "short" }).toUpperCase() : ""}</div>;
-                                  })}
-                                </div>
-                                <div className="grid gap-1 text-[10px] font-medium text-muted-foreground" style={{ gridTemplateColumns: "repeat(15, minmax(0, 1fr))" }}>
-                                  {row.map((day, index) => (
-                                    <div key={index} className="flex h-5 items-center justify-center rounded-sm">
-                                      {day ? ["D", "S", "T", "Q", "Q", "S", "S"][day.date.getDay()] : ""}
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="grid gap-1 text-[11px] font-semibold text-foreground" style={{ gridTemplateColumns: "repeat(15, minmax(0, 1fr))" }}>
-                                  {row.map((day, index) => (
-                                    <div key={index} className={cn("flex h-7 items-center justify-center rounded-sm", day ? "bg-muted" : "bg-transparent")}>
-                                      {day ? String(day.date.getDate()).padStart(2, "0") : ""}
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(15, minmax(0, 1fr))" }}>
-                                  {row.map((day, index) => {
-                                    if (!day) return <div key={index} className="h-9 rounded-sm bg-muted/30" />;
-                                    const badgeText = day.isReleaseDay ? "🚀" : day.isChg ? "CHG" : day.isEsteiraPreProd ? "PRE" : day.tipo === "feriado" ? "F" : day.tipo === "tombamento" ? "T" : day.tipo === "parado" ? "P" : "";
-                                    const cellStyle = {
-                                      backgroundColor: day.color || "transparent",
-                                      border: day.isEsteiraPreProd ? `2px solid ${COLORS.esteiraPreProd}` : day.isChg ? `2px solid ${COLORS.chg}` : `1px solid hsl(var(--border) / 0.3)`,
-                                    };
-                                    return (
-                                      <div
-                                        key={index}
-                                        className="flex h-9 items-center justify-center rounded-sm text-[10px] font-semibold text-zinc-950 dark:text-zinc-100"
-                                        style={cellStyle}
-                                      >
-                                        <span>{badgeText}</span>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      })()}
+
+                  {/* Real calendar */}
+                  <div className="rounded-lg border border-border/60 bg-card">
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <CalendarBlank className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Calendário Real</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {card.dataRealInicio && onOpenImpactManager && !card.isArchived && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => onOpenImpactManager(card.id)}
+                          >
+                            Gerenciar impactos
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowCalendar((prev) => !prev)}>
+                          {showCalendar ? "Ocultar" : "Visualizar"}
+                        </Button>
+                      </div>
                     </div>
-                  )}
+                    {showCalendar && (
+                      <div className="overflow-x-auto border-t border-border/60 px-3 py-3 text-[11px] max-h-[320px]">
+                        {card.dataRealInicio ? (
+                          <CalendarGrid
+                            rows={realCalendar?.rows ?? []}
+                            rangeStart={realCalendar?.rangeStart}
+                            rangeEnd={realCalendar?.rangeEnd}
+                            showPeriod
+                          />
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Informe a data real de início para calcular o calendário real.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -986,6 +1022,23 @@ export function TaskDetailModal({
                   releases={releases}
                 />
               </div>
+
+              {/* Real start date - card level only */}
+              {!isTaskView && !card.isTemplate && (
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Data real de início</label>
+                  <DatePicker
+                    value={card.dataRealInicio || ""}
+                    onChange={(date) => onUpdateCard(card.id, { dataRealInicio: date })}
+                    placeholder="Selecionar data"
+                    className="h-8 text-sm"
+                    dateFormat="iso"
+                    feriados={feriados}
+                    releases={releases}
+                    disabled={card.isArchived}
+                  />
+                </div>
+              )}
 
               {/* Start / End dates (estimativa tasks only show if present) */}
               {isTaskView && (currentTask?.inicio || currentTask?.termino) && (

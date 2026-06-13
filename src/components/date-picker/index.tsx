@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils"
 import { isHoliday, isPostRelease } from "@/utils"
 import { Legend } from "@/components/legend"
+import { CALENDAR_CATEGORIES } from "@/styles"
 
 interface DatePickerProps {
   value: string
@@ -22,6 +23,7 @@ interface DatePickerProps {
   releases?: string[]
   /** Formato da data: "br" = dd/mm/yyyy (padrão), "iso" = yyyy-mm-dd */
   dateFormat?: "br" | "iso"
+  disabled?: boolean
 }
 
 function parseBR(dateStr: string): Date | undefined {
@@ -61,6 +63,7 @@ export function DatePicker({
   feriados,
   releases,
   dateFormat = "br",
+  disabled = false,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -110,11 +113,12 @@ export function DatePicker({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
+          disabled={disabled}
           className={cn(
             "w-full justify-start text-left font-normal",
             !value && "text-muted-foreground",
             className,
-            isSelectedReleaseSunday && "bg-blue-600 text-blue-100 border-blue-500 hover:bg-blue-700 hover:text-blue-50 dark:bg-blue-600 dark:text-blue-100 dark:border-blue-400 dark:hover:bg-blue-700 dark:hover:text-blue-50",
+            isSelectedReleaseSunday && "bg-blue-700 text-blue-100 border-blue-600 hover:bg-blue-800 hover:text-blue-50 dark:bg-blue-700 dark:text-blue-100 dark:border-blue-500 dark:hover:bg-blue-800 dark:hover:text-blue-50",
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -132,12 +136,12 @@ export function DatePicker({
         />
         <div className="mt-4 pt-4 border-t border-border flex flex-col gap-2">
           {feriados && feriados.length > 0 && (
-            <Legend color="#b91c1c" label="Feriado" />
+            <Legend category={CALENDAR_CATEGORIES.feriado.key} />
           )}
           {releases && releases.length > 0 && (
             <>
-              <Legend color="#ea580c" label="Tombamento (Pós-Release)" />
-              <Legend color="#1e40af" label="Domingo da Release" />
+              <Legend category={CALENDAR_CATEGORIES.tombamento.key} />
+              <Legend category={CALENDAR_CATEGORIES.releaseDay.key} />
             </>
           )}
         </div>

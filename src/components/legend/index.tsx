@@ -1,38 +1,79 @@
-import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import {
+  CALENDAR_CATEGORIES,
+  getCalendarCategory,
+  type CalendarCategoryKey,
+} from "@/styles";
 
-interface LegendProps {
-  color: string
-  label: string
-  type?: "fill" | "border"
-  icon?: React.ReactNode
+interface LegendCategoryProps {
+  category: CalendarCategoryKey | string;
+  variant?: "default" | "compact";
+  className?: string;
 }
 
-export function Legend({ color, label, type = "fill", icon }: LegendProps) {
+interface LegendManualProps {
+  color: string;
+  label: string;
+  icon?: React.ReactNode;
+  variant?: "default" | "compact";
+  className?: string;
+}
+
+type LegendProps = LegendCategoryProps | LegendManualProps;
+
+function isCategoryProps(props: LegendProps): props is LegendCategoryProps {
+  return "category" in props;
+}
+
+export function Legend(props: LegendProps) {
+  const { variant = "default", className } = props;
+
+  const resolved = useLegendProps(props);
+  if (!resolved) return null;
+
+  const { icon, label, color } = resolved;
+  const textColor = getTextColor(color);
+
   return (
-    <table style={{ borderCollapse: "collapse", borderSpacing: 0, margin: 0, padding: 0, width: "auto" }}>
-      <tbody>
-        <tr>
-          <td style={{ width: "1px", padding: "0 6px 0 0", verticalAlign: "middle" }}>
-            <div
-              data-legend-color="true"
-              style={{
-                width: "13px",
-                height: "13px",
-                borderRadius: "3px",
-                backgroundColor: type === "fill" ? color : "transparent",
-                border: `3px solid ${color}`,
-                boxSizing: "border-box",
-              }}
-            />
-          </td>
-          <td style={{ verticalAlign: "middle", fontFamily: "Arial, Helvetica, sans-serif", color: color, whiteSpace: "nowrap", padding: 0 }}>
-            <span className="inline-flex items-center gap-1">
-              {icon}
-              {label}
-            </span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <span className={cn("inline-flex items-center gap-1.5", className)}>
+      {icon && <span className="text-xs leading-none">{icon}</span>}
+      <Badge
+        variant="outline"
+        className={cn(
+          "inline-flex items-center border font-medium shadow-sm",
+          variant === "compact" ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-1"
+        )}
+        style={{
+          backgroundColor: color,
+          borderColor: color,
+          color: textColor,
+        }}
+      >
+        {label}
+      </Badge>
+    </span>
   );
+}
+
+function useLegendProps(props: LegendProps): { icon: React.ReactNode; label: string; color: string } | null {
+  if (isCategoryProps(props)) {
+    const category =
+      CALENDAR_CATEGORIES[props.category as CalendarCategoryKey] ||
+      getCalendarCategory(props.category);
+    if (!category) return null;
+    return { icon: <span>{category.icon}</span>, label: category.label, color: category.color };
+  }
+  return { icon: props.icon ?? null, label: props.label, color: props.color };
+}
+
+function getTextColor(hex: string): string {
+  const normalized = hex.replace("#", "");
+  if (normalized.length !== 6) return "#111827";
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+  // Perceived brightness (YIQ)
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq < 128 ? "#ffffff" : "#111827";
 }

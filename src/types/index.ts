@@ -80,6 +80,11 @@ export interface KanbanCard {
   completed?: boolean;
   completedEstimateTaskIds?: string[];
   position?: number;
+  // Dados reais de execução
+  dataRealInicio?: string;
+  diasImpactados?: string;
+  chgDias?: number;
+  esteiraPreProd?: string;
 }
 
 export type AppForm = {

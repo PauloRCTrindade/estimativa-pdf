@@ -822,6 +822,7 @@ export function useKanban(estimativas: Estimativa[]) {
       completed: card.completed,
       completedEstimateTaskIds: card.completedEstimateTaskIds,
       tasks: card.tasks,
+      // Dados reais não são copiados: o novo card inicia sem execução real
     };
     setCards((prev) => [...prev, optimistic]);
 
