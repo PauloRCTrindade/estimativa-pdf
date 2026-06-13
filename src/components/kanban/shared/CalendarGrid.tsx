@@ -120,7 +120,7 @@ export function CalendarGrid({
                       ? showIcon
                         ? "text-zinc-950 dark:text-zinc-100"
                         : ""
-                      : "bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                      : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
                   )}
                   style={cellStyle}
                   title={day.tipo || "Sem atividade"}
