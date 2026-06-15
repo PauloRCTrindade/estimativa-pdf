@@ -40,11 +40,11 @@ export function CalendarGrid({
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span>Período:</span>
           {rangeStart && (
-            <span className="font-medium text-foreground">{formatDateBR(rangeStart.toISOString())}</span>
+            <span className="font-medium text-foreground">{formatDateBR(rangeStart)}</span>
           )}
           <span>→</span>
           {rangeEnd && (
-            <span className="font-medium text-foreground">{formatDateBR(rangeEnd.toISOString())}</span>
+            <span className="font-medium text-foreground">{formatDateBR(rangeEnd)}</span>
           )}
         </div>
       )}

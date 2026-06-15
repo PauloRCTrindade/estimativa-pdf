@@ -5,13 +5,13 @@ import {
   formatDateRelative,
   buildEstimateCalendar,
   buildRealCalendar,
-  diffDiasCorridos,
   getTasksForEstimate,
   PRIORITY_CONFIG,
   countTasks,
   countCompleted,
 } from "@/components/kanban/shared/kanbanHelpers";
 import { CalendarGrid } from "@/components/kanban/shared/CalendarGrid";
+import { ScheduleComparison } from "@/components/kanban/shared/ScheduleComparison";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,7 +24,7 @@ import {
   Plus, Trash, CaretRight, Check, CalendarBlank, Note, ListChecks,
   Clock, X, Flag, User, Paperclip, ChatText,
   CheckCircle, CaretDown, ArrowLeft, Archive, ArrowCounterClockwise, Copy,
-  SquareSplitHorizontal, ChartLineUp,
+  SquareSplitHorizontal,
 } from "@phosphor-icons/react";
 
 function createId() {
@@ -296,10 +296,6 @@ export function TaskDetailModal({
         : null,
     [estimate, card.dataRealInicio, card.diasImpactados, card.chgDias, card.esteiraPreProd, feriados, releases]
   );
-
-  const terminoEstimado = estimateCalendar?.rangeEnd;
-  const terminoReal = realCalendar?.rangeEnd;
-  const diferencaDias = diffDiasCorridos(terminoEstimado, terminoReal);
 
   const isTaskView = view.type === "task" && currentTask;
   const displayTitle = isTaskView ? currentTask.title : card.title;
@@ -778,35 +774,12 @@ export function TaskDetailModal({
                 <div className="space-y-4">
                   {/* Comparative summary */}
                   {estimateCalendar && (
-                    <div className="rounded-lg border border-border/60 bg-card p-3">
-                      <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
-                        <ChartLineUp className="h-4 w-4 text-muted-foreground" />
-                        Comparativo estimado × real
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                        <div>
-                          <span className="text-muted-foreground">Início estimado:</span>{" "}
-                          <span className="font-medium text-foreground">{formatDateBR(estimate.inicio)}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Início real:</span>{" "}
-                          <span className="font-medium text-foreground">{formatDateBR(card.dataRealInicio)}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Término estimado:</span>{" "}
-                          <span className="font-medium text-foreground">{formatDateBR(terminoEstimado?.toISOString() || "")}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Término real previsto:</span>{" "}
-                          <span className="font-medium text-foreground">{formatDateBR(terminoReal?.toISOString() || "")}</span>
-                        </div>
-                      </div>
-                      {typeof diferencaDias === "number" && (
-                        <div className={cn("mt-2 text-xs font-semibold", diferencaDias > 0 ? "text-red-500" : diferencaDias < 0 ? "text-emerald-500" : "text-muted-foreground")}>
-                          Impacto: {diferencaDias > 0 ? `+${diferencaDias}` : diferencaDias} dias
-                        </div>
-                      )}
-                    </div>
+                    <ScheduleComparison
+                      estimate={estimate}
+                      card={card}
+                      realEnd={realCalendar?.calculatedEndDate}
+                      holidays={feriados}
+                    />
                   )}
 
                   {/* Estimate calendar */}
@@ -959,7 +932,7 @@ export function TaskDetailModal({
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium">{comment.author}</span>
                               <span className="text-[11px] text-muted-foreground">
-                                {new Date(comment.createdAt).toLocaleDateString("pt-BR")}
+                                {formatDateBR(comment.createdAt)}
                               </span>
                             </div>
                             <p className="mt-0.5 text-sm leading-relaxed whitespace-pre-wrap">{comment.text}</p>

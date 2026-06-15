@@ -5,12 +5,12 @@ import { User, ClipboardText, MagnifyingGlass, CurrencyDollar } from "@phosphor-
 import { CalculoFinanceiro } from "@/components/calculo-financeiro";
 import type { AppForm } from "@/types";
 import { cn } from "@/lib/utils";
+import { parseDateBR, formatBR } from "@/utils";
 
-function formatDateBR(dataYYYYMMDD: string): string {
-  if (!dataYYYYMMDD) return '';
-  const [ano, mes, dia] = dataYYYYMMDD.split('-');
-  if (!dia || !mes || !ano) return '';
-  return `${dia}/${mes}/${ano}`;
+function formatDateBR(value: string | undefined): string {
+  if (!value) return "—";
+  const formatted = formatBR(parseDateBR(value));
+  return formatted || value;
 }
 
 interface FinancialPageProps {

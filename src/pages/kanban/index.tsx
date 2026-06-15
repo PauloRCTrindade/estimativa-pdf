@@ -963,7 +963,7 @@ export function KanbanPage({
                                   if (!estimate) return null;
                                   const estimateCal = buildRealCalendar(estimate, estimate.inicio, estimate.diasParados, estimate.chgDias, estimate.esteiraPreProd, feriados, releases);
                                   const realCal = buildRealCalendar(estimate, card.dataRealInicio, card.diasImpactados, card.chgDias, card.esteiraPreProd, feriados, releases);
-                                  const diff = diffDiasCorridos(estimateCal.rangeEnd, realCal.rangeEnd);
+                                  const diff = diffDiasCorridos(estimateCal.calculatedEndDate, realCal.calculatedEndDate);
                                   if (diff === null) return null;
                                   return (
                                     <span className={cn("inline-flex items-center gap-1 font-medium", diff > 0 ? "text-red-500" : diff < 0 ? "text-emerald-500" : "text-muted-foreground")}>

@@ -46,11 +46,16 @@ export function todayLocal(): Date {
   return new Date(n.getFullYear(), n.getMonth(), n.getDate(), 0, 0, 0, 0);
 }
 
-export function formatDateBR(dateString: string | undefined): string {
-  if (!dateString) return "—";
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) return dateString;
-  const ymd = extractYMD(dateString);
-  if (!ymd) return dateString;
+export function formatDateBR(dateInput: string | Date | undefined | null): string {
+  if (!dateInput) return "—";
+  if (dateInput instanceof Date) {
+    if (!isValidDate(dateInput)) return "—";
+    const date = makeLocalDate(dateInput.getFullYear(), dateInput.getMonth() + 1, dateInput.getDate());
+    return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateInput)) return dateInput;
+  const ymd = extractYMD(dateInput);
+  if (!ymd) return dateInput;
   const date = makeLocalDate(ymd[0], ymd[1], ymd[2]);
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
@@ -69,7 +74,7 @@ export function formatDateRelative(dateString: string | undefined): string {
     const days = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
     return days[target.getDay()];
   }
-  return target.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+  return target.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -189,6 +194,16 @@ export function getFlattenedEstimateActivities(estimate: Estimativa) {
   return activities;
 }
 
+type CalendarDay = { date: Date; tipo: string; color: string; isReleaseDay: boolean; isEsteiraPreProd: boolean; isChg: boolean };
+
+export interface RealCalendarResult {
+  rows: Array<Array<CalendarDay | null>>;
+  rangeStart: Date | null;
+  rangeEnd: Date | null;
+  calculatedEndDate: Date | null;
+  atividadesCalculadas: Array<{ id: string; nome: string; tipo: string; etapa: string; dias: number; inicio: Date; termino: Date }>;
+}
+
 export function buildRealCalendar(
   estimate: Estimativa,
   dataRealInicio: string | undefined,
@@ -197,10 +212,9 @@ export function buildRealCalendar(
   esteiraPreProd: string | undefined,
   feriadosExternos?: string[],
   releasesExternos?: string[]
-) {
-  if (!dataRealInicio) {
-    return { rows: [] as Array<Array<any>>, rangeStart: null as Date | null, rangeEnd: null as Date | null, atividadesCalculadas: [] as any[] };
-  }
+): RealCalendarResult {
+  const empty: RealCalendarResult = { rows: [], rangeStart: null, rangeEnd: null, calculatedEndDate: null, atividadesCalculadas: [] };
+  if (!dataRealInicio) return empty;
 
   const activities = getFlattenedEstimateActivities(estimate);
   const holidayDates = feriadosExternos ?? normalizeDateList(estimate.feriados || "");
@@ -211,9 +225,7 @@ export function buildRealCalendar(
   const chgDates = getChgDates(releaseDate, Number(chgDias || 0), holidayDates);
 
   const startDate = parseDateBR(dataRealInicio);
-  if (!isValidDate(startDate)) {
-    return { rows: [] as Array<Array<any>>, rangeStart: null as Date | null, rangeEnd: null as Date | null, atividadesCalculadas: [] as any[] };
-  }
+  if (!isValidDate(startDate)) return empty;
 
   const etapasOrdenadas = Array.from(new Set(activities.map((a) => String(a.etapa || "1")))).sort((a, b) => Number(a) - Number(b));
   const stageDurations = etapasOrdenadas.map((etapa) => {
@@ -243,8 +255,7 @@ export function buildRealCalendar(
   const calculatedEndDate = validDays[validDays.length - 1];
   const endDate = isValidDate(releaseDate) && releaseDate > calculatedEndDate ? releaseDate : calculatedEndDate;
 
-  type TimelineDay = { date: Date; tipo: string; color: string; isReleaseDay: boolean; isEsteiraPreProd: boolean; isChg: boolean };
-  const timeline: Array<TimelineDay> = [];
+  const timeline: Array<CalendarDay> = [];
   let current = new Date(startDate);
 
   while (current <= endDate) {
@@ -279,7 +290,7 @@ export function buildRealCalendar(
     current = addDays(current, 1);
   }
 
-  const rows: Array<Array<TimelineDay | null>> = [];
+  const rows: Array<Array<CalendarDay | null>> = [];
   const blockSize = 15;
   for (let index = 0; index < timeline.length; index += blockSize) {
     const row = timeline.slice(index, index + blockSize);
@@ -287,7 +298,7 @@ export function buildRealCalendar(
     rows.push(row);
   }
 
-  return { rows, rangeStart: startDate, rangeEnd: endDate, atividadesCalculadas };
+  return { rows, rangeStart: startDate, rangeEnd: endDate, calculatedEndDate, atividadesCalculadas };
 }
 
 export function diffDiasCorridos(data1: string | Date | undefined, data2: string | Date | undefined): number | null {
@@ -297,7 +308,15 @@ export function diffDiasCorridos(data1: string | Date | undefined, data2: string
   return Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-export function buildEstimateCalendar(estimate: Estimativa) {
+export interface EstimateCalendarResult {
+  rows: Array<Array<CalendarDay | null>>;
+  rangeStart: Date | null;
+  rangeEnd: Date | null;
+  calculatedEndDate: Date | null;
+  atividadesCalculadas: Array<{ id: string; nome: string; tipo: string; etapa: string; dias: number; inicio: Date; termino: Date }>;
+}
+
+export function buildEstimateCalendar(estimate: Estimativa): EstimateCalendarResult {
   const activities = getFlattenedEstimateActivities(estimate);
   const holidayDates = normalizeDateList(estimate.feriados || "");
   const releaseDates = normalizeDateList(estimate.releases || "");
@@ -308,7 +327,7 @@ export function buildEstimateCalendar(estimate: Estimativa) {
 
   const startDate = estimate.inicio ? parseDateBR(estimate.inicio) : new Date(NaN);
   if (!isValidDate(startDate)) {
-    return { rows: [] as Array<Array<any>>, rangeStart: null as Date | null, rangeEnd: null as Date | null };
+    return { rows: [], rangeStart: null, rangeEnd: null, calculatedEndDate: null, atividadesCalculadas: [] };
   }
 
   const etapasOrdenadas = Array.from(new Set(activities.map((a) => String(a.etapa || "1")))).sort((a, b) => Number(a) - Number(b));
@@ -339,8 +358,7 @@ export function buildEstimateCalendar(estimate: Estimativa) {
   const calculatedEndDate = validDays[validDays.length - 1];
   const endDate = isValidDate(releaseDate) && releaseDate > calculatedEndDate ? releaseDate : calculatedEndDate;
 
-  type TimelineDay = { date: Date; tipo: string; color: string; isReleaseDay: boolean; isEsteiraPreProd: boolean; isChg: boolean };
-  const timeline: Array<TimelineDay> = [];
+  const timeline: Array<CalendarDay> = [];
   let current = new Date(startDate);
 
   while (current <= endDate) {
@@ -375,7 +393,7 @@ export function buildEstimateCalendar(estimate: Estimativa) {
     current = addDays(current, 1);
   }
 
-  const rows: Array<Array<TimelineDay | null>> = [];
+  const rows: Array<Array<CalendarDay | null>> = [];
   const blockSize = 15;
   for (let index = 0; index < timeline.length; index += blockSize) {
     const row = timeline.slice(index, index + blockSize);
@@ -383,7 +401,7 @@ export function buildEstimateCalendar(estimate: Estimativa) {
     rows.push(row);
   }
 
-  return { rows, rangeStart: startDate, rangeEnd: endDate };
+  return { rows, rangeStart: startDate, rangeEnd: endDate, calculatedEndDate, atividadesCalculadas };
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -456,4 +474,162 @@ export function getCardProgress(
   const total = customTotal + estimateTotal;
   const completed = customCompleted + estimateCompleted;
   return { total, completed, percent: total > 0 ? Math.round((completed / total) * 100) : 0 };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Estimated vs Real schedule comparison + CHG window alert
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export type CompareStatus = "ok" | "warning" | "critical";
+
+export function getEstimatedStartDate(estimate: Estimativa): Date | null {
+  const activities = getFlattenedEstimateActivities(estimate);
+  const activityStarts = activities
+    .map((a) => parseDateBR(a.inicio))
+    .filter(isValidDate);
+  if (activityStarts.length > 0) {
+    return new Date(Math.min(...activityStarts.map((d) => d.getTime())));
+  }
+  const fallback = parseDateBR(estimate.inicio);
+  return isValidDate(fallback) ? fallback : null;
+}
+
+export function getEstimatedEndDate(estimate: Estimativa): Date | null {
+  const activities = getFlattenedEstimateActivities(estimate);
+  const activityEnds = activities
+    .map((a) => parseDateBR(a.termino))
+    .filter(isValidDate);
+  if (activityEnds.length > 0) {
+    return new Date(Math.max(...activityEnds.map((d) => d.getTime())));
+  }
+  return null;
+}
+
+export function calcChgWindow(
+  productionDate: Date | string | undefined,
+  chgDays: number | string | undefined,
+  holidays: string[]
+): { start: Date; end: Date } | null {
+  const prodDate = typeof productionDate === "string" ? parseDateBR(productionDate) : productionDate;
+  const total = Number(chgDays || 0);
+  if (!isValidDate(prodDate) || total <= 0) return null;
+
+  const chgDates = getChgDates(prodDate, total, holidays);
+  if (chgDates.length === 0) return null;
+
+  return {
+    start: chgDates[chgDates.length - 1],
+    end: chgDates[0],
+  };
+}
+
+export function getChgImpactStatus(
+  realEnd: Date | string | undefined,
+  productionDate: Date | string | undefined,
+  chgWindow: { start: Date; end: Date } | null
+): { status: CompareStatus; message: string; detail?: string } {
+  const realEndDate = typeof realEnd === "string" ? parseDateBR(realEnd) : realEnd;
+  const prodDate = typeof productionDate === "string" ? parseDateBR(productionDate) : productionDate;
+
+  if (!isValidDate(realEndDate) || !isValidDate(prodDate)) {
+    return { status: "ok", message: "" };
+  }
+
+  // Critical: real end after production date
+  if (realEndDate > prodDate) {
+    return {
+      status: "critical",
+      message: "Crítico: produção em risco",
+      detail: "O término real previsto ocorre após a data planejada de subida em produção. Replaneje a data de produção.",
+    };
+  }
+
+  // Warning: real end inside CHG window
+  if (chgWindow && realEndDate >= chgWindow.start && realEndDate <= chgWindow.end) {
+    return {
+      status: "warning",
+      message: "Atenção: janela de CHG comprometida",
+      detail: "O término real previsto invade o período necessário para trâmite de CHG. A data de subida em produção pode precisar ser alterada.",
+    };
+  }
+
+  // Warning: not enough working days between real end and production
+  if (chgWindow && realEndDate < chgWindow.start) {
+    return {
+      status: "ok",
+      message: "Dentro do prazo",
+      detail: "O término real previsto permite cumprir o trâmite de CHG antes da produção.",
+    };
+  }
+
+  return { status: "ok", message: "Dentro do prazo" };
+}
+
+export interface ScheduleComparisonResult {
+  estimatedStart: Date | null;
+  estimatedEnd: Date | null;
+  productionDate: Date | null;
+  realStart: Date | null;
+  realEnd: Date | null;
+  diffStartDays: number | null;
+  diffEndDays: number | null;
+  chgWindow: { start: Date; end: Date } | null;
+  chgStatus: CompareStatus;
+  chgMessage: string;
+  chgDetail?: string;
+}
+
+export function calcScheduleComparison(
+  estimate: Estimativa,
+  card: KanbanCard,
+  realEnd: Date | string | undefined,
+  holidays: string[]
+): ScheduleComparisonResult {
+  const estimatedStart = getEstimatedStartDate(estimate);
+  const estimatedEnd = getEstimatedEndDate(estimate);
+  const productionDate = parseDateBR(estimate.releaseAlvo);
+  const realStart = parseDateBR(card.dataRealInicio);
+  const realEndDate = typeof realEnd === "string" ? parseDateBR(realEnd) : realEnd;
+
+  const diffStartDays =
+    isValidDate(estimatedStart) && isValidDate(realStart)
+      ? Math.round((realStart.getTime() - estimatedStart.getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+
+  const diffEndDays =
+    isValidDate(estimatedEnd) && isValidDate(realEndDate)
+      ? Math.round((realEndDate.getTime() - estimatedEnd.getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+
+  const chgWindow = isValidDate(productionDate)
+    ? calcChgWindow(productionDate, card.chgDias ?? estimate.chgDias ?? 0, holidays)
+    : null;
+
+  const { status, message, detail } = getChgImpactStatus(realEndDate, productionDate, chgWindow);
+
+  return {
+    estimatedStart,
+    estimatedEnd,
+    productionDate: isValidDate(productionDate) ? productionDate : null,
+    realStart: isValidDate(realStart) ? realStart : null,
+    realEnd: isValidDate(realEndDate) ? realEndDate : null,
+    diffStartDays,
+    diffEndDays,
+    chgWindow,
+    chgStatus: status,
+    chgMessage: message,
+    chgDetail: detail,
+  };
+}
+
+export function formatDiffDays(days: number | null | undefined): string {
+  if (days === null || days === undefined) return "—";
+  if (days === 0) return "0 dias";
+  if (days > 0) return `+${days} dias (atraso)`;
+  return `${days} dias (adiantamento)`;
+}
+
+export function formatChgWindow(window: { start: Date; end: Date } | null | undefined): string {
+  if (!window) return "—";
+  return `${formatDateBR(window.start)} até ${formatDateBR(window.end)}`;
 }

@@ -1,6 +1,6 @@
 import { Section } from '../section'
 import { pdfStyles } from '../../styles'
-import { formatBR } from '../../utils'
+import { formatBR, parseDateBR } from '../../utils'
 import { weekLabels } from '../../data'
 import { COLORS, CALENDAR_CATEGORIES, CALENDAR_GROUPS, getCalendarCategory } from '../../styles'
 
@@ -51,12 +51,12 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows, hideTimelin
         <tbody>
           <tr>
             <td style={pdfStyles.infoCell}><b>ARQUITETO:</b> <br/> {form.arquiteto}</td>
-            <td style={pdfStyles.infoCell}><b>INÍCIO:</b> <br/> {form.inicio}</td>
+            <td style={pdfStyles.infoCell}><b>INÍCIO:</b> <br/> {formatBR(parseDateBR(form.inicio))}</td>
             <td style={pdfStyles.infoCell}><b>TÉRMINO:</b> <br/> {formatBR(calculo.endDate)}</td>
           </tr>
           <tr>
             <td style={pdfStyles.infoCell}><b>ESFORÇO:</b> <br/> {totalDias} dias úteis</td>
-            <td style={pdfStyles.infoCell} colSpan={2}><b>SUBIDA EM PRODUÇÃO:</b> <br/> {form.releaseAlvo || "-"}</td>
+            <td style={pdfStyles.infoCell} colSpan={2}><b>SUBIDA EM PRODUÇÃO:</b> <br/> {formatBR(parseDateBR(form.releaseAlvo)) || "-"}</td>
           </tr>
         </tbody>
       </table>

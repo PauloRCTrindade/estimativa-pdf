@@ -88,11 +88,11 @@ function formatDateRelative(dateString: string | undefined): string {
     const days = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
     return days[target.getDay()];
   }
-  return target.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+  return target.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 function todayFormatted(): string {
-  return new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+  return new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

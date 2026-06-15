@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { CurrencyDollar as CurrencyDollarIcon, CalendarBlank as CalendarBlankIcon, Warning, Calendar } from "@phosphor-icons/react"
-import { parseDateBR, isValidDate, isWeekend, addDays, isSameDay } from "@/utils"
+import { parseDateBR, isValidDate, isWeekend, addDays, isSameDay, formatBR } from "@/utils"
 
 interface Atividade {
   id: string
@@ -196,7 +196,7 @@ export function CalculoFinanceiro({ atividades, dataInicio = "", dataFim = "", f
                       {diasUteis.feriados.map((f, i) => (
                         <div key={i} className="text-xs bg-amber-500/10 border border-amber-500/20 rounded-md px-2 py-1 text-amber-700 dark:text-amber-300 flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          {f.toLocaleDateString("pt-BR")}
+                          {formatBR(f)}
                         </div>
                       ))}
                     </div>

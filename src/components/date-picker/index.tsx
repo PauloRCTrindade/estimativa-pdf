@@ -55,6 +55,16 @@ function formatISO(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
+function toDisplayValue(value: string): string {
+  if (!value) return ""
+  // Se já estiver no formato brasileiro, mantém
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return value
+  // Converte ISO (yyyy-mm-dd) para exibição brasileira
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!match) return value
+  return `${match[3]}/${match[2]}/${match[1]}`
+}
+
 export function DatePicker({
   value,
   onChange,
@@ -122,7 +132,7 @@ export function DatePicker({
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {value ? value : placeholder}
+          {value ? toDisplayValue(value) : placeholder}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto" align="start">

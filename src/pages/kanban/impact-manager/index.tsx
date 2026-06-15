@@ -6,9 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { FormField } from "@/components/form-field";
 import { DateRangeList } from "@/components/date-range-list";
 import { CalendarGrid } from "@/components/kanban/shared/CalendarGrid";
+import { ScheduleComparison } from "@/components/kanban/shared/ScheduleComparison";
 import { Legend } from "@/components/legend";
 import { CALENDAR_GROUPS, CALENDAR_CATEGORIES } from "@/styles";
-import { buildRealCalendar, diffDiasCorridos, formatDateBR } from "@/components/kanban/shared/kanbanHelpers";
+import { buildRealCalendar } from "@/components/kanban/shared/kanbanHelpers";
 import { ArrowLeft } from "@phosphor-icons/react";
 
 interface ImpactManagerProps {
@@ -35,12 +36,6 @@ export function ImpactManager({ card, estimate, feriados, releases, onUpdateCard
     [estimate, card.dataRealInicio, card.diasImpactados, card.chgDias, card.esteiraPreProd, feriados, releases]
   );
 
-  const estimateCalendar = useMemo(
-    () => buildRealCalendar(estimate, estimate.inicio, estimate.diasParados, estimate.chgDias, estimate.esteiraPreProd, feriados, releases),
-    [estimate, feriados, releases]
-  );
-
-  const diferencaDias = diffDiasCorridos(estimateCalendar.rangeEnd, realCalendar.rangeEnd);
   const readOnly = card.isArchived;
 
   const legendItems = CALENDAR_GROUPS.map((group) => ({
@@ -68,43 +63,12 @@ export function ImpactManager({ card, estimate, feriados, releases, onUpdateCard
       <div className="flex-1 overflow-auto p-4 md:p-6">
         <div className="mx-auto max-w-6xl space-y-6">
           {/* Comparative summary */}
-          <Card className="border-border/60 bg-card">
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Estimativa</h3>
-                  <div className="space-y-1 text-xs">
-                    <div>
-                      <span className="text-muted-foreground">Início:</span>{" "}
-                      <span className="font-medium text-foreground">{formatDateBR(estimate.inicio)}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Término:</span>{" "}
-                      <span className="font-medium text-foreground">{formatDateBR(estimateCalendar.rangeEnd?.toISOString() || "")}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Real</h3>
-                  <div className="space-y-1 text-xs">
-                    <div>
-                      <span className="text-muted-foreground">Início:</span>{" "}
-                      <span className="font-medium text-foreground">{formatDateBR(card.dataRealInicio)}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Término previsto:</span>{" "}
-                      <span className="font-medium text-foreground">{formatDateBR(realCalendar.rangeEnd?.toISOString() || "")}</span>
-                    </div>
-                    {typeof diferencaDias === "number" && (
-                      <div className={`font-semibold ${diferencaDias > 0 ? "text-red-500" : diferencaDias < 0 ? "text-emerald-500" : "text-muted-foreground"}`}>
-                        Impacto: {diferencaDias > 0 ? `+${diferencaDias}` : diferencaDias} dias
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <ScheduleComparison
+            estimate={estimate}
+            card={card}
+            realEnd={realCalendar.calculatedEndDate}
+            holidays={feriados}
+          />
 
           {/* Controls */}
           <Card className="border-border/60 bg-card">
