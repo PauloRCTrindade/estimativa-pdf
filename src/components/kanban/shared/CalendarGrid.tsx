@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { COLORS, getCalendarCategory } from "@/styles";
 import { formatDateBR } from "./kanbanHelpers";
@@ -9,6 +10,7 @@ export interface CalendarGridDay {
   isReleaseDay: boolean;
   isEsteiraPreProd: boolean;
   isChg: boolean;
+  workBorderColor?: string;
 }
 
 interface CalendarGridProps {
@@ -100,16 +102,26 @@ export function CalendarGrid({
               const icon = category?.icon;
               const hasActivity = Boolean(day.tipo);
 
-              const cellStyle = hasActivity
-                ? {
-                    backgroundColor: day.color || "transparent",
-                    border: day.isEsteiraPreProd
-                      ? `2px solid ${COLORS.esteiraPreProd}`
-                      : day.isChg
-                      ? `2px solid ${COLORS.chg}`
-                      : `1px solid hsl(var(--border) / 0.3)`,
-                  }
-                : undefined;
+              const cellStyle: CSSProperties = hasActivity
+                ? { backgroundColor: day.color || "transparent" }
+                : {};
+
+              if (day.isEsteiraPreProd) {
+                cellStyle.border = `2px solid ${COLORS.esteiraPreProd}`;
+              } else if (day.isChg) {
+                cellStyle.border = `2px solid ${COLORS.chg}`;
+              } else {
+                cellStyle.border = `1px solid hsl(var(--border) / 0.3)`;
+              }
+
+              if (day.workBorderColor) {
+                if (day.isEsteiraPreProd || day.isChg) {
+                  cellStyle.outline = `2px solid ${day.workBorderColor}`;
+                  cellStyle.outlineOffset = "2px";
+                } else {
+                  cellStyle.border = `2px solid ${day.workBorderColor}`;
+                }
+              }
 
               return (
                 <div
@@ -123,7 +135,7 @@ export function CalendarGrid({
                       : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
                   )}
                   style={cellStyle}
-                  title={day.tipo || "Sem atividade"}
+                  title={day.workBorderColor ? `${day.tipo || "Dia especial"} + Atuação` : day.tipo || "Sem atividade"}
                 >
                   {showIcon && icon ? <span>{icon}</span> : null}
                 </div>

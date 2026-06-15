@@ -28,6 +28,8 @@ import {
   type Pacote,
 } from "@/components/estimativa-pacotes";
 
+const DEFAULT_OVERTIME = { tombamentoDates: [] as string[], feriadoDates: [] as string[], fimDeSemanaDates: [] as string[] };
+
 export interface TimelineDay {
   date: Date;
   tipo: string;
@@ -203,30 +205,31 @@ export function useTimelineCalculations(form: AppForm, atividades: any[], pacote
     for (const pacote of pacotes) {
       for (const a of pacote.atividades) {
         const color = getTimelineColor(a.tipo);
-        const ot = a.overtime;
-        if (ot) {
-          const allDates = [...(ot.feriadoDates || []), ...(ot.fimDeSemanaDates || []), ...(ot.tombamentoDates || [])];
-          for (const dateStr of allDates) {
-            const parsed = parseDateBR(dateStr);
-            if (!isValidDate(parsed)) continue;
-            const key = (parsed as Date).toISOString().split("T")[0];
-            if (!map[key]) map[key] = color;
-          }
+        const ot = a.overtime || DEFAULT_OVERTIME;
+        const horasOT = a.horasOvertime ?? 0;
+        const terminoStr = calcularTermino(a.inicio, Number(a.horas || 0), feriados, releases, ot, horasOT, diasParados);
+        const inicioDate = parseDateBR(a.inicio);
+        const terminoDate = parseDateBR(terminoStr);
+        if (!isValidDate(inicioDate) || !isValidDate(terminoDate)) continue;
+
+        const allDates = [...(ot.feriadoDates || []), ...(ot.fimDeSemanaDates || []), ...(ot.tombamentoDates || [])];
+        for (const dateStr of allDates) {
+          const parsed = parseDateBR(dateStr);
+          if (!isValidDate(parsed)) continue;
+          if (parsed < inicioDate || parsed > terminoDate) continue;
+          const key = parsed.toISOString().split("T")[0];
+          if (!map[key]) map[key] = color;
         }
-        if (a.inicio) {
-          const inicioDate = parseDateBR(a.inicio);
-          if (isValidDate(inicioDate)) {
-            const isSpecial = isWeekend(inicioDate) || isHoliday(inicioDate, feriados) || isPostRelease(inicioDate, releases);
-            if (isSpecial) {
-              const key = (inicioDate as Date).toISOString().split("T")[0];
-              if (!map[key]) map[key] = color;
-            }
-          }
+
+        const isSpecial = isWeekend(inicioDate) || isHoliday(inicioDate, feriados) || isPostRelease(inicioDate, releases);
+        if (isSpecial) {
+          const key = inicioDate.toISOString().split("T")[0];
+          if (!map[key]) map[key] = color;
         }
       }
     }
     return map;
-  }, [pacotes, feriados, releases]);
+  }, [pacotes, feriados, releases, diasParados]);
 
   const totalDiasPacotes = useMemo(() => {
     const etapas = new Map<string, number>();

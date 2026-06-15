@@ -17,10 +17,13 @@ import {
   isParadoDay,
   getChgDates,
   getWorkingDays,
+  createId,
 } from "@/utils";
 import { COLORS } from "@/styles";
 import { calcularTermino } from "@/components/estimativa-pacotes";
 import type { Estimativa } from "@/types";
+
+const DEFAULT_OVERTIME = { tombamentoDates: [] as string[], feriadoDates: [] as string[], fimDeSemanaDates: [] as string[] };
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Date helpers — timezone-safe
@@ -194,7 +197,157 @@ export function getFlattenedEstimateActivities(estimate: Estimativa) {
   return activities;
 }
 
-type CalendarDay = { date: Date; tipo: string; color: string; isReleaseDay: boolean; isEsteiraPreProd: boolean; isChg: boolean };
+type CalendarDay = { date: Date; tipo: string; color: string; isReleaseDay: boolean; isEsteiraPreProd: boolean; isChg: boolean; workBorderColor?: string };
+
+function buildSpecialWorkDatesMap(
+  estimate: Estimativa,
+  feriados: string[],
+  releases: string[],
+  paradoRanges: { start: Date; end: Date }[]
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  const atividadesLegado = Array.isArray(estimate.atividades) ? estimate.atividades : [];
+  const pacotes = Array.isArray(estimate.pacotes) ? estimate.pacotes : [];
+
+  const allAtividades: Array<{
+    tipo: string;
+    inicio: string;
+    horas: number;
+    horasOvertime?: number;
+    overtime?: { tombamentoDates?: string[]; feriadoDates?: string[]; fimDeSemanaDates?: string[] };
+  }> = [
+    ...atividadesLegado.map((a) => ({
+      tipo: normalizeTaskType(a.tipo),
+      inicio: a.inicio || a.dataInicio || "",
+      horas: Number(a.horas || 0),
+      horasOvertime: Number(a.horasOvertime || 0),
+      overtime: a.overtime || DEFAULT_OVERTIME,
+    })),
+    ...pacotes.flatMap((p) =>
+      Array.isArray(p.atividades)
+        ? p.atividades.map((a) => ({
+            tipo: normalizeTaskType(a.tipo),
+            inicio: a.inicio || a.dataInicio || "",
+            horas: Number(a.horas || 0),
+            horasOvertime: Number(a.horasOvertime || 0),
+            overtime: a.overtime || DEFAULT_OVERTIME,
+          }))
+        : []
+    ),
+  ];
+
+  for (const a of allAtividades) {
+    if (!a.inicio || a.horas <= 0) continue;
+    const color = getTimelineColor(a.tipo);
+    const ot = { ...DEFAULT_OVERTIME, ...(a.overtime || {}) };
+    const horasOT = a.horasOvertime ?? 0;
+    const terminoStr = calcularTermino(a.inicio, a.horas, feriados, releases, ot, horasOT, paradoRanges);
+    const inicioDate = parseDateBR(a.inicio);
+    const terminoDate = parseDateBR(terminoStr);
+    if (!isValidDate(inicioDate) || !isValidDate(terminoDate)) continue;
+
+    const allDates = [...(ot.feriadoDates || []), ...(ot.fimDeSemanaDates || []), ...(ot.tombamentoDates || [])];
+    for (const dateStr of allDates) {
+      const parsed = parseDateBR(dateStr);
+      if (!isValidDate(parsed)) continue;
+      if (parsed < inicioDate || parsed > terminoDate) continue;
+      const key = parsed.toISOString().split("T")[0];
+      if (!map[key]) map[key] = color;
+    }
+
+    const isSpecial = isWeekend(inicioDate) || isHoliday(inicioDate, feriados) || isPostRelease(inicioDate, releases);
+    if (isSpecial) {
+      const key = inicioDate.toISOString().split("T")[0];
+      if (!map[key]) map[key] = color;
+    }
+  }
+
+  return map;
+}
+
+function applyOffsetToSpecialWorkDates(
+  map: Record<string, string>,
+  offsetDays: number
+): Record<string, string> {
+  if (offsetDays === 0) return map;
+  const result: Record<string, string> = {};
+  for (const [key, color] of Object.entries(map)) {
+    const date = parseDateBR(key);
+    if (!isValidDate(date)) continue;
+    const offsetDate = addDays(date, offsetDays);
+    const offsetKey = offsetDate.toISOString().split("T")[0];
+    result[offsetKey] = color;
+  }
+  return result;
+}
+
+interface ActivityRange {
+  id: string;
+  nome: string;
+  tipo: string;
+  etapa: string;
+  inicio: Date;
+  termino: Date;
+  color: string;
+}
+
+function getEstimateActivityRanges(
+  estimate: Estimativa,
+  feriados: string[],
+  releases: string[],
+  paradoRanges: { start: Date; end: Date }[]
+): ActivityRange[] {
+  const ranges: ActivityRange[] = [];
+
+  if (Array.isArray(estimate.pacotes)) {
+    for (const pacote of estimate.pacotes) {
+      if (!Array.isArray(pacote.atividades)) continue;
+      for (const a of pacote.atividades) {
+        const inicioStr = a.inicio || a.dataInicio;
+        if (!inicioStr) continue;
+        const horas = Number(a.horas || 0);
+        const horasOT = Number(a.horasOvertime || 0);
+        const ot = { ...DEFAULT_OVERTIME, ...(a.overtime || {}) };
+        const terminoStr = calcularTermino(inicioStr, horas, feriados, releases, ot, horasOT, paradoRanges);
+        const inicioDate = parseDateBR(inicioStr);
+        const terminoDate = parseDateBR(terminoStr);
+        if (!isValidDate(inicioDate) || !isValidDate(terminoDate)) continue;
+        const tipo = normalizeTaskType(a.tipo);
+        ranges.push({
+          id: a.id ?? createId(),
+          nome: `${pacote.nome ? `${pacote.nome}: ` : ""}${a.nome || a.titulo || a.demanda || ""}`,
+          tipo,
+          etapa: String(a.etapa || "1"),
+          inicio: inicioDate,
+          termino: terminoDate,
+          color: getTimelineColor(tipo),
+        });
+      }
+    }
+  }
+
+  if (Array.isArray(estimate.atividades)) {
+    for (const a of estimate.atividades) {
+      const inicioStr = a.inicio || a.dataInicio;
+      const terminoStr = a.termino || a.dataFim;
+      const inicioDate = parseDateBR(inicioStr);
+      const terminoDate = parseDateBR(terminoStr);
+      if (!isValidDate(inicioDate) || !isValidDate(terminoDate)) continue;
+      const tipo = normalizeTaskType(a.tipo);
+      ranges.push({
+        id: a.id ?? createId(),
+        nome: a.nome || a.titulo || a.demanda || "",
+        tipo,
+        etapa: String(a.etapa || "1"),
+        inicio: inicioDate,
+        termino: terminoDate,
+        color: getTimelineColor(tipo),
+      });
+    }
+  }
+
+  return ranges;
+}
 
 export interface RealCalendarResult {
   rows: Array<Array<CalendarDay | null>>;
@@ -216,43 +369,112 @@ export function buildRealCalendar(
   const empty: RealCalendarResult = { rows: [], rangeStart: null, rangeEnd: null, calculatedEndDate: null, atividadesCalculadas: [] };
   if (!dataRealInicio) return empty;
 
-  const activities = getFlattenedEstimateActivities(estimate);
   const holidayDates = feriadosExternos ?? normalizeDateList(estimate.feriados || "");
   const releaseDates = releasesExternos ?? normalizeDateList(estimate.releases || "");
   const preprodRanges = parseDateRangeList(esteiraPreProd || "");
   const paradaRanges = parseDiasParadosList(diasImpactados || "");
   const releaseDate = estimate.releaseAlvo ? parseDateBR(estimate.releaseAlvo) : new Date(NaN);
   const chgDates = getChgDates(releaseDate, Number(chgDias || 0), holidayDates);
+  const specialWorkDates = buildSpecialWorkDatesMap(estimate, holidayDates, releaseDates, paradaRanges);
 
-  const startDate = parseDateBR(dataRealInicio);
-  if (!isValidDate(startDate)) return empty;
+  const realStartDate = parseDateBR(dataRealInicio);
+  if (!isValidDate(realStartDate)) return empty;
 
-  const etapasOrdenadas = Array.from(new Set(activities.map((a) => String(a.etapa || "1")))).sort((a, b) => Number(a) - Number(b));
-  const stageDurations = etapasOrdenadas.map((etapa) => {
-    const activitiesOfStage = activities.filter((a) => String(a.etapa || "1") === etapa);
-    return Math.max(...activitiesOfStage.map((a) => Number(a.dias || 0)), 0);
-  });
+  const estimateRanges = getEstimateActivityRanges(estimate, holidayDates, releaseDates, paradaRanges);
+  const estimateStartDates = estimateRanges.map((a) => a.inicio).filter(isValidDate);
+  if (estimateStartDates.length === 0) return empty;
+  const estimateStartDate = new Date(Math.min(...estimateStartDates.map((d) => d.getTime())));
+  const offsetDays = Math.round((realStartDate.getTime() - estimateStartDate.getTime()) / (1000 * 60 * 60 * 24));
 
-  const totalDias = stageDurations.reduce((acc, dias) => acc + dias, 0);
-  const validDays = getWorkingDays(startDate, totalDias, releaseDates, holidayDates, paradaRanges);
+  const realRanges = estimateRanges.map((a) => ({
+    ...a,
+    inicio: addDays(a.inicio, offsetDays),
+    termino: addDays(a.termino, offsetDays),
+  }));
 
-  let cursor = 0;
-  const atividadesCalculadas: Array<{ id: string; nome: string; tipo: string; etapa: string; dias: number; inicio: Date; termino: Date }> = [];
+  const realSpecialWorkDates = applyOffsetToSpecialWorkDates(specialWorkDates, offsetDays);
 
-  etapasOrdenadas.forEach((etapa, index) => {
-    const activitiesOfStage = activities.filter((a) => String(a.etapa || "1") === etapa);
-    const inicioEtapa = validDays[cursor];
-    activitiesOfStage.forEach((atividade) => {
-      const dias = Number(atividade.dias || 0);
-      const termino = validDays[cursor + dias - 1];
-      if (isValidDate(inicioEtapa) && isValidDate(termino)) {
-        atividadesCalculadas.push({ ...atividade, inicio: inicioEtapa, termino });
+  const calculatedEndDate = new Date(Math.max(...realRanges.map((a) => a.termino.getTime())));
+  const endDate = isValidDate(releaseDate) && releaseDate > calculatedEndDate ? releaseDate : calculatedEndDate;
+
+  const timeline: Array<CalendarDay> = [];
+  let current = new Date(realStartDate);
+
+  while (current <= endDate) {
+    const date = new Date(current);
+    let tipo = "";
+    let color = COLORS.white;
+
+    if (isValidDate(releaseDate) && sameDateBR(date, releaseDate)) {
+      tipo = "Release alvo";
+      color = COLORS.releaseTarget;
+    } else if (isParadoDay(date, paradaRanges, holidayDates, releaseDates)) {
+      tipo = "Projeto impactado";
+      color = COLORS.blocked;
+    } else if (isWeekend(date)) {
+      tipo = "Fim de semana";
+      color = COLORS.weekend;
+    } else if (isHoliday(date, holidayDates)) {
+      tipo = "Feriado";
+      color = COLORS.holiday;
+    } else if (isPostRelease(date, releaseDates)) {
+      tipo = "Tombamento";
+      color = COLORS.postRelease;
+    } else {
+      const activity = realRanges.find((item) => date >= item.inicio && date <= item.termino);
+      if (activity) {
+        tipo = getTimelineLabel(activity.tipo, activity.nome);
+        color = activity.color;
       }
-    });
-    cursor += stageDurations[index] || 0;
-  });
+    }
 
-  const calculatedEndDate = validDays[validDays.length - 1];
+    const dateKey = date.toISOString().split("T")[0];
+    timeline.push({ date, tipo, color, isReleaseDay: isReleaseDay(date, releaseDates), isEsteiraPreProd: isEsteiraPreProdDay(date, preprodRanges), isChg: chgDates.some((d) => sameDateBR(d, date)), workBorderColor: realSpecialWorkDates[dateKey] });
+    current = addDays(current, 1);
+  }
+
+  const rows: Array<Array<CalendarDay | null>> = [];
+  const blockSize = 15;
+  for (let index = 0; index < timeline.length; index += blockSize) {
+    const row = timeline.slice(index, index + blockSize);
+    while (row.length < blockSize) row.push(null);
+    rows.push(row);
+  }
+
+  return { rows, rangeStart: realStartDate, rangeEnd: endDate, calculatedEndDate, atividadesCalculadas: realRanges.map((a) => ({ ...a, dias: 0 })) };
+}
+
+export function diffDiasCorridos(data1: string | Date | undefined, data2: string | Date | undefined): number | null {
+  const d1 = typeof data1 === "string" ? parseDateBR(data1) : data1;
+  const d2 = typeof data2 === "string" ? parseDateBR(data2) : data2;
+  if (!d1 || !d2 || !isValidDate(d1) || !isValidDate(d2)) return null;
+  return Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+export interface EstimateCalendarResult {
+  rows: Array<Array<CalendarDay | null>>;
+  rangeStart: Date | null;
+  rangeEnd: Date | null;
+  calculatedEndDate: Date | null;
+  atividadesCalculadas: Array<{ id: string; nome: string; tipo: string; etapa: string; dias: number; inicio: Date; termino: Date }>;
+}
+
+export function buildEstimateCalendar(estimate: Estimativa): EstimateCalendarResult {
+  const empty: EstimateCalendarResult = { rows: [], rangeStart: null, rangeEnd: null, calculatedEndDate: null, atividadesCalculadas: [] };
+  const holidayDates = normalizeDateList(estimate.feriados || "");
+  const releaseDates = normalizeDateList(estimate.releases || "");
+  const preprodRanges = parseDateRangeList(estimate.esteiraPreProd || "");
+  const paradaRanges = parseDiasParadosList(estimate.diasParados || "");
+  const releaseDate = estimate.releaseAlvo ? parseDateBR(estimate.releaseAlvo) : new Date(NaN);
+  const chgDates = getChgDates(releaseDate, Number(estimate.chgDias || 0), holidayDates);
+  const specialWorkDates = buildSpecialWorkDatesMap(estimate, holidayDates, releaseDates, paradaRanges);
+
+  const activityRanges = getEstimateActivityRanges(estimate, holidayDates, releaseDates, paradaRanges);
+  const startDates = activityRanges.map((a) => a.inicio).filter(isValidDate);
+  if (startDates.length === 0) return empty;
+
+  const startDate = new Date(Math.min(...startDates.map((d) => d.getTime())));
+  const calculatedEndDate = new Date(Math.max(...activityRanges.map((a) => a.termino.getTime())));
   const endDate = isValidDate(releaseDate) && releaseDate > calculatedEndDate ? releaseDate : calculatedEndDate;
 
   const timeline: Array<CalendarDay> = [];
@@ -279,14 +501,15 @@ export function buildRealCalendar(
       tipo = "Tombamento";
       color = COLORS.postRelease;
     } else {
-      const activity = atividadesCalculadas.find((item) => isValidDate(item.inicio) && isValidDate(item.termino) && date >= item.inicio && date <= item.termino);
+      const activity = activityRanges.find((item) => date >= item.inicio && date <= item.termino);
       if (activity) {
         tipo = getTimelineLabel(activity.tipo, activity.nome);
-        color = getTimelineColor(activity.tipo);
+        color = activity.color;
       }
     }
 
-    timeline.push({ date, tipo, color, isReleaseDay: isReleaseDay(date, releaseDates), isEsteiraPreProd: isEsteiraPreProdDay(date, preprodRanges), isChg: chgDates.some((d) => sameDateBR(d, date)) });
+    const dateKey = date.toISOString().split("T")[0];
+    timeline.push({ date, tipo, color, isReleaseDay: isReleaseDay(date, releaseDates), isEsteiraPreProd: isEsteiraPreProdDay(date, preprodRanges), isChg: chgDates.some((d) => sameDateBR(d, date)), workBorderColor: specialWorkDates[dateKey] });
     current = addDays(current, 1);
   }
 
@@ -298,110 +521,7 @@ export function buildRealCalendar(
     rows.push(row);
   }
 
-  return { rows, rangeStart: startDate, rangeEnd: endDate, calculatedEndDate, atividadesCalculadas };
-}
-
-export function diffDiasCorridos(data1: string | Date | undefined, data2: string | Date | undefined): number | null {
-  const d1 = typeof data1 === "string" ? parseDateBR(data1) : data1;
-  const d2 = typeof data2 === "string" ? parseDateBR(data2) : data2;
-  if (!d1 || !d2 || !isValidDate(d1) || !isValidDate(d2)) return null;
-  return Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
-}
-
-export interface EstimateCalendarResult {
-  rows: Array<Array<CalendarDay | null>>;
-  rangeStart: Date | null;
-  rangeEnd: Date | null;
-  calculatedEndDate: Date | null;
-  atividadesCalculadas: Array<{ id: string; nome: string; tipo: string; etapa: string; dias: number; inicio: Date; termino: Date }>;
-}
-
-export function buildEstimateCalendar(estimate: Estimativa): EstimateCalendarResult {
-  const activities = getFlattenedEstimateActivities(estimate);
-  const holidayDates = normalizeDateList(estimate.feriados || "");
-  const releaseDates = normalizeDateList(estimate.releases || "");
-  const preprodRanges = parseDateRangeList(estimate.esteiraPreProd || "");
-  const paradaRanges = parseDiasParadosList(estimate.diasParados || "");
-  const releaseDate = estimate.releaseAlvo ? parseDateBR(estimate.releaseAlvo) : new Date(NaN);
-  const chgDates = getChgDates(releaseDate, Number(estimate.chgDias || 0), holidayDates);
-
-  const startDate = estimate.inicio ? parseDateBR(estimate.inicio) : new Date(NaN);
-  if (!isValidDate(startDate)) {
-    return { rows: [], rangeStart: null, rangeEnd: null, calculatedEndDate: null, atividadesCalculadas: [] };
-  }
-
-  const etapasOrdenadas = Array.from(new Set(activities.map((a) => String(a.etapa || "1")))).sort((a, b) => Number(a) - Number(b));
-  const stageDurations = etapasOrdenadas.map((etapa) => {
-    const activitiesOfStage = activities.filter((a) => String(a.etapa || "1") === etapa);
-    return Math.max(...activitiesOfStage.map((a) => Number(a.dias || 0)));
-  });
-
-  const totalDias = stageDurations.reduce((acc, dias) => acc + dias, 0);
-  const validDays = getWorkingDays(startDate, totalDias, releaseDates, holidayDates, paradaRanges);
-
-  let cursor = 0;
-  const atividadesCalculadas: Array<{ id: string; nome: string; tipo: string; etapa: string; dias: number; inicio: Date; termino: Date }> = [];
-
-  etapasOrdenadas.forEach((etapa, index) => {
-    const activitiesOfStage = activities.filter((a) => String(a.etapa || "1") === etapa);
-    const inicioEtapa = validDays[cursor];
-    activitiesOfStage.forEach((atividade) => {
-      const dias = Number(atividade.dias || 0);
-      const termino = validDays[cursor + dias - 1];
-      if (isValidDate(inicioEtapa) && isValidDate(termino)) {
-        atividadesCalculadas.push({ ...atividade, inicio: inicioEtapa, termino });
-      }
-    });
-    cursor += stageDurations[index] || 0;
-  });
-
-  const calculatedEndDate = validDays[validDays.length - 1];
-  const endDate = isValidDate(releaseDate) && releaseDate > calculatedEndDate ? releaseDate : calculatedEndDate;
-
-  const timeline: Array<CalendarDay> = [];
-  let current = new Date(startDate);
-
-  while (current <= endDate) {
-    const date = new Date(current);
-    let tipo = "";
-    let color = COLORS.white;
-
-    if (isValidDate(releaseDate) && sameDateBR(date, releaseDate)) {
-      tipo = "Release alvo";
-      color = COLORS.releaseTarget;
-    } else if (isParadoDay(date, paradaRanges, holidayDates, releaseDates)) {
-      tipo = "Projeto parado";
-      color = COLORS.blocked;
-    } else if (isWeekend(date)) {
-      tipo = "Fim de semana";
-      color = COLORS.weekend;
-    } else if (isHoliday(date, holidayDates)) {
-      tipo = "Feriado";
-      color = COLORS.holiday;
-    } else if (isPostRelease(date, releaseDates)) {
-      tipo = "Tombamento";
-      color = COLORS.postRelease;
-    } else {
-      const activity = atividadesCalculadas.find((item) => isValidDate(item.inicio) && isValidDate(item.termino) && date >= item.inicio && date <= item.termino);
-      if (activity) {
-        tipo = getTimelineLabel(activity.tipo, activity.nome);
-        color = getTimelineColor(activity.tipo);
-      }
-    }
-
-    timeline.push({ date, tipo, color, isReleaseDay: isReleaseDay(date, releaseDates), isEsteiraPreProd: isEsteiraPreProdDay(date, preprodRanges), isChg: chgDates.some((d) => sameDateBR(d, date)) });
-    current = addDays(current, 1);
-  }
-
-  const rows: Array<Array<CalendarDay | null>> = [];
-  const blockSize = 15;
-  for (let index = 0; index < timeline.length; index += blockSize) {
-    const row = timeline.slice(index, index + blockSize);
-    while (row.length < blockSize) row.push(null);
-    rows.push(row);
-  }
-
-  return { rows, rangeStart: startDate, rangeEnd: endDate, calculatedEndDate, atividadesCalculadas };
+  return { rows, rangeStart: startDate, rangeEnd: endDate, calculatedEndDate, atividadesCalculadas: activityRanges.map((a) => ({ ...a, dias: 0 })) };
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
