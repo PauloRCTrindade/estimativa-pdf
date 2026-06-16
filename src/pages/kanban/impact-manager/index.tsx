@@ -68,6 +68,7 @@ export function ImpactManager({ card, estimate, feriados, releases, onUpdateCard
             card={card}
             realEnd={realCalendar.calculatedEndDate}
             holidays={feriados}
+            releases={releases}
           />
 
           {/* Controls */}

@@ -779,6 +779,7 @@ export function TaskDetailModal({
                       card={card}
                       realEnd={realCalendar?.calculatedEndDate}
                       holidays={feriados}
+                      releases={releases}
                     />
                   )}
 

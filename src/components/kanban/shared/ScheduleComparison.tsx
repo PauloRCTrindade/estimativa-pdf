@@ -14,6 +14,7 @@ interface ScheduleComparisonProps {
   card: KanbanCard;
   realEnd: Date | string | undefined;
   holidays?: string[];
+  releases?: string[];
   className?: string;
 }
 
@@ -56,8 +57,8 @@ function ComparisonRow({ label, value, valueClassName }: { label: string; value:
   );
 }
 
-export function ScheduleComparison({ estimate, card, realEnd, holidays = [], className }: ScheduleComparisonProps) {
-  const comparison = calcScheduleComparison(estimate, card, realEnd, holidays);
+export function ScheduleComparison({ estimate, card, realEnd, holidays = [], releases = [], className }: ScheduleComparisonProps) {
+  const comparison = calcScheduleComparison(estimate, card, realEnd, holidays, releases);
 
   const hasRealStart = !!comparison.realStart;
   const hasRealEnd = !!comparison.realEnd;

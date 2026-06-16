@@ -614,7 +614,21 @@ export function getEstimatedStartDate(estimate: Estimativa): Date | null {
   return isValidDate(fallback) ? fallback : null;
 }
 
-export function getEstimatedEndDate(estimate: Estimativa): Date | null {
+export function getEstimatedEndDate(
+  estimate: Estimativa,
+  feriados: string[] = [],
+  releases: string[] = [],
+  diasParados?: string
+): Date | null {
+  const paradoRanges = parseDiasParadosList(diasParados ?? estimate.diasParados ?? "");
+
+  // Para estimativas por pacotes o termino é calculado a partir de inicio + horas.
+  const ranges = getEstimateActivityRanges(estimate, feriados, releases, paradoRanges);
+  if (ranges.length > 0) {
+    return new Date(Math.max(...ranges.map((r) => r.termino.getTime())));
+  }
+
+  // Fallback para atividades legado que possuem termino explícito.
   const activities = getFlattenedEstimateActivities(estimate);
   const activityEnds = activities
     .map((a) => parseDateBR(a.termino))
@@ -622,6 +636,7 @@ export function getEstimatedEndDate(estimate: Estimativa): Date | null {
   if (activityEnds.length > 0) {
     return new Date(Math.max(...activityEnds.map((d) => d.getTime())));
   }
+
   return null;
 }
 
@@ -703,10 +718,11 @@ export function calcScheduleComparison(
   estimate: Estimativa,
   card: KanbanCard,
   realEnd: Date | string | undefined,
-  holidays: string[]
+  holidays: string[],
+  releases: string[] = []
 ): ScheduleComparisonResult {
   const estimatedStart = getEstimatedStartDate(estimate);
-  const estimatedEnd = getEstimatedEndDate(estimate);
+  const estimatedEnd = getEstimatedEndDate(estimate, holidays, releases, estimate.diasParados);
   const productionDate = parseDateBR(estimate.releaseAlvo);
   const realStart = parseDateBR(card.dataRealInicio);
   const realEndDate = typeof realEnd === "string" ? parseDateBR(realEnd) : realEnd;
