@@ -1232,6 +1232,7 @@ export function KanbanPage({
       {/* Impact Manager */}
       {impactManagerCard && impactManagerEstimate && (
         <ImpactManager
+          key={`impact-manager-${impactManagerCard.id}`}
           card={impactManagerCard}
           estimate={impactManagerEstimate}
           feriados={feriados}

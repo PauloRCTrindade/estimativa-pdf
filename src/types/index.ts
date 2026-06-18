@@ -1,3 +1,5 @@
+import type { Pacote } from "@/utils/schedule";
+
 export type TaskPriority = "p1" | "p2" | "p3" | "p4";
 
 export interface KanbanChecklistItem {
@@ -85,6 +87,7 @@ export interface KanbanCard {
   diasImpactados?: string;
   chgDias?: number;
   esteiraPreProd?: string;
+  cronogramaReal?: Pacote[];
 }
 
 export type AppForm = {

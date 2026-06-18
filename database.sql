@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS kanban_cards (
   dias_impactados TEXT,
   chg_dias INTEGER DEFAULT 0,
   esteira_pre_prod TEXT,
+  cronograma_real JSONB DEFAULT '[]'::jsonb,
 
   criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -110,6 +111,7 @@ ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS data_real_inicio DATE;
 ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS dias_impactados TEXT;
 ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS chg_dias INTEGER DEFAULT 0;
 ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS esteira_pre_prod TEXT;
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS cronograma_real JSONB DEFAULT '[]'::jsonb;
 
 CREATE TABLE IF NOT EXISTS kanban_tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

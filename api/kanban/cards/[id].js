@@ -15,6 +15,7 @@ const keyMap = {
   dias_impactados: 'diasImpactados',
   chg_dias: 'chgDias',
   esteira_pre_prod: 'esteiraPreProd',
+  cronograma_real: 'cronogramaReal',
   criado_em: 'criadoEm',
   atualizado_em: 'atualizadoEm',
 };
@@ -44,7 +45,12 @@ export default async function handler(req, res) {
     if (req.method === 'PUT') {
       const user = await verifyAuth(req);
       if (!user) return unauthorized(res);
-      const convertedBody = camelToSnakeObj(req.body || {});
+      // Preserva a estrutura interna de cronogramaReal (JSONB) sem converter recursivamente.
+      const { cronogramaReal, ...restBody } = req.body || {};
+      const convertedBody = camelToSnakeObj(restBody);
+      if (cronogramaReal !== undefined) {
+        convertedBody.cronograma_real = cronogramaReal;
+      }
       const { data, error } = await supabase
         .from('kanban_cards')
         .update(convertedBody)

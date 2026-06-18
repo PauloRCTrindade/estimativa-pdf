@@ -213,7 +213,7 @@ O frontend trabalha em **camelCase**:
 - `api/lib/case-converter.js`: exporta `camelToSnakeObj` e `snakeToCamelObj` usados pelas rotas do Kanban (`api/kanban/`).
 - `dev-server.js`: usa `camelToSnakeCase` (conversão real com underscore) para estimativas e `toCamelKanban` (com `kanbanKeyMap`) para Kanban.
 
-- Campo especial: `pacotes` é armazenado como JSONB e deve preservar sua estrutura interna em camelCase — **nunca converter recursivamente**.
+- Campos especiais JSONB: `pacotes` (estimativa) e `cronograma_real` (card do Kanban) devem preservar sua estrutura interna em camelCase — **nunca converter recursivamente**. Os handlers de cards (`api/kanban/cards.js`, `api/kanban/cards/[id].js` e `dev-server.js`) extraem esses campos antes de aplicar `camelToSnake` e os reinstalam no payload para preservar as chaves internas.
 
 ### Schema SQL
 O schema completo está em `database.sql`. Ele inclui:
@@ -356,6 +356,31 @@ VITE_SUPABASE_ANON_KEY
 
 ---
 
+## Cronograma real no Gerenciador de Impacto
+
+O card do Kanban possui um cronograma de execução real, independente da estimativa original:
+
+- Campo em `kanban_cards`: `cronograma_real` (JSONB) armazena uma cópia dos `Pacote[]` da estimativa, com datas/horas/overtime remanejados pelo usuário.
+- A tabela de remanejamento real está em `src/components/kanban/shared/RealScheduleTable.tsx`.
+- A lógica de cálculo de datas, overtime e dias úteis foi extraída para `src/utils/schedule.ts` e é compartilhada com a tela Detalhamento (`src/components/estimativa-pacotes`).
+- O calendário real (`buildRealCalendar` em `src/components/kanban/shared/kanbanHelpers.ts`) utiliza o `cronogramaReal` quando existir; caso contrário, mantém o comportamento anterior de offset simples.
+- Templates não possuem Gerenciador de Impacto. Cards arquivados exibem a tabela em modo leitura.
+
+### Camada utilitária de schedule
+
+`src/utils/schedule.ts` centraliza funções puras de cálculo de cronograma:
+
+- Tipos: `Pacote`, `PacoteAtividade`, `OvertimeFlags`, `ParadoRange`.
+- Cálculo de datas: `calcularTermino`, `calcWorkDays`.
+- Cálculo de overtime: `calcDiasOvertimeTotal`, `calcTombamentosWorkedCount`.
+- Cálculo de dias de atuação: `calcDiasAtuacaoTotal`, `calcTotalDiasAtuacaoPacote`.
+- Helpers de dias especiais: `calcFeriadosNoPeriodo`, `calcFimDeSemanaNoPeriodo`, `calcTombamentosNoPeriodo`, `getInicioDayType`.
+- Inicialização do real: `initializeRealSchedule`, `rebuildRealScheduleFromEstimate`.
+
+Novos cálculos de cronograma devem ser adicionados nesse arquivo e reutilizados pelas telas de Estimativa e de Kanban.
+
+---
+
 ## Dicas para Agentes
 
 - Sempre verifique se a alteração em APIs afeta a conversão lowercase/camelCase. Lembre-se de que a implementação do conversor varia entre `api/estimativas.js`, `api/estimativas/[id].js`, `api/lib/case-converter.js` e `dev-server.js`.
@@ -364,5 +389,5 @@ VITE_SUPABASE_ANON_KEY
 - Para PDF, mantenha cores em HEX e estilos inline quando necessário.
 - Ao adicionar rotas de API, siga o padrão de CORS já existente nos handlers (`setCorsHeaders` + `OPTIONS` preflight).
 - Não altere `App.tsx` de forma a quebrar as regras relaxadas do ESLint sem atualizar `eslint.config.js`.
-- O campo `pacotes` é JSONB — nunca aplique conversão recursiva de camelCase nele.
+- Os campos JSONB `pacotes` e `cronograma_real` devem preservar chaves internas em camelCase — nunca aplique conversão recursiva de camelCase neles.
 - `dev-server.js` roda na porta 3003 via `npm run dev:api`, enquanto `vite.config.ts` espera o proxy em `localhost:3003`.

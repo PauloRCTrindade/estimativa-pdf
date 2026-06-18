@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { EstimativaPacotesTable } from "@/components/estimativa-pacotes";
-import type { Pacote } from "@/components/estimativa-pacotes";
+import type { Pacote } from "@/utils/schedule";
+
 import { Package, ChartBar } from "@phosphor-icons/react";
 
 interface DetailsPageProps {
@@ -90,7 +91,14 @@ export function DetailsPage({
             </div>
             <div className="bg-muted/50 border border-border/60 rounded-xl p-3 text-center">
               <p className="text-2xl font-bold text-foreground">
-                {pacotes.reduce((acc, p) => acc + p.atividades.reduce((a, b) => a + Number(b.horas || 0), 0), 0)}h
+                {pacotes.reduce((acc, p) => {
+                  const horasPorEtapa = new Map<string, number>();
+                  for (const a of p.atividades) {
+                    const etapa = String(a.etapa || "1");
+                    if (!horasPorEtapa.has(etapa)) horasPorEtapa.set(etapa, Number(a.horas || 0));
+                  }
+                  return acc + Array.from(horasPorEtapa.values()).reduce((sum, h) => sum + h, 0);
+                }, 0)}h
               </p>
               <p className="text-xs text-muted-foreground mt-1">Horas totais</p>
             </div>

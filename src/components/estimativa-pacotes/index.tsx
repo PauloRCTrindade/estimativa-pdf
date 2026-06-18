@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -16,35 +16,23 @@ import {
   Minus,
 } from "@phosphor-icons/react";
 import { DatePicker } from "@/components/date-picker";
-import { parseDateBR, isValidDate, getWorkingDays, formatBR, isWeekend, isHoliday, isPostRelease, addDays, isParadoDay } from "@/utils";
+import { parseDateBR, isValidDate, formatBR, addDays, isWeekend, isHoliday, isPostRelease, isParadoDay } from "@/utils";
+import {
+  DEFAULT_OVERTIME,
+  calcDiasOvertimeTotal,
+  calcFeriadosNoPeriodo,
+  calcFimDeSemanaNoPeriodo,
+  calcTombamentosNoPeriodo,
+  calcTombamentosWorkedCount,
+  calcularTermino,
+  getInicioDayType,
+  normalizeEtapa,
+  type Pacote,
+  type PacoteAtividade,
+  type ParadoRange,
+} from "@/utils/schedule";
 
-export type OvertimeFlags = {
-  tombamentoDates: string[];   // datas de tombamento selecionadas (dd/mm/yyyy)
-  feriadoDates: string[];      // feriados selecionados para trabalhar (dd/mm/yyyy)
-  fimDeSemanaDates: string[];  // finais de semana selecionados para trabalhar (dd/mm/yyyy)
-};
-
-export type PacoteAtividade = {
-  id: string;
-  demanda: string;
-  nome: string;
-  horas: number;    // horas da atividade (step=1)
-  horasOvertime?: number;  // horas extras que reduzem dias no término
-  tipo: string;
-  etapa: string;
-  inicio: string;   // data de início manual dd/mm/yyyy
-  overtime?: OvertimeFlags;
-};
-
-export type Pacote = {
-  id: string;
-  codigo: string;
-  nome: string;
-  collapsed?: boolean;
-  atividades: PacoteAtividade[];
-};
-
-type ParadoRange = { start: Date; end: Date };
+export type { Pacote, PacoteAtividade, OvertimeFlags } from "@/utils/schedule";
 
 interface EstimativaPacotesTableProps {
   pacotes: Pacote[];
@@ -76,236 +64,6 @@ const ETAPA_COLORS = [
   { border: 'border-l-orange-500', bg: 'bg-orange-50 dark:bg-orange-900/30' },
 ];
 
-const DEFAULT_OVERTIME: OvertimeFlags = { tombamentoDates: [], feriadoDates: [], fimDeSemanaDates: [] };
-
-function calcWorkDays(
-  startDate: Date,
-  numWorkDays: number,
-  feriadosList: string[],
-  releasesList: string[],
-  ot: OvertimeFlags,
-  paradoRanges: ParadoRange[] = []
-): Date[] {
-  const days: Date[] = [];
-  let current = new Date(startDate);
-  let guard = 0;
-  while (days.length < numWorkDays && guard < 700) {
-    const blocked =
-      ((current.getDay() === 6 || current.getDay() === 0) && !ot.fimDeSemanaDates.includes(formatBR(current))) ||
-      (isPostRelease(current, releasesList) && !ot.tombamentoDates.includes(formatBR(current))) ||
-      (isHoliday(current, feriadosList) && !ot.feriadoDates.includes(formatBR(current))) ||
-      isParadoDay(current, paradoRanges, feriadosList, releasesList);
-    if (!blocked) days.push(new Date(current));
-    current = addDays(current, 1);
-    guard++;
-  }
-  return days;
-}
-
-export function calcDiasOvertimeTotal(
-  inicio: string,
-  horas: number,
-  horasOT: number,
-  feriadosList: string[],
-  releasesList: string[],
-  ot: OvertimeFlags
-): number {
-  const baseOT = (horasOT || 0) / 8;
-  if (!inicio || horas <= 0) return baseOT;
-  const startDate = parseDateBR(inicio);
-  if (!isValidDate(startDate)) return baseOT;
-  const numWorkDays = Math.max(1, Math.ceil(horas / 8) - Math.floor((horasOT || 0) / 8));
-  const workDays = calcWorkDays(startDate, numWorkDays, feriadosList, releasesList, ot);
-  const terminoDate = workDays[numWorkDays - 1];
-  if (!terminoDate) return baseOT;
-  const allSpecial = [...ot.feriadoDates, ...ot.fimDeSemanaDates];
-  const specialCount = allSpecial.filter((d) => {
-    const date = parseDateBR(d);
-    return isValidDate(date) && date >= startDate && date <= terminoDate;
-  }).length;
-  return baseOT + specialCount;
-}
-
-function calcTombamentosWorkedCount(
-  inicio: string,
-  horas: number,
-  horasOT: number,
-  feriadosList: string[],
-  releasesList: string[],
-  ot: OvertimeFlags
-): number {
-  if (!inicio || horas <= 0 || ot.tombamentoDates.length === 0) return 0;
-  const startDate = parseDateBR(inicio);
-  if (!isValidDate(startDate)) return 0;
-  const numWorkDays = Math.max(1, Math.ceil(horas / 8) - Math.floor((horasOT || 0) / 8));
-  const workDays = calcWorkDays(startDate, numWorkDays, feriadosList, releasesList, ot);
-  const terminoDate = workDays[numWorkDays - 1];
-  if (!terminoDate) return 0;
-  return ot.tombamentoDates.filter((d) => {
-    const date = parseDateBR(d);
-    return isValidDate(date) && date >= startDate && date <= terminoDate;
-  }).length;
-}
-
-export function calcTotalDiasAtuacaoPacote(
-  pacote: Pacote,
-  feriadosList: string[],
-  releasesList: string[],
-  paradoRanges: ParadoRange[] = []
-): number {
-  let gi = 0;
-  let total = 0;
-  while (gi < pacote.atividades.length) {
-    const etapa = String(pacote.atividades[gi].etapa || "1");
-    let gj = gi;
-    while (gj < pacote.atividades.length && String(pacote.atividades[gj].etapa || "1") === etapa) gj++;
-    const groupAtivs = pacote.atividades.slice(gi, gj);
-    const gStarts = groupAtivs.map(a => parseDateBR(a.inicio)).filter((d): d is Date => isValidDate(d));
-    const gTerminos = groupAtivs.map(a => {
-      const ot = a.overtime ?? DEFAULT_OVERTIME;
-      const horasOT = a.horasOvertime ?? 0;
-      const t = calcularTermino(a.inicio, a.horas, feriadosList, releasesList, ot, horasOT, paradoRanges);
-      if (t === "—") return null;
-      const d = parseDateBR(t);
-      return isValidDate(d) ? d : null;
-    }).filter((d): d is Date => d !== null);
-    let etapaTotalDiasNecessarios = 0;
-    if (gStarts.length > 0 && gTerminos.length > 0) {
-      const minStart = gStarts.reduce((min, d) => d < min ? d : min);
-      const maxEnd = gTerminos.reduce((max, d) => d > max ? d : max);
-      const cur = new Date(minStart);
-      while (cur <= maxEnd) {
-        if (!isWeekend(cur) && !isHoliday(cur, feriadosList) && !isPostRelease(cur, releasesList) && !isParadoDay(cur, paradoRanges, feriadosList, releasesList)) etapaTotalDiasNecessarios++;
-        cur.setDate(cur.getDate() + 1);
-      }
-    } else {
-      etapaTotalDiasNecessarios = groupAtivs.reduce((sum, a) => sum + Number(a.horas || 0) / 8, 0);
-    }
-    const etapaTotalDiasOvertime = groupAtivs.reduce(
-      (sum, a) => sum + calcDiasOvertimeTotal(a.inicio, a.horas, a.horasOvertime ?? 0, feriadosList, releasesList, a.overtime ?? DEFAULT_OVERTIME), 0
-    );
-    const etapaTotalTombamento = groupAtivs.reduce(
-      (sum, a) => sum + calcTombamentosWorkedCount(a.inicio, a.horas, a.horasOvertime ?? 0, feriadosList, releasesList, a.overtime ?? DEFAULT_OVERTIME), 0
-    );
-    total += etapaTotalDiasNecessarios + etapaTotalDiasOvertime + etapaTotalTombamento;
-    gi = gj;
-  }
-  return total;
-}
-
-function calcTombamentosNoPeriodo(
-  inicio: string,
-  horas: number,
-  feriadosList: string[],
-  releasesList: string[],
-  ot: OvertimeFlags,
-  horasOvertime: number
-): string[] {
-  if (!inicio || releasesList.length === 0) return [];
-  const startDate = parseDateBR(inicio);
-  if (!isValidDate(startDate)) return [];
-  const numWorkDays = Math.max(1, Math.ceil(horas / 8) - Math.floor((horasOvertime || 0) / 8));
-  const workDays = calcWorkDays(startDate, numWorkDays, feriadosList, releasesList, ot);
-  const terminoDate = workDays[numWorkDays - 1];
-  if (!terminoDate) return [];
-  const result: string[] = [];
-  let current = new Date(startDate);
-  while (current <= terminoDate) {
-    if (isPostRelease(current, releasesList)) result.push(formatBR(current));
-    current = addDays(current, 1);
-  }
-  return result;
-}
-
-function calcFimDeSemanaNoPeriodo(
-  inicio: string,
-  horas: number,
-  feriadosList: string[],
-  releasesList: string[],
-  ot: OvertimeFlags,
-  horasOvertime: number
-): string[] {
-  if (!inicio || horas <= 0) return [];
-  const startDate = parseDateBR(inicio);
-  if (!isValidDate(startDate)) return [];
-  const numWorkDays = Math.max(1, Math.ceil(horas / 8) - Math.floor((horasOvertime || 0) / 8));
-  const workDays = calcWorkDays(startDate, numWorkDays, feriadosList, releasesList, ot);
-  const terminoDate = workDays[numWorkDays - 1];
-  if (!terminoDate) return [];
-  const result: string[] = [];
-  let current = new Date(startDate);
-  while (current <= terminoDate) {
-    if (current.getDay() === 6 || current.getDay() === 0) result.push(formatBR(current));
-    current = addDays(current, 1);
-  }
-  return result;
-}
-
-function calcFeriadosNoPeriodo(
-  inicio: string,
-  horas: number,
-  feriadosList: string[],
-  releasesList: string[],
-  ot: OvertimeFlags,
-  horasOvertime: number
-): string[] {
-  if (!inicio || horas <= 0 || feriadosList.length === 0) return [];
-  const startDate = parseDateBR(inicio);
-  if (!isValidDate(startDate)) return [];
-  const numWorkDays = Math.max(1, Math.ceil(horas / 8) - Math.floor((horasOvertime || 0) / 8));
-  const workDays = calcWorkDays(startDate, numWorkDays, feriadosList, releasesList, ot);
-  const terminoDate = workDays[numWorkDays - 1];
-  if (!terminoDate) return [];
-  return feriadosList
-    .filter((f) => {
-      const fd = parseDateBR(f);
-      return isValidDate(fd) && fd >= startDate && fd <= terminoDate;
-    })
-    .map((f) => formatBR(parseDateBR(f)));
-}
-
-export function calcularTermino(
-  inicio: string,
-  horas: number,
-  feriadosList: string[],
-  releasesList: string[],
-  ot: OvertimeFlags,
-  horasOvertime: number,
-  paradoRanges: ParadoRange[] = []
-): string {
-  if (!inicio || horas <= 0) return "—";
-  const startDate = parseDateBR(inicio);
-  if (!isValidDate(startDate)) return "—";
-  const numWorkDays = Math.max(1, Math.ceil(horas / 8) - Math.floor((horasOvertime || 0) / 8));
-  const workDays = calcWorkDays(startDate, numWorkDays, feriadosList, releasesList, ot, paradoRanges);
-  const termino = workDays[numWorkDays - 1];
-  return termino ? formatBR(termino) : "—";
-}
-
-function calcDiasAtuacaoTotal(
-  inicio: string,
-  horas: number,
-  horasOT: number,
-  feriadosList: string[],
-  releasesList: string[],
-  ot: OvertimeFlags,
-  paradoRanges: ParadoRange[] = []
-): number {
-  const baseDays = (horas + (horasOT || 0)) / 8;
-  if (!inicio || horas <= 0) return baseDays;
-  const startDate = parseDateBR(inicio);
-  if (!isValidDate(startDate)) return baseDays;
-  const termino = calcularTermino(inicio, horas, feriadosList, releasesList, ot, horasOT, paradoRanges);
-  if (termino === "—") return baseDays;
-  const endDate = parseDateBR(termino);
-  const allSelected = [...ot.feriadoDates, ...ot.fimDeSemanaDates, ...ot.tombamentoDates];
-  const specialCount = allSelected.filter((d) => {
-    const date = parseDateBR(d);
-    return isValidDate(date) && date >= startDate && date <= endDate;
-  }).length;
-  return baseDays + specialCount;
-}
-
 export function EstimativaPacotesTable({
   pacotes,
   feriados,
@@ -320,136 +78,26 @@ export function EstimativaPacotesTable({
   onRemoveAtividade,
 }: EstimativaPacotesTableProps) {
   const [focusedCell, setFocusedCell] = useState<string | null>(null);
-  const onUpdateAtividadeRef = useRef(onUpdateAtividade);
-  onUpdateAtividadeRef.current = onUpdateAtividade;
-  const pacotesRef = useRef(pacotes);
-  pacotesRef.current = pacotes;
-  const isMounted = useRef(false);
-
-  // Auto-popula o início de cada atividade (índice > 0) como termino_anterior + 1 dia
-  useEffect(() => {
-    pacotes.forEach((pacote) => {
-      for (let i = 1; i < pacote.atividades.length; i++) {
-        const prev = pacote.atividades[i - 1];
-        const curr = pacote.atividades[i];
-        const prevTermino = calcularTermino(
-          prev.inicio,
-          Number(prev.horas || 0),
-          feriados,
-          releases,
-          prev.overtime || DEFAULT_OVERTIME,
-          Number(prev.horasOvertime || 0),
-          diasParados
-        );
-        if (prevTermino !== "—") {
-          const prevTerminoDate = parseDateBR(prevTermino);
-          if (isValidDate(prevTerminoDate) && !curr.inicio) {
-            const autoInicio = formatBR(addDays(prevTerminoDate, 1));
-            onUpdateAtividadeRef.current(pacote.id, curr.id, "inicio", autoInicio);
-          }
-        }
-      }
-    });
-  }, [pacotes, feriados, releases]);
-
-  // Recalcula a cascata de início quando diasParados muda
-  // Usa pacotesRef para evitar stale closure sem causar loop com pacotes
-  // isMounted evita sobrescrever datas explícitas salvas no carregamento inicial
-  // Preserva datas que foram manualmente alteradas (já preenchidas)
-  useEffect(() => {
-    if (!isMounted.current) {
-      isMounted.current = true;
-      return;
-    }
-    pacotesRef.current.forEach((pacote) => {
-      if (pacote.atividades.length < 2) return;
-      let prevInicio = pacote.atividades[0].inicio;
-      let prevHoras = Number(pacote.atividades[0].horas || 0);
-      let prevHorasOT = Number(pacote.atividades[0].horasOvertime || 0);
-      let prevOT = pacote.atividades[0].overtime || DEFAULT_OVERTIME;
-      for (let i = 1; i < pacote.atividades.length; i++) {
-        const prevTermino = calcularTermino(prevInicio, prevHoras, feriados, releases, prevOT, prevHorasOT, diasParados);
-        if (prevTermino === "—") break;
-        const prevTerminoDate = parseDateBR(prevTermino);
-        if (!isValidDate(prevTerminoDate)) break;
-        const nextInicio = formatBR(addDays(prevTerminoDate, 1));
-        const curr = pacote.atividades[i];
-        // Só atualiza se a data ainda está vazia (não foi manualmente alterada)
-        if (!curr.inicio) {
-          onUpdateAtividadeRef.current(pacote.id, curr.id, "inicio", nextInicio);
-        } else {
-          // Preserva a data manualmente alterada para próximas atividades
-          prevInicio = curr.inicio;
-        }
-        prevHoras = Number(curr.horas || 0);
-        prevHorasOT = Number(curr.horasOvertime || 0);
-        prevOT = curr.overtime || DEFAULT_OVERTIME;
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [diasParados, feriados, releases]);
-
-  // Recalcula início de todas as atividades subsequentes ao índice informado.
-  // `overrides` permite passar o novo valor da atividade âncora antes do estado atualizar.
-  function cascadeFrom(pacote: Pacote, atividadeIdx: number, overrides: Partial<PacoteAtividade> = {}) {
-    const atividades = pacote.atividades;
-    const base = { ...atividades[atividadeIdx], ...overrides };
-
-    let prevInicio = base.inicio;
-    let prevHoras = Number(base.horas || 0);
-    let prevHorasOT = Number(base.horasOvertime || 0);
-    let prevOT = base.overtime || DEFAULT_OVERTIME;
-
-    for (let i = atividadeIdx + 1; i < atividades.length; i++) {
-      const prevTermino = calcularTermino(prevInicio, prevHoras, feriados, releases, prevOT, prevHorasOT, diasParados);
-      if (prevTermino === "\u2014") break;
-      const prevTerminoDate = parseDateBR(prevTermino);
-      if (!isValidDate(prevTerminoDate)) break;
-
-      const nextInicio = formatBR(addDays(prevTerminoDate, 1));
-      const curr = atividades[i];
-      onUpdateAtividade(pacote.id, curr.id, "inicio", nextInicio);
-
-      prevInicio = nextInicio;
-      prevHoras = Number(curr.horas || 0);
-      prevHorasOT = Number(curr.horasOvertime || 0);
-      prevOT = curr.overtime || DEFAULT_OVERTIME;
-    }
-  }
 
   function handleInicioChange(pacote: Pacote, atividadeIdx: number, newDate: string) {
     onUpdateAtividade(pacote.id, pacote.atividades[atividadeIdx].id, "inicio", newDate);
-    cascadeFrom(pacote, atividadeIdx, { inicio: newDate });
   }
 
-  function getInicioDayType(inicioBR: string): 'tombamento' | 'feriado' | 'releaseSunday' | 'weekend' | null {
-    const date = parseDateBR(inicioBR);
-    if (!isValidDate(date)) return null;
-    if (isPostRelease(date, releases)) return 'tombamento';
-    if (isHoliday(date, feriados)) return 'feriado';
-    if (date.getDay() === 0) {
-      const nextDay = new Date(date.getTime());
-      nextDay.setDate(nextDay.getDate() + 1);
-      if (isPostRelease(nextDay, releases)) return 'releaseSunday';
-    }
-    if (isWeekend(date)) return 'weekend';
-    return null;
-  }
-
-  function calcDias(horas: number): number {
-    return Number(horas || 0) / 8;
+  function handleGetInicioDayType(inicioBR: string): 'tombamento' | 'feriado' | 'releaseSunday' | 'weekend' | null {
+    return getInicioDayType(inicioBR, feriados, releases);
   }
 
   function totalHorasPacote(pacote: Pacote): number {
-    return pacote.atividades.reduce((acc, a) => acc + Number(a.horas || 0), 0);
-  }
-
-  function totalDiasPacote(pacote: Pacote): number {
-    return pacote.atividades.reduce((total, a) => {
-      const ot = a.overtime ?? DEFAULT_OVERTIME;
-      const horasOT = a.horasOvertime ?? 0;
-      return total + calcDiasAtuacaoTotal(a.inicio, a.horas, horasOT, feriados, releases, ot);
-    }, 0);
+    const horasPorEtapa = new Map<string, number>();
+    for (const a of pacote.atividades) {
+      const etapa = String(a.etapa || "1");
+      if (!horasPorEtapa.has(etapa)) {
+        horasPorEtapa.set(etapa, Number(a.horas || 0));
+      }
+    }
+    let total = 0;
+    for (const h of horasPorEtapa.values()) total += h;
+    return total;
   }
 
   function buildAtivGroupInfo(pacote: Pacote) {
@@ -475,35 +123,28 @@ export function EstimativaPacotesTable({
         colorCounter++;
       }
       const colorEntry = ETAPA_COLORS[etapaColorIdx.get(etapa)!];
-      // Dias Necessários: span de dias úteis (sem fins de semana, feriados e tombamentos)
-      // entre o início da 1ª tarefa e o término da última tarefa da etapa
-      const gStarts = groupAtivs.map(a => parseDateBR(a.inicio)).filter((d): d is Date => isValidDate(d));
-      const gTerminos = groupAtivs.map(a => {
-        const ot = a.overtime ?? DEFAULT_OVERTIME;
-        const horasOT = a.horasOvertime ?? 0;
-        const t = calcularTermino(a.inicio, a.horas, feriados, releases, ot, horasOT, diasParados);
-        if (t === "—") return null;
-        const d = parseDateBR(t);
-        return isValidDate(d) ? d : null;
-      }).filter((d): d is Date => d !== null);
+      // Como os campos de planejamento são sincronizados por etapa, basta calcular
+      // uma única vez usando a primeira atividade do grupo.
+      const first = groupAtivs[0];
+      const ot = first.overtime
+        ? { ...DEFAULT_OVERTIME, ...first.overtime }
+        : DEFAULT_OVERTIME;
+      const horasOT = first.horasOvertime ?? 0;
+      const termino = calcularTermino(first.inicio, first.horas, feriados, releases, ot, horasOT, diasParados);
+      const startDate = parseDateBR(first.inicio);
+      const endDate = parseDateBR(termino);
       let etapaTotalDiasNecessarios = 0;
-      if (gStarts.length > 0 && gTerminos.length > 0) {
-        const minStart = gStarts.reduce((min, d) => d < min ? d : min);
-        const maxEnd = gTerminos.reduce((max, d) => d > max ? d : max);
-        const cur = new Date(minStart);
-        while (cur <= maxEnd) {
+      if (isValidDate(startDate) && isValidDate(endDate)) {
+        const cur = new Date(startDate);
+        while (cur <= endDate) {
           if (!isWeekend(cur) && !isHoliday(cur, feriados) && !isPostRelease(cur, releases) && !isParadoDay(cur, diasParados, feriados, releases)) etapaTotalDiasNecessarios++;
           cur.setDate(cur.getDate() + 1);
         }
       } else {
-        etapaTotalDiasNecessarios = groupAtivs.reduce((sum, a) => sum + Number(a.horas || 0) / 8, 0);
+        etapaTotalDiasNecessarios = Number(first.horas || 0) / 8;
       }
-      const etapaTotalDiasOvertime = groupAtivs.reduce(
-        (sum, a) => sum + calcDiasOvertimeTotal(a.inicio, a.horas, a.horasOvertime ?? 0, feriados, releases, a.overtime ?? DEFAULT_OVERTIME), 0
-      );
-      const etapaTotalTombamento = groupAtivs.reduce(
-        (sum, a) => sum + calcTombamentosWorkedCount(a.inicio, a.horas, a.horasOvertime ?? 0, feriados, releases, a.overtime ?? DEFAULT_OVERTIME), 0
-      );
+      const etapaTotalDiasOvertime = calcDiasOvertimeTotal(first.inicio, first.horas, horasOT, feriados, releases, ot);
+      const etapaTotalTombamento = calcTombamentosWorkedCount(first.inicio, first.horas, horasOT, feriados, releases, ot);
       const etapaTotalDiasAtuacao = etapaTotalDiasNecessarios + etapaTotalDiasOvertime + etapaTotalTombamento;
       for (let k = 0; k < size; k++) {
         result.push({
@@ -546,7 +187,6 @@ export function EstimativaPacotesTable({
         </thead>
         <tbody>
           {pacotes.map((pacote) => {
-            const totalDias = totalDiasPacote(pacote);
             const totalHoras = totalHorasPacote(pacote);
             const collapsed = pacote.collapsed ?? false;
             const ativGroupInfoList = buildAtivGroupInfo(pacote);
@@ -631,9 +271,10 @@ export function EstimativaPacotesTable({
               ...(!collapsed
                 ? pacote.atividades.map((ativ, idx) => {
                     activityRowIndex++;
-                    const ot = ativ.overtime ?? DEFAULT_OVERTIME;
+                    const ot = ativ.overtime
+                      ? { ...DEFAULT_OVERTIME, ...ativ.overtime }
+                      : DEFAULT_OVERTIME;
                     const horasOT = ativ.horasOvertime ?? 0;
-                    const diasCalc = calcDiasAtuacaoTotal(ativ.inicio, ativ.horas, horasOT, feriados, releases, ot, diasParados);
                     const diasOvertimeCalc = calcDiasOvertimeTotal(ativ.inicio, ativ.horas, horasOT, feriados, releases, ot);
                     const terminoCalc = calcularTermino(ativ.inicio, ativ.horas, feriados, releases, ot, horasOT, diasParados);
                     const groupInfo = ativGroupInfoList[idx];
@@ -678,7 +319,7 @@ export function EstimativaPacotesTable({
                             }`}
                             value={ativ.etapa ?? ""}
                             placeholder="1"
-                            onChange={(e) => onUpdateAtividade(pacote.id, ativ.id, "etapa", e.target.value)}
+                            onChange={(e) => onUpdateAtividade(pacote.id, ativ.id, "etapa", normalizeEtapa(e.target.value))}
                             onFocus={() => setFocusedCell(`etapa-${ativ.id}`)}
                             onBlur={() => setFocusedCell(null)}
                           />
@@ -700,171 +341,176 @@ export function EstimativaPacotesTable({
                           />
                         </td>
 
-                        {}
-                        <td className="px-1 py-1 border-r border-border/40">
-                          {(() => {
-                            const dayType = getInicioDayType(ativ.inicio);
-                            const colorClass =
-                              dayType === 'feriado' ? 'border-red-400 bg-red-50 text-red-700 hover:bg-red-100' :
-                              dayType === 'tombamento' ? 'border-orange-400 bg-orange-50 text-orange-700 hover:bg-orange-100' :
-                              dayType === 'releaseSunday' ? 'border-blue-500 bg-blue-300 text-blue-900 hover:bg-blue-400' :
-                              dayType === 'weekend' ? 'border-blue-400 bg-blue-50 text-blue-700 hover:bg-blue-100' : '';
-                            return (
-                              <DatePicker
-                                value={ativ.inicio}
-                                onChange={(date) => handleInicioChange(pacote, idx, date)}
-                                placeholder="dd/mm/aaaa"
-                                className={`h-6 text-xs ${colorClass}`}
-                                feriados={feriados}
-                                releases={releases}
+                        {groupInfo.isFirstInGroup && (
+                          <td rowSpan={groupInfo.groupSize} className="px-1 py-1 border-r border-border/40 align-middle">
+                            {(() => {
+                              const dayType = handleGetInicioDayType(ativ.inicio);
+                              const colorClass =
+                                dayType === 'feriado' ? 'border-red-400 bg-red-50 text-red-700 hover:bg-red-100' :
+                                dayType === 'tombamento' ? 'border-orange-400 bg-orange-50 text-orange-700 hover:bg-orange-100' :
+                                dayType === 'releaseSunday' ? 'border-blue-500 bg-blue-300 text-blue-900 hover:bg-blue-400' :
+                                dayType === 'weekend' ? 'border-blue-400 bg-blue-50 text-blue-700 hover:bg-blue-100' : '';
+                              return (
+                                <DatePicker
+                                  value={ativ.inicio}
+                                  onChange={(date) => handleInicioChange(pacote, idx, date)}
+                                  placeholder="dd/mm/aaaa"
+                                  className={`h-6 text-xs ${colorClass}`}
+                                  feriados={feriados}
+                                  releases={releases}
+                                />
+                              );
+                            })()}
+                          </td>
+                        )}
+
+                        {groupInfo.isFirstInGroup && (
+                          <td rowSpan={groupInfo.groupSize} className="px-1 py-1 text-center border-r border-border/40 align-middle">
+                            <div className="flex items-center justify-center gap-0.5">
+                              <button
+                                className="w-5 h-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-colors"
+                                onClick={() => { const v = Math.max(0, Number(ativ.horas || 0) - 1); onUpdateAtividade(pacote.id, ativ.id, "horas", v); }}
+                              >
+                                <Minus className="h-2.5 w-2.5" />
+                              </button>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                className={`w-12 px-1 py-0.5 rounded text-xs outline-none border text-center tabular-nums font-medium ${
+                                  focusedCell === `horas-${ativ.id}`
+                                    ? "border-primary bg-background ring-1 ring-primary"
+                                    : Number(ativ.horas) > 0
+                                    ? "border-transparent bg-primary/10 text-primary hover:border-primary/30"
+                                    : "border-transparent bg-transparent hover:border-border/40"
+                                }`}
+                                value={ativ.horas || ""}
+                                placeholder="0"
+                                onChange={(e) => { const v = Math.max(0, Math.round(Number(e.target.value))); onUpdateAtividade(pacote.id, ativ.id, "horas", v); }}
+                                onFocus={() => setFocusedCell(`horas-${ativ.id}`)}
+                                onBlur={() => setFocusedCell(null)}
                               />
-                            );
-                          })()}
-                        </td>
+                              <button
+                                className="w-5 h-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-colors"
+                                onClick={() => { const v = Number(ativ.horas || 0) + 1; onUpdateAtividade(pacote.id, ativ.id, "horas", v); }}
+                              >
+                                <Plus className="h-2.5 w-2.5" />
+                              </button>
+                            </div>
+                          </td>
+                        )}
 
-                        {}
-                        <td className="px-1 py-1 text-center border-r border-border/40">
-                          <div className="flex items-center justify-center gap-0.5">
-                            <button
-                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-colors"
-                              onClick={() => { const v = Math.max(0, Number(ativ.horas || 0) - 1); onUpdateAtividade(pacote.id, ativ.id, "horas", v); cascadeFrom(pacote, idx, { horas: v }); }}
-                            >
-                              <Minus className="h-2.5 w-2.5" />
-                            </button>
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
-                              className={`w-12 px-1 py-0.5 rounded text-xs outline-none border text-center tabular-nums font-medium ${
-                                focusedCell === `horas-${ativ.id}`
-                                  ? "border-primary bg-background ring-1 ring-primary"
-                                  : Number(ativ.horas) > 0
-                                  ? "border-transparent bg-primary/10 text-primary hover:border-primary/30"
-                                  : "border-transparent bg-transparent hover:border-border/40"
-                              }`}
-                              value={ativ.horas || ""}
-                              placeholder="0"
-                              onChange={(e) => { const v = Math.max(0, Math.round(Number(e.target.value))); onUpdateAtividade(pacote.id, ativ.id, "horas", v); cascadeFrom(pacote, idx, { horas: v }); }}
-                              onFocus={() => setFocusedCell(`horas-${ativ.id}`)}
-                              onBlur={() => setFocusedCell(null)}
-                            />
-                            <button
-                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-colors"
-                              onClick={() => { const v = Number(ativ.horas || 0) + 1; onUpdateAtividade(pacote.id, ativ.id, "horas", v); cascadeFrom(pacote, idx, { horas: v }); }}
-                            >
-                              <Plus className="h-2.5 w-2.5" />
-                            </button>
-                          </div>
-                        </td>
+                        {groupInfo.isFirstInGroup && (
+                          <td rowSpan={groupInfo.groupSize} className="px-2 py-1 text-center border-r border-border/40 align-middle">
+                            {(() => {
+                              const fs = calcFeriadosNoPeriodo(ativ.inicio, ativ.horas, feriados, releases, ot, horasOT);
+                              if (fs.length === 0) return <span className="text-muted-foreground/50">—</span>;
+                              return (
+                                <div className="flex flex-wrap gap-0.5 justify-center">
+                                  {fs.map((f) => {
+                                    const selected = ot.feriadoDates.includes(f);
+                                    return (
+                                      <button
+                                        key={f}
+                                        title={selected ? "Clique para bloquear" : "Clique para trabalhar neste feriado"}
+                                        onClick={() => {
+                                          const next = selected
+                                            ? ot.feriadoDates.filter((d) => d !== f)
+                                            : [...ot.feriadoDates, f];
+                                          const newOT = { ...ot, feriadoDates: next }; onUpdateAtividade(pacote.id, ativ.id, "overtime", newOT);
+                                        }}
+                                        className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium tabular-nums cursor-pointer transition-colors ${
+                                          selected
+                                            ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                                            : "bg-red-100 text-red-700 hover:bg-red-200"
+                                        }`}
+                                      >
+                                        {f}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
+                          </td>
+                        )}
 
-                        {}
-                        <td className="px-2 py-1 text-center border-r border-border/40">
-                          {(() => {
-                            const fs = calcFeriadosNoPeriodo(ativ.inicio, ativ.horas, feriados, releases, ot, horasOT);
-                            if (fs.length === 0) return <span className="text-muted-foreground/50">—</span>;
-                            return (
-                              <div className="flex flex-wrap gap-0.5 justify-center">
-                                {fs.map((f) => {
-                                  const selected = ot.feriadoDates.includes(f);
-                                  return (
-                                    <button
-                                      key={f}
-                                      title={selected ? "Clique para bloquear" : "Clique para trabalhar neste feriado"}
-                                      onClick={() => {
-                                        const next = selected
-                                          ? ot.feriadoDates.filter((d) => d !== f)
-                                          : [...ot.feriadoDates, f];
-                                        const newOT = { ...ot, feriadoDates: next }; onUpdateAtividade(pacote.id, ativ.id, "overtime", newOT); cascadeFrom(pacote, idx, { overtime: newOT });
-                                      }}
-                                      className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium tabular-nums cursor-pointer transition-colors ${
-                                        selected
-                                          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                                          : "bg-red-100 text-red-700 hover:bg-red-200"
-                                      }`}
-                                    >
-                                      {f}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            );
-                          })()}
-                        </td>
+                        {groupInfo.isFirstInGroup && (
+                          <td rowSpan={groupInfo.groupSize} className="px-2 py-1 text-center border-r border-border/40 align-middle">
+                            {(() => {
+                              const ws = calcFimDeSemanaNoPeriodo(ativ.inicio, ativ.horas, feriados, releases, ot, horasOT);
+                              if (ws.length === 0) return <span className="text-muted-foreground/50">—</span>;
+                              return (
+                                <div className="flex flex-wrap gap-0.5 justify-center">
+                                  {ws.map((w) => {
+                                    const selected = ot.fimDeSemanaDates.includes(w);
+                                    const dateW = parseDateBR(w);
+                                    const isReleaseSunday = isValidDate(dateW) && dateW.getDay() === 0 && (
+                                      releases.includes(w) ||
+                                      releases.includes(formatBR(addDays(dateW, 1)))
+                                    );
+                                    return (
+                                      <button
+                                        key={w}
+                                        title={selected ? "Clique para bloquear" : "Clique para trabalhar neste dia"}
+                                        onClick={() => {
+                                          const next = selected
+                                            ? ot.fimDeSemanaDates.filter((d) => d !== w)
+                                            : [...ot.fimDeSemanaDates, w];
+                                          const newOT = { ...ot, fimDeSemanaDates: next }; onUpdateAtividade(pacote.id, ativ.id, "overtime", newOT);
+                                        }}
+                                        className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium tabular-nums cursor-pointer transition-colors ${
+                                          selected
+                                            ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                                            : isReleaseSunday
+                                            ? "bg-blue-300 text-blue-900 hover:bg-blue-400"
+                                            : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                        }`}
+                                      >
+                                        {w}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
+                          </td>
+                        )}
 
-                        {}
-                        <td className="px-2 py-1 text-center border-r border-border/40">
-                          {(() => {
-                            const ws = calcFimDeSemanaNoPeriodo(ativ.inicio, ativ.horas, feriados, releases, ot, horasOT);
-                            if (ws.length === 0) return <span className="text-muted-foreground/50">—</span>;
-                            return (
-                              <div className="flex flex-wrap gap-0.5 justify-center">
-                                {ws.map((w) => {
-                                  const selected = ot.fimDeSemanaDates.includes(w);
-                                  const dateW = parseDateBR(w);
-                                  const isReleaseSunday = isValidDate(dateW) && dateW.getDay() === 0 && (
-                                    releases.includes(w) ||
-                                    releases.includes(formatBR(addDays(dateW, 1)))
-                                  );
-                                  return (
-                                    <button
-                                      key={w}
-                                      title={selected ? "Clique para bloquear" : "Clique para trabalhar neste dia"}
-                                      onClick={() => {
-                                        const next = selected
-                                          ? ot.fimDeSemanaDates.filter((d) => d !== w)
-                                          : [...ot.fimDeSemanaDates, w];
-                                        const newOT = { ...ot, fimDeSemanaDates: next }; onUpdateAtividade(pacote.id, ativ.id, "overtime", newOT); cascadeFrom(pacote, idx, { overtime: newOT });
-                                      }}
-                                      className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium tabular-nums cursor-pointer transition-colors ${
-                                        selected
-                                          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                                          : isReleaseSunday
-                                          ? "bg-blue-300 text-blue-900 hover:bg-blue-400"
-                                          : "bg-blue-100 text-blue-700 hover:bg-blue-200"
-                                      }`}
-                                    >
-                                      {w}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            );
-                          })()}
-                        </td>
-
-                        {}
-                        <td className="px-2 py-1 text-center border-r border-border/40">
-                          {(() => {
-                            const ts = calcTombamentosNoPeriodo(ativ.inicio, ativ.horas, feriados, releases, ot, horasOT);
-                            if (ts.length === 0) return <span className="text-muted-foreground/50">—</span>;
-                            return (
-                              <div className="flex flex-wrap gap-0.5 justify-center">
-                                {ts.map((t) => {
-                                  const selected = ot.tombamentoDates.includes(t);
-                                  return (
-                                    <button
-                                      key={t}
-                                      title={selected ? "Clique para bloquear" : "Clique para trabalhar neste dia"}
-                                      onClick={() => {
-                                        const next = selected
-                                          ? ot.tombamentoDates.filter((d) => d !== t)
-                                          : [...ot.tombamentoDates, t];
-                                        const newOT = { ...ot, tombamentoDates: next }; onUpdateAtividade(pacote.id, ativ.id, "overtime", newOT); cascadeFrom(pacote, idx, { overtime: newOT });
-                                      }}
-                                      className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium tabular-nums cursor-pointer transition-colors ${
-                                        selected
-                                          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                                          : "bg-orange-100 text-orange-700 hover:bg-orange-200"
-                                      }`}
-                                    >
-                                      {t}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            );
-                          })()}
-                        </td>
+                        {groupInfo.isFirstInGroup && (
+                          <td rowSpan={groupInfo.groupSize} className="px-2 py-1 text-center border-r border-border/40 align-middle">
+                            {(() => {
+                              const ts = calcTombamentosNoPeriodo(ativ.inicio, ativ.horas, feriados, releases, ot, horasOT);
+                              if (ts.length === 0) return <span className="text-muted-foreground/50">—</span>;
+                              return (
+                                <div className="flex flex-wrap gap-0.5 justify-center">
+                                  {ts.map((t) => {
+                                    const selected = ot.tombamentoDates.includes(t);
+                                    return (
+                                      <button
+                                        key={t}
+                                        title={selected ? "Clique para bloquear" : "Clique para trabalhar neste dia"}
+                                        onClick={() => {
+                                          const next = selected
+                                            ? ot.tombamentoDates.filter((d) => d !== t)
+                                            : [...ot.tombamentoDates, t];
+                                          const newOT = { ...ot, tombamentoDates: next }; onUpdateAtividade(pacote.id, ativ.id, "overtime", newOT);
+                                        }}
+                                        className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium tabular-nums cursor-pointer transition-colors ${
+                                          selected
+                                            ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                                            : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                                        }`}
+                                      >
+                                        {t}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
+                          </td>
+                        )}
 
                         {groupInfo.isFirstInGroup && (
                           <td rowSpan={groupInfo.groupSize} className="px-2 py-1 text-center border-r border-border/40 align-middle">
@@ -874,47 +520,49 @@ export function EstimativaPacotesTable({
                           </td>
                         )}
 
-                        {}
-                        <td className="px-2 py-1 text-center border-r border-border/40">
-                          <span className={`inline-block px-2 py-0.5 rounded text-xs tabular-nums font-semibold ${diasOvertimeCalc > 0 ? "bg-purple-100 text-purple-800" : "text-muted-foreground"}`}>
-                            {diasOvertimeCalc > 0 ? diasOvertimeCalc : "—"}
-                          </span>
-                        </td>
+                        {groupInfo.isFirstInGroup && (
+                          <td rowSpan={groupInfo.groupSize} className="px-2 py-1 text-center border-r border-border/40 align-middle">
+                            <span className={`inline-block px-2 py-0.5 rounded text-xs tabular-nums font-semibold ${diasOvertimeCalc > 0 ? "bg-purple-100 text-purple-800" : "text-muted-foreground"}`}>
+                              {diasOvertimeCalc > 0 ? diasOvertimeCalc : "—"}
+                            </span>
+                          </td>
+                        )}
 
-                        {}
-                        <td className="px-1 py-1 text-center border-r border-border/40">
-                          <div className="flex items-center justify-center gap-0.5">
-                            <button
-                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-colors"
-                              onClick={() => { const v = Math.max(0, horasOT - 1); onUpdateAtividade(pacote.id, ativ.id, "horasOvertime", v); cascadeFrom(pacote, idx, { horasOvertime: v }); }}
-                            >
-                              <Minus className="h-2.5 w-2.5" />
-                            </button>
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
-                              className={`w-12 px-1 py-0.5 rounded text-xs outline-none border text-center tabular-nums font-medium ${
-                                focusedCell === `horasot-${ativ.id}`
-                                  ? "border-primary bg-background ring-1 ring-primary"
-                                  : horasOT > 0
-                                  ? "border-transparent bg-purple-50 text-purple-700 hover:border-purple-200"
-                                  : "border-transparent bg-transparent hover:border-border/40"
-                              }`}
-                              value={horasOT || ""}
-                              placeholder="0"
-                              onChange={(e) => { const v = Math.max(0, Math.round(Number(e.target.value))); onUpdateAtividade(pacote.id, ativ.id, "horasOvertime", v); cascadeFrom(pacote, idx, { horasOvertime: v }); }}
-                              onFocus={() => setFocusedCell(`horasot-${ativ.id}`)}
-                              onBlur={() => setFocusedCell(null)}
-                            />
-                            <button
-                              className="w-5 h-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-colors"
-                              onClick={() => { const v = horasOT + 1; onUpdateAtividade(pacote.id, ativ.id, "horasOvertime", v); cascadeFrom(pacote, idx, { horasOvertime: v }); }}
-                            >
-                              <Plus className="h-2.5 w-2.5" />
-                            </button>
-                          </div>
-                        </td>
+                        {groupInfo.isFirstInGroup && (
+                          <td rowSpan={groupInfo.groupSize} className="px-1 py-1 text-center border-r border-border/40 align-middle">
+                            <div className="flex items-center justify-center gap-0.5">
+                              <button
+                                className="w-5 h-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-colors"
+                                onClick={() => { const v = Math.max(0, horasOT - 1); onUpdateAtividade(pacote.id, ativ.id, "horasOvertime", v); }}
+                              >
+                                <Minus className="h-2.5 w-2.5" />
+                              </button>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                className={`w-12 px-1 py-0.5 rounded text-xs outline-none border text-center tabular-nums font-medium ${
+                                  focusedCell === `horasot-${ativ.id}`
+                                    ? "border-primary bg-background ring-1 ring-primary"
+                                    : horasOT > 0
+                                    ? "border-transparent bg-purple-50 text-purple-700 hover:border-purple-200"
+                                    : "border-transparent bg-transparent hover:border-border/40"
+                                }`}
+                                value={horasOT || ""}
+                                placeholder="0"
+                                onChange={(e) => { const v = Math.max(0, Math.round(Number(e.target.value))); onUpdateAtividade(pacote.id, ativ.id, "horasOvertime", v); }}
+                                onFocus={() => setFocusedCell(`horasot-${ativ.id}`)}
+                                onBlur={() => setFocusedCell(null)}
+                              />
+                              <button
+                                className="w-5 h-5 flex items-center justify-center rounded hover:bg-accent text-muted-foreground transition-colors"
+                                onClick={() => { const v = horasOT + 1; onUpdateAtividade(pacote.id, ativ.id, "horasOvertime", v); }}
+                              >
+                                <Plus className="h-2.5 w-2.5" />
+                              </button>
+                            </div>
+                          </td>
+                        )}
 
                         {groupInfo.isFirstInGroup && (
                           <td rowSpan={groupInfo.groupSize} className="px-2 py-1 text-center border-r border-border/40 align-middle">
@@ -924,12 +572,13 @@ export function EstimativaPacotesTable({
                           </td>
                         )}
 
-                        {}
-                        <td className="px-2 py-1 text-center border-r border-border/40 tabular-nums">
-                          <span className={terminoCalc !== "—" ? "text-foreground font-medium" : "text-muted-foreground"}>
-                            {terminoCalc}
-                          </span>
-                        </td>
+                        {groupInfo.isFirstInGroup && (
+                          <td rowSpan={groupInfo.groupSize} className="px-2 py-1 text-center border-r border-border/40 align-middle tabular-nums">
+                            <span className={terminoCalc !== "—" ? "text-foreground font-medium" : "text-muted-foreground"}>
+                              {terminoCalc}
+                            </span>
+                          </td>
+                        )}
 
                         {}
                         <td className="px-2 py-1 text-center">

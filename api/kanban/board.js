@@ -38,6 +38,7 @@ export default async function handler(req, res) {
       dias_impactados: 'diasImpactados',
       chg_dias: 'chgDias',
       esteira_pre_prod: 'esteiraPreProd',
+      cronograma_real: 'cronogramaReal',
       parent_id: 'parentId',
       card_id: 'cardId',
       criado_em: 'criadoEm',

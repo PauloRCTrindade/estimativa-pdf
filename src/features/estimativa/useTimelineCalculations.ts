@@ -26,7 +26,7 @@ import {
   calcDiasOvertimeTotal,
   calcTotalDiasAtuacaoPacote,
   type Pacote,
-} from "@/components/estimativa-pacotes";
+} from "@/utils/schedule";
 
 const DEFAULT_OVERTIME = { tombamentoDates: [] as string[], feriadoDates: [] as string[], fimDeSemanaDates: [] as string[] };
 
@@ -163,13 +163,17 @@ export function useTimelineCalculations(form: AppForm, atividades: any[], pacote
   }, [pacotes, feriados, releases, diasParados]);
 
   const totalHorasOvertime = useMemo(() => {
-    return pacotes.reduce((acc, pacote) =>
-      acc + pacote.atividades.reduce((sum, a) => {
+    return pacotes.reduce((acc, pacote) => {
+      const horasPorEtapa = new Map<string, number>();
+      for (const a of pacote.atividades) {
+        const etapa = String(a.etapa || "1");
+        if (horasPorEtapa.has(etapa)) continue;
         const ot = a.overtime ?? { tombamentoDates: [], feriadoDates: [], fimDeSemanaDates: [] };
         const horasOT = a.horasOvertime ?? 0;
-        return sum + calcDiasOvertimeTotal(a.inicio, a.horas, horasOT, feriados, releases, ot) * 8;
-      }, 0)
-    , 0);
+        horasPorEtapa.set(etapa, calcDiasOvertimeTotal(a.inicio, a.horas, horasOT, feriados, releases, ot) * 8);
+      }
+      return acc + Array.from(horasPorEtapa.values()).reduce((sum, v) => sum + v, 0);
+    }, 0);
   }, [pacotes, feriados, releases]);
 
   const dataInicioPacotes = useMemo(() => {
@@ -205,7 +209,9 @@ export function useTimelineCalculations(form: AppForm, atividades: any[], pacote
     for (const pacote of pacotes) {
       for (const a of pacote.atividades) {
         const color = getTimelineColor(a.tipo);
-        const ot = a.overtime || DEFAULT_OVERTIME;
+        const ot = a.overtime
+          ? { ...DEFAULT_OVERTIME, ...a.overtime }
+          : DEFAULT_OVERTIME;
         const horasOT = a.horasOvertime ?? 0;
         const terminoStr = calcularTermino(a.inicio, Number(a.horas || 0), feriados, releases, ot, horasOT, diasParados);
         const inicioDate = parseDateBR(a.inicio);
@@ -322,7 +328,7 @@ export function useTimelineCalculations(form: AppForm, atividades: any[], pacote
     const DEFAULT_OT = { tombamentoDates: [] as string[], feriadoDates: [] as string[], fimDeSemanaDates: [] as string[] };
     const atividadesCalculadas = pacotes.flatMap((pacote) =>
       pacote.atividades.map((a) => {
-        const terminoStr = calcularTermino(a.inicio, Number(a.horas || 0), feriados, releases, a.overtime || DEFAULT_OT, Number(a.horasOvertime || 0), diasParados);
+        const terminoStr = calcularTermino(a.inicio, Number(a.horas || 0), feriados, releases, a.overtime ? { ...DEFAULT_OT, ...a.overtime } : DEFAULT_OT, Number(a.horasOvertime || 0), diasParados);
         const dias = Math.max(1, Math.ceil(Number(a.horas || 0) / 8));
         return {
           id: a.id,

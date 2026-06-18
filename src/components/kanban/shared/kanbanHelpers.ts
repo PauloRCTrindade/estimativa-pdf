@@ -20,7 +20,7 @@ import {
   createId,
 } from "@/utils";
 import { COLORS } from "@/styles";
-import { calcularTermino } from "@/components/estimativa-pacotes";
+import { calcularTermino, type Pacote } from "@/utils/schedule";
 import type { Estimativa } from "@/types";
 
 const DEFAULT_OVERTIME = { tombamentoDates: [] as string[], feriadoDates: [] as string[], fimDeSemanaDates: [] as string[] };
@@ -205,9 +205,8 @@ function buildSpecialWorkDatesMap(
   releases: string[],
   paradoRanges: { start: Date; end: Date }[]
 ): Record<string, string> {
-  const map: Record<string, string> = {};
   const atividadesLegado = Array.isArray(estimate.atividades) ? estimate.atividades : [];
-  const pacotes = Array.isArray(estimate.pacotes) ? estimate.pacotes : [];
+  const pacotes = Array.isArray(estimate.pacotes) ? (estimate.pacotes as Pacote[]) : [];
 
   const allAtividades: Array<{
     tipo: string;
@@ -227,7 +226,7 @@ function buildSpecialWorkDatesMap(
       Array.isArray(p.atividades)
         ? p.atividades.map((a) => ({
             tipo: normalizeTaskType(a.tipo),
-            inicio: a.inicio || a.dataInicio || "",
+            inicio: a.inicio || "",
             horas: Number(a.horas || 0),
             horasOvertime: Number(a.horasOvertime || 0),
             overtime: a.overtime || DEFAULT_OVERTIME,
@@ -236,7 +235,24 @@ function buildSpecialWorkDatesMap(
     ),
   ];
 
-  for (const a of allAtividades) {
+  return buildSpecialWorkDatesMapFromAtividades(allAtividades, feriados, releases, paradoRanges);
+}
+
+function buildSpecialWorkDatesMapFromAtividades(
+  atividades: Array<{
+    tipo: string;
+    inicio: string;
+    horas: number;
+    horasOvertime?: number;
+    overtime?: { tombamentoDates?: string[]; feriadoDates?: string[]; fimDeSemanaDates?: string[] };
+  }>,
+  feriados: string[],
+  releases: string[],
+  paradoRanges: { start: Date; end: Date }[]
+): Record<string, string> {
+  const map: Record<string, string> = {};
+
+  for (const a of atividades) {
     if (!a.inicio || a.horas <= 0) continue;
     const color = getTimelineColor(a.tipo);
     const ot = { ...DEFAULT_OVERTIME, ...(a.overtime || {}) };
@@ -364,7 +380,8 @@ export function buildRealCalendar(
   chgDias: number | string | undefined,
   esteiraPreProd: string | undefined,
   feriadosExternos?: string[],
-  releasesExternos?: string[]
+  releasesExternos?: string[],
+  realSchedule?: Pacote[]
 ): RealCalendarResult {
   const empty: RealCalendarResult = { rows: [], rangeStart: null, rangeEnd: null, calculatedEndDate: null, atividadesCalculadas: [] };
   if (!dataRealInicio) return empty;
@@ -375,24 +392,46 @@ export function buildRealCalendar(
   const paradaRanges = parseDiasParadosList(diasImpactados || "");
   const releaseDate = estimate.releaseAlvo ? parseDateBR(estimate.releaseAlvo) : new Date(NaN);
   const chgDates = getChgDates(releaseDate, Number(chgDias || 0), holidayDates);
-  const specialWorkDates = buildSpecialWorkDatesMap(estimate, holidayDates, releaseDates, paradaRanges);
-
   const realStartDate = parseDateBR(dataRealInicio);
   if (!isValidDate(realStartDate)) return empty;
 
-  const estimateRanges = getEstimateActivityRanges(estimate, holidayDates, releaseDates, paradaRanges);
-  const estimateStartDates = estimateRanges.map((a) => a.inicio).filter(isValidDate);
-  if (estimateStartDates.length === 0) return empty;
-  const estimateStartDate = new Date(Math.min(...estimateStartDates.map((d) => d.getTime())));
-  const offsetDays = Math.round((realStartDate.getTime() - estimateStartDate.getTime()) / (1000 * 60 * 60 * 24));
+  let realRanges: ActivityRange[];
+  let realSpecialWorkDates: Record<string, string>;
 
-  const realRanges = estimateRanges.map((a) => ({
-    ...a,
-    inicio: addDays(a.inicio, offsetDays),
-    termino: addDays(a.termino, offsetDays),
-  }));
+  if (realSchedule && realSchedule.length > 0) {
+    realRanges = getRealActivityRanges(realSchedule, holidayDates, releaseDates, paradaRanges);
+    realSpecialWorkDates = buildSpecialWorkDatesMapFromAtividades(
+      realSchedule.flatMap((p) =>
+        Array.isArray(p.atividades)
+          ? p.atividades.map((a) => ({
+              tipo: normalizeTaskType(a.tipo),
+              inicio: a.inicio || "",
+              horas: Number(a.horas || 0),
+              horasOvertime: Number(a.horasOvertime || 0),
+              overtime: a.overtime || DEFAULT_OVERTIME,
+            }))
+          : []
+      ),
+      holidayDates,
+      releaseDates,
+      paradaRanges
+    );
+  } else {
+    const specialWorkDates = buildSpecialWorkDatesMap(estimate, holidayDates, releaseDates, paradaRanges);
+    const estimateRanges = getEstimateActivityRanges(estimate, holidayDates, releaseDates, paradaRanges);
+    const estimateStartDates = estimateRanges.map((a) => a.inicio).filter(isValidDate);
+    if (estimateStartDates.length === 0) return empty;
+    const estimateStartDate = new Date(Math.min(...estimateStartDates.map((d) => d.getTime())));
+    const offsetDays = Math.round((realStartDate.getTime() - estimateStartDate.getTime()) / (1000 * 60 * 60 * 24));
 
-  const realSpecialWorkDates = applyOffsetToSpecialWorkDates(specialWorkDates, offsetDays);
+    realRanges = estimateRanges.map((a) => ({
+      ...a,
+      inicio: addDays(a.inicio, offsetDays),
+      termino: addDays(a.termino, offsetDays),
+    }));
+
+    realSpecialWorkDates = applyOffsetToSpecialWorkDates(specialWorkDates, offsetDays);
+  }
 
   const calculatedEndDate = new Date(Math.max(...realRanges.map((a) => a.termino.getTime())));
   const endDate = isValidDate(releaseDate) && releaseDate > calculatedEndDate ? releaseDate : calculatedEndDate;
@@ -442,6 +481,40 @@ export function buildRealCalendar(
   }
 
   return { rows, rangeStart: realStartDate, rangeEnd: endDate, calculatedEndDate, atividadesCalculadas: realRanges.map((a) => ({ ...a, dias: 0 })) };
+}
+
+function getRealActivityRanges(
+  pacotes: Pacote[],
+  feriados: string[],
+  releases: string[],
+  paradoRanges: { start: Date; end: Date }[]
+): ActivityRange[] {
+  const ranges: ActivityRange[] = [];
+  for (const pacote of pacotes) {
+    if (!Array.isArray(pacote.atividades)) continue;
+    for (const a of pacote.atividades) {
+      const inicioStr = a.inicio || "";
+      if (!inicioStr) continue;
+      const horas = Number(a.horas || 0);
+      const horasOT = Number(a.horasOvertime || 0);
+      const ot = { ...DEFAULT_OVERTIME, ...(a.overtime || {}) };
+      const terminoStr = calcularTermino(inicioStr, horas, feriados, releases, ot, horasOT, paradoRanges);
+      const inicioDate = parseDateBR(inicioStr);
+      const terminoDate = parseDateBR(terminoStr);
+      if (!isValidDate(inicioDate) || !isValidDate(terminoDate)) continue;
+      const tipo = normalizeTaskType(a.tipo);
+      ranges.push({
+        id: a.id,
+        nome: `${pacote.nome ? `${pacote.nome}: ` : ""}${a.nome || a.demanda || ""}`,
+        tipo,
+        etapa: String(a.etapa || "1"),
+        inicio: inicioDate,
+        termino: terminoDate,
+        color: getTimelineColor(tipo),
+      });
+    }
+  }
+  return ranges;
 }
 
 export function diffDiasCorridos(data1: string | Date | undefined, data2: string | Date | undefined): number | null {

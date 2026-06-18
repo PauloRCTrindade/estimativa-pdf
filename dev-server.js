@@ -258,7 +258,7 @@ const kanbanKeyMap = {
   estimate_id: 'estimateId', column_id: 'columnId', due_date: 'dueDate',
   is_template: 'isTemplate', is_default_template: 'isDefaultTemplate', is_archived: 'isArchived', completed: 'completed',
   completed_estimate_task_ids: 'completedEstimateTaskIds',
-  data_real_inicio: 'dataRealInicio', dias_impactados: 'diasImpactados', chg_dias: 'chgDias', esteira_pre_prod: 'esteiraPreProd',
+  data_real_inicio: 'dataRealInicio', dias_impactados: 'diasImpactados', chg_dias: 'chgDias', esteira_pre_prod: 'esteiraPreProd', cronograma_real: 'cronogramaReal',
   parent_id: 'parentId', card_id: 'cardId', criado_em: 'criadoEm', atualizado_em: 'atualizadoEm',
 };
 
@@ -344,14 +344,26 @@ app.get('/api/kanban/cards', async (req, res) => {
 });
 app.post('/api/kanban/cards', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('kanban_cards').insert(camelToSnakeCase(req.body)).select().single();
+    // Preserva a estrutura interna de cronogramaReal (JSONB) sem converter recursivamente.
+    const { cronogramaReal, ...restBody } = req.body || {};
+    const convertedBody = camelToSnakeCase(restBody);
+    if (cronogramaReal !== undefined) {
+      convertedBody.cronograma_real = cronogramaReal;
+    }
+    const { data, error } = await supabase.from('kanban_cards').insert(convertedBody).select().single();
     if (error) throw error;
     res.status(201).json(toCamelKanban(data));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/kanban/cards/:id', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('kanban_cards').update(camelToSnakeCase(req.body)).eq('id', req.params.id).select().single();
+    // Preserva a estrutura interna de cronogramaReal (JSONB) sem converter recursivamente.
+    const { cronogramaReal, ...restBody } = req.body || {};
+    const convertedBody = camelToSnakeCase(restBody);
+    if (cronogramaReal !== undefined) {
+      convertedBody.cronograma_real = cronogramaReal;
+    }
+    const { data, error } = await supabase.from('kanban_cards').update(convertedBody).eq('id', req.params.id).select().single();
     if (error) throw error;
     res.json(toCamelKanban(data));
   } catch (err) { res.status(500).json({ error: err.message }); }

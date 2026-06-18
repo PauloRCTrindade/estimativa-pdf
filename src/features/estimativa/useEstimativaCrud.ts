@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import type { AppForm, Estimativa } from "@/types";
 import { notify } from "@/components/ui/toast-notification";
 import { createId, normalizeAtividades, defaultForm } from "@/utils";
-import type { Pacote } from "@/components/estimativa-pacotes";
+import { type Pacote, normalizeAtividadesPorEtapa } from "@/utils/schedule";
 
 function converterData(dataDDMMYYYY: string): string {
   if (!dataDDMMYYYY) return "";
@@ -133,7 +133,7 @@ export function useEstimativaCrud(
                   },
                 }))
               : [],
-          }))
+          })).map((p) => ({ ...p, atividades: normalizeAtividadesPorEtapa(p.atividades) }))
         );
       }
       notify("Estimativa carregada.");

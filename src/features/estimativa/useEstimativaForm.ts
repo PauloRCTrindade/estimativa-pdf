@@ -8,7 +8,7 @@ import {
 } from "@/utils";
 import { STORAGE_KEY } from "@/data";
 import { notify } from "@/components/ui/toast-notification";
-import { type Pacote, type PacoteAtividade } from "@/components/estimativa-pacotes";
+import { type Pacote, type PacoteAtividade, normalizeAtividadesPorEtapa, normalizeEtapa } from "@/utils/schedule";
 
 export type SubTab = "informacoes" | "detalhamento" | "gerar-documento" | "visualizacao-impacto" | "salvar-estimativa";
 export type ViewMode = "abas" | "pagina-unica";
@@ -116,36 +116,87 @@ export function useEstimativaForm() {
   }
 
   function addAtividadePacote(pacoteId: string) {
+    const last = pacotes.find((p) => p.id === pacoteId)?.atividades.at(-1);
     const nova: PacoteAtividade = {
       id: createId(),
       demanda: "",
       nome: "Nova atividade",
-      horas: 0,
-      horasOvertime: 0,
-      tipo: "desenvolvimento",
-      etapa: "1",
-      inicio: "",
-      overtime: { tombamentoDates: [], feriadoDates: [], fimDeSemanaDates: [] },
+      horas: last ? last.horas : 0,
+      horasOvertime: last ? last.horasOvertime : 0,
+      tipo: last ? last.tipo : "desenvolvimento",
+      etapa: last ? last.etapa : "1",
+      inicio: last ? last.inicio : "",
+      overtime: last && last.overtime
+        ? { ...last.overtime }
+        : { tombamentoDates: [], feriadoDates: [], fimDeSemanaDates: [] },
     };
     setPacotes((prev) =>
       prev.map((p) =>
-        p.id === pacoteId ? { ...p, atividades: [...p.atividades, nova] } : p
+        p.id === pacoteId
+          ? { ...p, atividades: normalizeAtividadesPorEtapa([...p.atividades, nova]) }
+          : p
       )
     );
   }
 
+  // Campos de planejamento compartilhados entre todas as tarefas da mesma etapa.
+  // A etapa em si é o agrupador e não deve ser propagada.
+  const sharedStageFields = new Set(["inicio", "horas", "horasOvertime", "overtime"]);
+
   function updateAtividadePacote(pacoteId: string, atividadeId: string, field: string, value: unknown) {
     setPacotes((prev) =>
-      prev.map((p) =>
-        p.id === pacoteId
-          ? {
-              ...p,
-              atividades: p.atividades.map((a) =>
-                a.id === atividadeId ? { ...a, [field]: value } : a
-              ),
-            }
-          : p
-      )
+      prev.map((p) => {
+        if (p.id !== pacoteId) return p;
+
+        const target = p.atividades.find((a) => a.id === atividadeId);
+        if (!target) return p;
+
+        let nextAtividades = [...p.atividades];
+
+        // Ao mudar uma tarefa para uma etapa já existente, ela adota os valores
+        // de planejamento dessa etapa e é reposicionada junto ao grupo.
+        if (field === "etapa") {
+          const newEtapa = normalizeEtapa(value);
+          const reference = nextAtividades.find(
+            (a) => a.id !== atividadeId && normalizeEtapa(a.etapa) === newEtapa
+          );
+          nextAtividades = nextAtividades.map((a) =>
+            a.id === atividadeId
+              ? {
+                  ...a,
+                  etapa: newEtapa,
+                  ...(reference
+                    ? {
+                        inicio: reference.inicio,
+                        horas: reference.horas,
+                        horasOvertime: reference.horasOvertime,
+                        overtime: reference.overtime,
+                      }
+                    : {}),
+                }
+              : a
+          );
+          return { ...p, atividades: normalizeAtividadesPorEtapa(nextAtividades) };
+        }
+
+        // Campos de planejamento são compartilhados por etapa: propagamos para
+        // todas as tarefas do mesmo grupo e sincronizamos a partir da tarefa
+        // que foi editada.
+        if (sharedStageFields.has(field)) {
+          nextAtividades = nextAtividades.map((a) =>
+            a.id === atividadeId || normalizeEtapa(a.etapa) === normalizeEtapa(target.etapa)
+              ? { ...a, [field]: value }
+              : a
+          );
+          return { ...p, atividades: normalizeAtividadesPorEtapa(nextAtividades, atividadeId) };
+        }
+
+        // Campos exclusivos da tarefa (nome, tipo, demanda) alteram apenas ela.
+        nextAtividades = nextAtividades.map((a) =>
+          a.id === atividadeId ? { ...a, [field]: value } : a
+        );
+        return { ...p, atividades: nextAtividades };
+      })
     );
   }
 
