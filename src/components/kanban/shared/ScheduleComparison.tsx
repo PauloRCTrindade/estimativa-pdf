@@ -95,7 +95,7 @@ export function ScheduleComparison({ estimate, card, realEnd, holidays = [], rel
                 label="Término previsto"
                 value={hasRealEnd ? formatDateBR(comparison.realEnd) : "—"}
               />
-              <ComparisonRow label="Subida em produção" value={formatDateBR(comparison.productionDate)} />
+              <ComparisonRow label="Subida em produção" value={formatDateBR(comparison.realProductionDate)} />
             </div>
           </div>
         </div>
@@ -103,7 +103,7 @@ export function ScheduleComparison({ estimate, card, realEnd, holidays = [], rel
         {/* Differences — abaixo */}
         <div className="flex w-full flex-col justify-start gap-4 rounded-md border border-border/60 bg-muted/30 p-3.5">
           <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Diferença</h4>
-          <div className="flex flex-col gap-4 sm:grid sm:grid-cols-3">
+          <div className="flex flex-col gap-4 sm:grid sm:grid-cols-2 lg:grid-cols-4">
             <ComparisonRow
               label="Início"
               value={formatDiffDays(comparison.diffStartDays)}
@@ -131,6 +131,19 @@ export function ScheduleComparison({ estimate, card, realEnd, holidays = [], rel
               )}
             />
             <ComparisonRow label="Janela CHG" value={formatChgWindow(comparison.chgWindow)} />
+            <ComparisonRow
+              label="Término × produção real"
+              value={formatDiffDays(comparison.diffRealEndProductionDays)}
+              valueClassName={cn(
+                comparison.diffRealEndProductionDays === null
+                  ? "text-muted-foreground"
+                  : comparison.diffRealEndProductionDays > 0
+                  ? "text-red-500"
+                  : comparison.diffRealEndProductionDays < 0
+                  ? "text-emerald-500"
+                  : "text-foreground"
+              )}
+            />
           </div>
         </div>
       </div>

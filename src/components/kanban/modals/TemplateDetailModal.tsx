@@ -7,7 +7,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
   Plus, Trash, CaretRight, Check, ListChecks,
@@ -130,25 +129,24 @@ export function TemplateDetailModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150" onClick={onClose} />
       <div
-        className="relative z-10 grid w-full max-w-[calc(100%-2rem)] gap-0 overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-2xl ring-1 ring-foreground/10 animate-in fade-in zoom-in-95 duration-200 sm:max-w-xl"
-        style={{ maxHeight: "90vh" }}
+        className="relative z-10 flex w-full max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-2xl ring-1 ring-foreground/10 animate-in fade-in zoom-in-95 duration-200 sm:max-w-xl max-h-[90vh]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b px-5 py-3">
-          <div className="flex items-center gap-1 overflow-hidden text-xs text-muted-foreground min-w-0">
+        <div className="flex shrink-0 items-center justify-between border-b px-5 py-3">
+          <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden text-xs text-muted-foreground">
             {view.type === "task" && (
               <button
                 onClick={goToParent}
-                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors shrink-0"
+                className="flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors shrink-0"
               >
                 <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate max-w-[240px] sm:max-w-[320px]">
+                <span className="truncate">
                   {view.path.length === 1 ? card.title : view.path[view.path.length - 2]?.title}
                 </span>
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <button
               onClick={() => {
                 if (onRequestDelete) {
@@ -172,11 +170,11 @@ export function TemplateDetailModal({
           </div>
         </div>
 
-        <ScrollArea className="max-h-[calc(90vh-60px)]">
-          <div
-            key={animationKey}
-            className="p-5 md:p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-200"
-          >
+        {/* Body */}
+        <div
+          key={animationKey}
+          className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden p-5 md:p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-200"
+        >
             {/* Title */}
             <div className="flex items-start gap-3">
               <div className="min-w-0 flex-1">
@@ -208,7 +206,7 @@ export function TemplateDetailModal({
                       setTitleDraft(displayTitle || "");
                       setEditingTitle(true);
                     }}
-                    className="text-lg font-semibold leading-snug cursor-text hover:bg-accent/40 rounded px-1 -ml-1 py-0.5 transition-colors"
+                    className="text-lg font-semibold leading-snug break-words cursor-text hover:bg-accent/40 rounded px-1 -ml-1 py-0.5 transition-colors"
                   >
                     {displayTitle || "Sem título"}
                   </h2>
@@ -293,7 +291,7 @@ export function TemplateDetailModal({
                         {task.completed && <Check weight="bold" className="h-2.5 w-2.5" />}
                       </button>
                       <div className="min-w-0 flex-1">
-                        <span className={cn("text-sm", task.completed && "text-muted-foreground line-through")}>
+                        <span className={cn("text-sm break-words", task.completed && "text-muted-foreground line-through")}>
                           {task.title}
                         </span>
                         {task.subtasks && task.subtasks.length > 0 && (
@@ -364,8 +362,7 @@ export function TemplateDetailModal({
                 )}
               </div>
             </div>
-          </div>
-        </ScrollArea>
+        </div>
       </div>
     </div>
   );

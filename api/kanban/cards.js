@@ -16,6 +16,7 @@ const keyMap = {
   chg_dias: 'chgDias',
   esteira_pre_prod: 'esteiraPreProd',
   cronograma_real: 'cronogramaReal',
+  real_production_date: 'realProductionDate',
   criado_em: 'criadoEm',
   atualizado_em: 'atualizadoEm',
 };

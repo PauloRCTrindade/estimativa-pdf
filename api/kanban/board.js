@@ -39,6 +39,7 @@ export default async function handler(req, res) {
       chg_dias: 'chgDias',
       esteira_pre_prod: 'esteiraPreProd',
       cronograma_real: 'cronogramaReal',
+      real_production_date: 'realProductionDate',
       parent_id: 'parentId',
       card_id: 'cardId',
       criado_em: 'criadoEm',

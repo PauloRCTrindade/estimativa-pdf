@@ -88,6 +88,7 @@ export interface KanbanCard {
   chgDias?: number;
   esteiraPreProd?: string;
   cronogramaReal?: Pacote[];
+  realProductionDate?: string;
 }
 
 export type AppForm = {

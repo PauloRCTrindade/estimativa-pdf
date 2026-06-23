@@ -962,7 +962,7 @@ export function KanbanPage({
                                   const estimate = estimativas.find((e) => e.id === card.estimateId && e.tipo === "estimativa-pacotes");
                                   if (!estimate) return null;
                                   const estimateCal = buildRealCalendar(estimate, estimate.inicio, estimate.diasParados, estimate.chgDias, estimate.esteiraPreProd, feriados, releases);
-                                  const realCal = buildRealCalendar(estimate, card.dataRealInicio, card.diasImpactados, card.chgDias, card.esteiraPreProd, feriados, releases);
+                                  const realCal = buildRealCalendar(estimate, card.dataRealInicio, card.diasImpactados, card.chgDias, card.esteiraPreProd, feriados, releases, card.cronogramaReal, card.realProductionDate);
                                   const diff = diffDiasCorridos(estimateCal.calculatedEndDate, realCal.calculatedEndDate);
                                   if (diff === null) return null;
                                   return (

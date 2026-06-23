@@ -381,7 +381,8 @@ export function buildRealCalendar(
   esteiraPreProd: string | undefined,
   feriadosExternos?: string[],
   releasesExternos?: string[],
-  realSchedule?: Pacote[]
+  realSchedule?: Pacote[],
+  realProductionDate?: string
 ): RealCalendarResult {
   const empty: RealCalendarResult = { rows: [], rangeStart: null, rangeEnd: null, calculatedEndDate: null, atividadesCalculadas: [] };
   if (!dataRealInicio) return empty;
@@ -390,7 +391,8 @@ export function buildRealCalendar(
   const releaseDates = releasesExternos ?? normalizeDateList(estimate.releases || "");
   const preprodRanges = parseDateRangeList(esteiraPreProd || "");
   const paradaRanges = parseDiasParadosList(diasImpactados || "");
-  const releaseDate = estimate.releaseAlvo ? parseDateBR(estimate.releaseAlvo) : new Date(NaN);
+  const productionDateStr = realProductionDate || estimate.releaseAlvo;
+  const releaseDate = productionDateStr ? parseDateBR(productionDateStr) : new Date(NaN);
   const chgDates = getChgDates(releaseDate, Number(chgDias || 0), holidayDates);
   const realStartDate = parseDateBR(dataRealInicio);
   if (!isValidDate(realStartDate)) return empty;
@@ -777,10 +779,12 @@ export interface ScheduleComparisonResult {
   estimatedStart: Date | null;
   estimatedEnd: Date | null;
   productionDate: Date | null;
+  realProductionDate: Date | null;
   realStart: Date | null;
   realEnd: Date | null;
   diffStartDays: number | null;
   diffEndDays: number | null;
+  diffRealEndProductionDays: number | null;
   chgWindow: { start: Date; end: Date } | null;
   chgStatus: CompareStatus;
   chgMessage: string;
@@ -797,6 +801,7 @@ export function calcScheduleComparison(
   const estimatedStart = getEstimatedStartDate(estimate);
   const estimatedEnd = getEstimatedEndDate(estimate, holidays, releases, estimate.diasParados);
   const productionDate = parseDateBR(estimate.releaseAlvo);
+  const realProductionDate = parseDateBR(card.realProductionDate ?? estimate.releaseAlvo);
   const realStart = parseDateBR(card.dataRealInicio);
   const realEndDate = typeof realEnd === "string" ? parseDateBR(realEnd) : realEnd;
 
@@ -810,20 +815,27 @@ export function calcScheduleComparison(
       ? Math.round((realEndDate.getTime() - estimatedEnd.getTime()) / (1000 * 60 * 60 * 24))
       : null;
 
-  const chgWindow = isValidDate(productionDate)
-    ? calcChgWindow(productionDate, card.chgDias ?? estimate.chgDias ?? 0, holidays)
+  const diffRealEndProductionDays =
+    isValidDate(realEndDate) && isValidDate(realProductionDate)
+      ? Math.round((realEndDate.getTime() - realProductionDate.getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+
+  const chgWindow = isValidDate(realProductionDate)
+    ? calcChgWindow(realProductionDate, card.chgDias ?? estimate.chgDias ?? 0, holidays)
     : null;
 
-  const { status, message, detail } = getChgImpactStatus(realEndDate, productionDate, chgWindow);
+  const { status, message, detail } = getChgImpactStatus(realEndDate, realProductionDate, chgWindow);
 
   return {
     estimatedStart,
     estimatedEnd,
     productionDate: isValidDate(productionDate) ? productionDate : null,
+    realProductionDate: isValidDate(realProductionDate) ? realProductionDate : null,
     realStart: isValidDate(realStart) ? realStart : null,
     realEnd: isValidDate(realEndDate) ? realEndDate : null,
     diffStartDays,
     diffEndDays,
+    diffRealEndProductionDays,
     chgWindow,
     chgStatus: status,
     chgMessage: message,

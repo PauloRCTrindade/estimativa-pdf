@@ -15,7 +15,6 @@ import { ScheduleComparison } from "@/components/kanban/shared/ScheduleCompariso
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DatePicker } from "@/components/date-picker";
 import { TagSelector } from "@/components/kanban/shared/TagSelector";
@@ -291,10 +290,12 @@ export function TaskDetailModal({
             card.chgDias,
             card.esteiraPreProd,
             feriados,
-            releases
+            releases,
+            card.cronogramaReal,
+            card.realProductionDate
           )
         : null,
-    [estimate, card.dataRealInicio, card.diasImpactados, card.chgDias, card.esteiraPreProd, feriados, releases]
+    [estimate, card.dataRealInicio, card.diasImpactados, card.chgDias, card.esteiraPreProd, card.cronogramaReal, card.realProductionDate, feriados, releases]
   );
 
   const isTaskView = view.type === "task" && currentTask;
@@ -326,25 +327,24 @@ export function TaskDetailModal({
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150" onClick={onClose} />
       {/* Modal */}
       <div
-        className="relative z-10 grid w-full max-w-[calc(100%-2rem)] gap-0 overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-2xl ring-1 ring-foreground/10 animate-in fade-in zoom-in-95 duration-200 sm:max-w-3xl"
-        style={{ maxHeight: "90vh" }}
+        className="relative z-10 flex w-full max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-2xl ring-1 ring-foreground/10 animate-in fade-in zoom-in-95 duration-200 sm:max-w-3xl max-h-[90vh]"
       >
         {/* Header: Parent navigation + close + template controls */}
-        <div className="flex items-center justify-between border-b border-border/60 bg-muted/30 px-5 py-3">
-          <div className="flex items-center gap-1 overflow-hidden text-xs text-muted-foreground min-w-0">
+        <div className="flex shrink-0 items-center justify-between border-b border-border/60 bg-muted/30 px-5 py-3">
+          <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden text-xs text-muted-foreground">
             {view.type === "task" && (
               <button
                 onClick={goToParent}
-                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors shrink-0"
+                className="flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors shrink-0"
               >
                 <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate max-w-[240px] sm:max-w-[320px]">
+                <span className="truncate">
                   {view.path.length === 1 ? card.title : view.path[view.path.length - 2]?.title}
                 </span>
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {!card.isTemplate && onMoveCard && (
               <div className="flex items-center gap-1.5 rounded-md border border-border/60 bg-background px-2 py-1 text-xs text-foreground transition-colors hover:bg-accent/40">
                 <SquareSplitHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
@@ -419,13 +419,13 @@ export function TaskDetailModal({
           </div>
         </div>
 
-        <ScrollArea className="max-h-[calc(90vh-60px)]">
-          <div
-            key={animationKey}
-            className="grid grid-cols-1 md:grid-cols-[1fr_260px] animate-in fade-in slide-in-from-bottom-2 duration-200"
-          >
-            {/* ═════ Main Column ═════ */}
-            <div className="p-5 md:p-6 space-y-6">
+        {/* Body */}
+        <div
+          key={animationKey}
+          className="flex-1 grid grid-cols-1 md:grid-cols-[1fr_260px] min-h-0 min-w-0 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200"
+        >
+          {/* ═════ Main Column ═════ */}
+          <div className="p-5 md:p-6 space-y-6 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden">
               {/* Title */}
               <div className="flex items-start gap-3">
                 {isTaskView ? (
@@ -503,7 +503,7 @@ export function TaskDetailModal({
                         }
                       }}
                       className={cn(
-                        "text-lg font-semibold leading-snug transition-colors",
+                        "text-lg font-semibold leading-snug break-words transition-colors",
                         isTaskView && "cursor-text hover:bg-accent/40 rounded px-1 -ml-1 py-0.5",
                         (displayCompleted || (!isTaskView && card.completed)) && "text-muted-foreground line-through"
                       )}
@@ -557,7 +557,7 @@ export function TaskDetailModal({
                     )}
                   >
                     <Note className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className={cn("leading-relaxed", !displayDescription && "italic")}>
+                    <span className={cn("leading-relaxed break-words", !displayDescription && "italic")}>
                       {displayDescription || "Adicionar descrição"}
                     </span>
                   </button>
@@ -688,7 +688,7 @@ export function TaskDetailModal({
                             {task.completed && <Check weight="bold" className="h-2.5 w-2.5" />}
                           </button>
                           <div className="min-w-0 flex-1">
-                            <span className={cn("text-sm", task.completed && "text-muted-foreground line-through")}>
+                            <span className={cn("text-sm break-words", task.completed && "text-muted-foreground line-through")}>
                               {task.title}
                             </span>
                             {(task.dueDate || (task.subtasks && task.subtasks.length > 0)) && (
@@ -936,7 +936,7 @@ export function TaskDetailModal({
                                 {formatDateBR(comment.createdAt)}
                               </span>
                             </div>
-                            <p className="mt-0.5 text-sm leading-relaxed whitespace-pre-wrap">{comment.text}</p>
+                            <p className="mt-0.5 text-sm leading-relaxed whitespace-pre-wrap break-words">{comment.text}</p>
                           </div>
                           <button
                             onClick={() => removeComment(comment.id)}
@@ -964,8 +964,8 @@ export function TaskDetailModal({
               )}
             </div>
 
-            {/* ═════ Sidebar ═════ */}
-            <div className="border-t md:border-t-0 md:border-l border-border/60 bg-muted/30 p-5 space-y-5">
+          {/* ═════ Sidebar ═════ */}
+          <div className="border-t md:border-t-0 md:border-l border-border/60 bg-muted/30 p-5 space-y-5 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden">
               {/* Project / Column */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Projeto</label>
@@ -1124,8 +1124,7 @@ export function TaskDetailModal({
                 </div>
               )}
             </div>
-          </div>
-        </ScrollArea>
+        </div>
       </div>
     </div>
   );

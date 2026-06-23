@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FormField } from "@/components/form-field";
 import { DateRangeList } from "@/components/date-range-list";
+import { DatePicker } from "@/components/date-picker";
 import { CalendarGrid } from "@/components/kanban/shared/CalendarGrid";
 import { ScheduleComparison } from "@/components/kanban/shared/ScheduleComparison";
 import { RealScheduleTable } from "@/components/kanban/shared/RealScheduleTable";
@@ -41,6 +42,7 @@ export function ImpactManager({
 }: ImpactManagerProps) {
   const readOnly = card.isArchived;
   const initialized = useRef(false);
+  const productionDateInitialized = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Inicializa o cronograma real automaticamente na primeira abertura,
@@ -63,7 +65,12 @@ export function ImpactManager({
       );
       onUpdateCard(card.id, { cronogramaReal: next });
     }
-  }, [card.id, card.cronogramaReal, card.dataRealInicio, estimate.pacotes, onUpdateCard, feriados, releases]);
+
+    if (!productionDateInitialized.current && !card.realProductionDate && estimate.releaseAlvo) {
+      productionDateInitialized.current = true;
+      onUpdateCard(card.id, { realProductionDate: estimate.releaseAlvo });
+    }
+  }, [card.id, card.cronogramaReal, card.dataRealInicio, card.realProductionDate, estimate.pacotes, estimate.releaseAlvo, onUpdateCard, feriados, releases]);
 
   const paradoRanges = useMemo(
     () => parseDiasParadosList(card.diasImpactados || ""),
@@ -80,7 +87,8 @@ export function ImpactManager({
         card.esteiraPreProd,
         feriados,
         releases,
-        card.cronogramaReal
+        card.cronogramaReal,
+        card.realProductionDate
       ),
     [
       estimate,
@@ -89,6 +97,7 @@ export function ImpactManager({
       card.chgDias,
       card.esteiraPreProd,
       card.cronogramaReal,
+      card.realProductionDate,
       feriados,
       releases,
     ]
@@ -180,7 +189,23 @@ export function ImpactManager({
           {/* Controls */}
           <Card className="border-border/60 bg-card">
             <CardContent className="p-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <FormField
+                  label="Data de subida em produção"
+                  hint="Data planejada de produção no contexto real"
+                >
+                  <DatePicker
+                    value={card.realProductionDate || ""}
+                    onChange={(date) =>
+                      onUpdateCard(card.id, { realProductionDate: date })
+                    }
+                    placeholder="dd/mm/aaaa"
+                    dateFormat="iso"
+                    feriados={feriados}
+                    releases={releases}
+                    disabled={readOnly}
+                  />
+                </FormField>
                 <FormField
                   label="Dias de trâmite CHG"
                   hint="Número de dias de processamento"

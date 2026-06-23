@@ -361,9 +361,11 @@ VITE_SUPABASE_ANON_KEY
 O card do Kanban possui um cronograma de execução real, independente da estimativa original:
 
 - Campo em `kanban_cards`: `cronograma_real` (JSONB) armazena uma cópia dos `Pacote[]` da estimativa, com datas/horas/overtime remanejados pelo usuário.
+- Campo em `kanban_cards`: `real_production_date` (DATE) armazena a data de subida em produção definida no contexto real do card. Inicialmente é igual a `estimativas.release_alvo`, mas pode ser ajustada independentemente dentro do Gerenciador de Impacto.
 - A tabela de remanejamento real está em `src/components/kanban/shared/RealScheduleTable.tsx`.
 - A lógica de cálculo de datas, overtime e dias úteis foi extraída para `src/utils/schedule.ts` e é compartilhada com a tela Detalhamento (`src/components/estimativa-pacotes`).
-- O calendário real (`buildRealCalendar` em `src/components/kanban/shared/kanbanHelpers.ts`) utiliza o `cronogramaReal` quando existir; caso contrário, mantém o comportamento anterior de offset simples.
+- O calendário real (`buildRealCalendar` em `src/components/kanban/shared/kanbanHelpers.ts`) utiliza o `cronogramaReal` quando existir e a `realProductionDate` como data de produção real; caso contrário, mantém o comportamento anterior de offset simples.
+- O comparativo estimado × real (`calcScheduleComparison` em `src/components/kanban/shared/kanbanHelpers.ts`) utiliza `realProductionDate` para calcular a janela de CHG, os alertas de risco e a diferença entre término real e produção real. O lado estimado continua usando `estimate.releaseAlvo`.
 - Templates não possuem Gerenciador de Impacto. Cards arquivados exibem a tabela em modo leitura.
 
 ### Camada utilitária de schedule
