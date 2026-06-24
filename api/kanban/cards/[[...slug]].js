@@ -33,31 +33,75 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { id } = req.query;
-  if (!id) return res.status(400).json({ error: 'ID is required' });
+  const slug = req.query.slug || [];
+  const id = slug[0];
+
+  if (slug.length > 1) {
+    return res.status(404).json({ error: 'Not found' });
+  }
 
   try {
-    if (req.method === 'GET') {
-      const { data, error } = await supabase.from('kanban_cards').select('*').eq('id', id).single();
-      if (error) return res.status(404).json({ error: error.message });
-      return res.status(200).json(lowercaseToCamel(data));
+    // Collection routes: /api/kanban/cards
+    if (!id) {
+      if (req.method === 'GET') {
+        let query = supabase.from('kanban_cards').select('*').order('position', { ascending: true });
+        if (req.query.column_id) query = query.eq('column_id', req.query.column_id);
+        if (req.query.is_template) query = query.eq('is_template', req.query.is_template === 'true');
+        if (req.query.is_default_template) query = query.eq('is_default_template', req.query.is_default_template === 'true');
+        if (req.query.is_archived) query = query.eq('is_archived', req.query.is_archived === 'true');
+
+        const { data, error } = await query;
+        if (error) return res.status(400).json({ error: error.message });
+        return res.status(200).json((data || []).map((item) => lowercaseToCamel(item)));
+      }
+
+      if (req.method === 'POST') {
+        const user = await verifyAuth(req);
+        if (!user) return unauthorized(res);
+
+        if (!req.body || typeof req.body !== 'object') {
+          return res.status(400).json({ error: 'Request body is required' });
+        }
+
+        // Preserva a estrutura interna de cronogramaReal (JSONB) sem converter recursivamente.
+        const { cronogramaReal, ...restBody } = req.body || {};
+        const convertedBody = camelToSnakeObj(restBody);
+        if (cronogramaReal !== undefined) {
+          convertedBody.cronograma_real = cronogramaReal;
+        }
+
+        const { data, error } = await supabase
+          .from('kanban_cards')
+          .insert([convertedBody])
+          .select()
+          .single();
+
+        if (error) return res.status(400).json({ error: error.message });
+        return res.status(201).json(lowercaseToCamel(data));
+      }
+
+      return res.status(405).json({ error: 'Method not allowed' });
     }
 
+    // Item routes: /api/kanban/cards/:id
     if (req.method === 'PUT') {
       const user = await verifyAuth(req);
       if (!user) return unauthorized(res);
+
       // Preserva a estrutura interna de cronogramaReal (JSONB) sem converter recursivamente.
       const { cronogramaReal, ...restBody } = req.body || {};
       const convertedBody = camelToSnakeObj(restBody);
       if (cronogramaReal !== undefined) {
         convertedBody.cronograma_real = cronogramaReal;
       }
+
       const { data, error } = await supabase
         .from('kanban_cards')
         .update(convertedBody)
         .eq('id', id)
         .select()
         .single();
+
       if (error) return res.status(400).json({ error: error.message });
       return res.status(200).json(lowercaseToCamel(data));
     }
@@ -65,6 +109,7 @@ export default async function handler(req, res) {
     if (req.method === 'DELETE') {
       const user = await verifyAuth(req);
       if (!user) return unauthorized(res);
+
       const { error } = await supabase.from('kanban_cards').delete().eq('id', id);
       if (error) return res.status(400).json({ error: error.message });
       return res.status(204).end();
@@ -72,7 +117,7 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
-    console.error('Card id error:', error);
+    console.error('Cards error:', error);
     return res.status(500).json({ error: error.message || 'Server error' });
   }
 }

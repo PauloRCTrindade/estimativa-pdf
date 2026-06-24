@@ -209,11 +209,11 @@ O frontend trabalha em **camelCase**:
 - `releaseAlvo`, `chgDias`, `esteiraPreProd`, `diasParados`, `criadoEm`, `atualizadoEm`, `columnId`, `estimateId`, `parentId`, `cardId`, `dueDate`.
 
 **Sempre mantenha a conversão nos handlers de API.** As rotas possuem conversores, mas a implementação varia por arquivo:
-- `api/estimativas.js` e `api/estimativas/[id].js`: usam `camelToLowercase` (`.toLowerCase()` em todas as chaves) e `lowercaseToCamel` (mapeamento explícito de chaves conhecidas).
+- `api/estimativas/[[...slug]].js`: usa `camelToLowercase` (`.toLowerCase()` em todas as chaves) e `lowercaseToCamel` (mapeamento explícito de chaves conhecidas), unindo as operações de collection e item.
 - `api/lib/case-converter.js`: exporta `camelToSnakeObj` e `snakeToCamelObj` usados pelas rotas do Kanban (`api/kanban/`).
 - `dev-server.js`: usa `camelToSnakeCase` (conversão real com underscore) para estimativas e `toCamelKanban` (com `kanbanKeyMap`) para Kanban.
 
-- Campos especiais JSONB: `pacotes` (estimativa) e `cronograma_real` (card do Kanban) devem preservar sua estrutura interna em camelCase — **nunca converter recursivamente**. Os handlers de cards (`api/kanban/cards.js`, `api/kanban/cards/[id].js` e `dev-server.js`) extraem esses campos antes de aplicar `camelToSnake` e os reinstalam no payload para preservar as chaves internas.
+- Campos especiais JSONB: `pacotes` (estimativa) e `cronograma_real` (card do Kanban) devem preservar sua estrutura interna em camelCase — **nunca converter recursivamente**. O handler de cards (`api/kanban/cards/[[...slug]].js`) e `dev-server.js` extraem esses campos antes de aplicar `camelToSnake` e os reinstalam no payload para preservar as chaves internas.
 
 ### Schema SQL
 O schema completo está em `database.sql`. Ele inclui:
@@ -385,7 +385,7 @@ Novos cálculos de cronograma devem ser adicionados nesse arquivo e reutilizados
 
 ## Dicas para Agentes
 
-- Sempre verifique se a alteração em APIs afeta a conversão lowercase/camelCase. Lembre-se de que a implementação do conversor varia entre `api/estimativas.js`, `api/estimativas/[id].js`, `api/lib/case-converter.js` e `dev-server.js`.
+- Sempre verifique se a alteração em APIs afeta a conversão lowercase/camelCase. Lembre-se de que a implementação do conversor varia entre `api/estimativas/[[...slug]].js`, `api/lib/case-converter.js` e `dev-server.js`.
 - Ao adicionar novos campos no banco, atualize `database.sql`, os conversores em `api/` e os tipos em `src/types/index.ts`.
 - Novos componentes de UI devem preferir componentes de `src/components/ui/`. Use `cn()` para mesclar classes.
 - Para PDF, mantenha cores em HEX e estilos inline quando necessário.
