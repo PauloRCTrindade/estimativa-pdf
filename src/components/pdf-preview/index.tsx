@@ -325,25 +325,40 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows, hideTimelin
                             key={category.key}
                             data-legend-color="true"
                             style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px",
+                              display: "inline-block",
+                              verticalAlign: "middle",
                               fontFamily: "Arial, Helvetica, sans-serif",
                             }}
                           >
-                            <span style={{ fontSize: "10px" }}>{category.icon}</span>
                             <span
                               style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                padding: "3px 8px",
+                                display: "inline-block",
+                                width: "16px",
+                                height: "20px",
+                                lineHeight: "20px",
+                                fontSize: "10px",
+                                textAlign: "center",
+                                verticalAlign: "middle",
+                              }}
+                            >
+                              {category.icon}
+                            </span>
+                            <span
+                              style={{
+                                display: "inline-block",
+                                height: "20px",
+                                lineHeight: "1",
+                                padding: "0 8px",
                                 borderRadius: "999px",
                                 backgroundColor: category.color,
                                 border: `1px solid ${category.color}`,
                                 color: badgeTextColor(category.color),
                                 fontSize: "10px",
                                 fontWeight: 600,
+                                textAlign: "center",
+                                verticalAlign: "middle",
                                 whiteSpace: "nowrap",
+                                boxSizing: "border-box",
                               }}
                             >
                               {category.label}
