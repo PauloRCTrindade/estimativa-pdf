@@ -129,3 +129,27 @@ export type Estimativa = {
   criadoEm?: string;
   atualizadoEm?: string;
 };
+
+export interface DataMass {
+  id: string;
+  cpf: string;
+  linha: string;
+  observacao?: string;
+  tipos: string[];
+  customFields: Record<string, string>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DataMassColumn {
+  id: string;
+  name: string;
+  required: boolean;
+  type: "text" | "tag" | "date" | "select";
+}
+
+export interface DataMassTag {
+  id: string;
+  name: string;
+  color: string;
+}

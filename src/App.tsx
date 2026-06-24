@@ -9,6 +9,7 @@ import {
   Rocket,
   CalendarBlank,
   Hourglass,
+  Database,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ import { DocumentPage } from "@/pages/document";
 import { OverviewPage } from "@/pages/overview";
 import { SavePage } from "@/pages/save";
 import { KanbanPage } from "@/pages/kanban";
+import { DataMassesPage } from "@/pages/data-masses";
 import {
   useEstimativaForm,
   useTimelineCalculations,
@@ -37,7 +39,7 @@ import { runSelfTests } from "@/utils";
 
 if (typeof window !== "undefined") runSelfTests();
 
-type Page = "estimativa" | "kanban";
+type Page = "estimativa" | "kanban" | "dataMasses";
 
 function GeradorEstimativaPDF({
   page,
@@ -304,6 +306,9 @@ function GeradorEstimativaPDF({
         </div>
       )}
 
+      {/* Página: Massas de Dados */}
+      {page === "dataMasses" && <DataMassesPage />}
+
       {/* Página: Kanban */}
       {page === "kanban" && (
         <KanbanPage
@@ -518,6 +523,17 @@ export default function App() {
       >
         <Stack className="h-3.5 w-3.5" />
         Kanban
+      </button>
+      <button
+        onClick={() => setPage("dataMasses")}
+        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+          page === "dataMasses"
+            ? "bg-background text-foreground shadow-sm"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+        }`}
+      >
+        <Database className="h-3.5 w-3.5" />
+        Massas de Dados
       </button>
     </nav>
   );

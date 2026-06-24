@@ -408,6 +408,184 @@ app.delete('/api/kanban/tasks/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ================================
+// DATA MASSES ENDPOINTS
+// ================================
+
+const dataMassKeyMap = {
+  custom_fields: 'customFields',
+  observacao: 'observacao',
+  criado_em: 'createdAt',
+  atualizado_em: 'updatedAt',
+};
+
+const dataMassColumnKeyMap = {
+  criado_em: 'createdAt',
+  atualizado_em: 'updatedAt',
+};
+
+const dataMassTagKeyMap = {
+  criado_em: 'createdAt',
+  atualizado_em: 'updatedAt',
+};
+
+function toCamelDataMass(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  const converted = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const camelKey = dataMassKeyMap[key] || key;
+    if (Array.isArray(value)) {
+      converted[camelKey] = value.map(item => typeof item === 'object' ? toCamelDataMass(item) : item);
+    } else if (typeof value === 'object' && value !== null) {
+      converted[camelKey] = toCamelDataMass(value);
+    } else {
+      converted[camelKey] = value;
+    }
+  }
+  return converted;
+}
+
+function toCamelDataMassColumn(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  const converted = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const camelKey = dataMassColumnKeyMap[key] || key;
+    if (Array.isArray(value)) {
+      converted[camelKey] = value.map(item => typeof item === 'object' ? toCamelDataMassColumn(item) : item);
+    } else if (typeof value === 'object' && value !== null) {
+      converted[camelKey] = toCamelDataMassColumn(value);
+    } else {
+      converted[camelKey] = value;
+    }
+  }
+  return converted;
+}
+
+function toCamelDataMassTag(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  const converted = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const camelKey = dataMassTagKeyMap[key] || key;
+    if (Array.isArray(value)) {
+      converted[camelKey] = value.map(item => typeof item === 'object' ? toCamelDataMassTag(item) : item);
+    } else if (typeof value === 'object' && value !== null) {
+      converted[camelKey] = toCamelDataMassTag(value);
+    } else {
+      converted[camelKey] = value;
+    }
+  }
+  return converted;
+}
+
+// Masses
+app.get('/api/data-masses', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('data_masses').select('*').order('criado_em', { ascending: false });
+    if (error) throw error;
+    res.json((data || []).map(toCamelDataMass));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/data-masses', async (req, res) => {
+  try {
+    const { customFields, ...restBody } = req.body || {};
+    const convertedBody = camelToSnakeCase(restBody);
+    if (customFields !== undefined) {
+      convertedBody.custom_fields = customFields;
+    }
+    const { data, error } = await supabase.from('data_masses').insert(convertedBody).select().single();
+    if (error) throw error;
+    res.status(201).json(toCamelDataMass(data));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/data-masses/:id', async (req, res) => {
+  try {
+    const { customFields, ...restBody } = req.body || {};
+    const convertedBody = camelToSnakeCase(restBody);
+    if (customFields !== undefined) {
+      convertedBody.custom_fields = customFields;
+    }
+    const { data, error } = await supabase.from('data_masses').update(convertedBody).eq('id', req.params.id).select().single();
+    if (error) throw error;
+    res.json(toCamelDataMass(data));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/data-masses/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('data_masses').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.status(204).end();
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Columns
+app.get('/api/data-mass-columns', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('data_mass_columns').select('*').order('position', { ascending: true });
+    if (error) throw error;
+    res.json((data || []).map(toCamelDataMassColumn));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/data-mass-columns', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('data_mass_columns').insert(camelToSnakeCase(req.body)).select().single();
+    if (error) throw error;
+    res.status(201).json(toCamelDataMassColumn(data));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/data-mass-columns/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('data_mass_columns').update(camelToSnakeCase(req.body)).eq('id', req.params.id).select().single();
+    if (error) throw error;
+    res.json(toCamelDataMassColumn(data));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/data-mass-columns/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('data_mass_columns').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.status(204).end();
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Tags
+app.get('/api/data-mass-tags', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('data_mass_tags').select('*').order('name', { ascending: true });
+    if (error) throw error;
+    res.json((data || []).map(toCamelDataMassTag));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/data-mass-tags', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('data_mass_tags').insert(camelToSnakeCase(req.body)).select().single();
+    if (error) throw error;
+    res.status(201).json(toCamelDataMassTag(data));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/data-mass-tags/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('data_mass_tags').update(camelToSnakeCase(req.body)).eq('id', req.params.id).select().single();
+    if (error) throw error;
+    res.json(toCamelDataMassTag(data));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/data-mass-tags/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('data_mass_tags').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.status(204).end();
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'API local is running' });
@@ -426,5 +604,17 @@ app.listen(PORT, () => {
   console.log(`  GET    /api/kanban/columns`);
   console.log(`  GET    /api/kanban/cards`);
   console.log(`  GET    /api/kanban/tasks`);
+  console.log(`  GET    /api/data-masses`);
+  console.log(`  POST   /api/data-masses`);
+  console.log(`  PUT    /api/data-masses/:id`);
+  console.log(`  DELETE /api/data-masses/:id`);
+  console.log(`  GET    /api/data-mass-columns`);
+  console.log(`  POST   /api/data-mass-columns`);
+  console.log(`  PUT    /api/data-mass-columns/:id`);
+  console.log(`  DELETE /api/data-mass-columns/:id`);
+  console.log(`  GET    /api/data-mass-tags`);
+  console.log(`  POST   /api/data-mass-tags`);
+  console.log(`  PUT    /api/data-mass-tags/:id`);
+  console.log(`  DELETE /api/data-mass-tags/:id`);
   console.log(`  GET    /health`);
 });

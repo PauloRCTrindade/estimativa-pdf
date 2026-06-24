@@ -185,3 +185,67 @@ CREATE POLICY "Allow all" ON estimativas FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all" ON kanban_columns FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all" ON kanban_cards FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all" ON kanban_tasks FOR ALL USING (true) WITH CHECK (true);
+
+-- ================================
+-- TABELAS DE MASSAS DE DADOS
+-- ================================
+
+CREATE TABLE IF NOT EXISTS data_masses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cpf TEXT NOT NULL,
+  linha TEXT NOT NULL,
+  observacao TEXT,
+  tipos TEXT[] DEFAULT '{}',
+  custom_fields JSONB DEFAULT '{}',
+  criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_data_masses_cpf ON data_masses(cpf);
+CREATE INDEX IF NOT EXISTS idx_data_masses_linha ON data_masses(linha);
+CREATE INDEX IF NOT EXISTS idx_data_masses_tipos ON data_masses USING GIN(tipos);
+
+CREATE TRIGGER trigger_update_data_masses
+BEFORE UPDATE ON data_masses
+FOR EACH ROW
+EXECUTE FUNCTION update_atualizado_em();
+
+CREATE TABLE IF NOT EXISTS data_mass_columns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  required BOOLEAN DEFAULT FALSE,
+  type TEXT CHECK (type IN ('text','tag','date','select')),
+  position INTEGER DEFAULT 0,
+  criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TRIGGER trigger_update_data_mass_columns
+BEFORE UPDATE ON data_mass_columns
+FOR EACH ROW
+EXECUTE FUNCTION update_atualizado_em();
+
+CREATE TABLE IF NOT EXISTS data_mass_tags (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL UNIQUE,
+  color TEXT NOT NULL,
+  criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TRIGGER trigger_update_data_mass_tags
+BEFORE UPDATE ON data_mass_tags
+FOR EACH ROW
+EXECUTE FUNCTION update_atualizado_em();
+
+ALTER TABLE data_masses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE data_mass_columns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE data_mass_tags ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all" ON data_masses;
+DROP POLICY IF EXISTS "Allow all" ON data_mass_columns;
+DROP POLICY IF EXISTS "Allow all" ON data_mass_tags;
+
+CREATE POLICY "Allow all" ON data_masses FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all" ON data_mass_columns FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all" ON data_mass_tags FOR ALL USING (true) WITH CHECK (true);
