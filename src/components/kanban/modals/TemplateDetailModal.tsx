@@ -6,7 +6,8 @@ import {
 } from "@/components/kanban/shared/kanbanHelpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { stripHtml } from "@/lib/rich-text";
 import { cn } from "@/lib/utils";
 import {
   Plus, Trash, CaretRight, Check, ListChecks,
@@ -114,8 +115,11 @@ export function TemplateDetailModal({
   function submitSubtask() {
     const title = subtaskDraft.title.trim();
     if (!title) return;
+    const description = stripHtml(subtaskDraft.description).trim()
+      ? subtaskDraft.description.trim()
+      : "";
     const parentId = view.type === "task" && currentTask ? currentTask.id : undefined;
-    onAddCardTask(card.id, { title, description: subtaskDraft.description.trim() }, parentId);
+    onAddCardTask(card.id, { title, description: description || undefined }, parentId);
     setSubtaskDraft({ title: "", description: "" });
     setAddingSubtask(false);
   }
@@ -345,12 +349,11 @@ export function TemplateDetailModal({
                       placeholder={`Nome da ${isTaskView ? "subtarefa" : "tarefa"}`}
                       className="h-8"
                     />
-                    <Textarea
-                      value={subtaskDraft.description}
-                      onChange={(e) => setSubtaskDraft((p) => ({ ...p, description: e.target.value }))}
+                    <RichTextEditor
+                      defaultValue={subtaskDraft.description}
+                      onChange={(html) => setSubtaskDraft((p) => ({ ...p, description: html }))}
                       placeholder="Descrição (opcional)"
-                      rows={2}
-                      className="resize-none text-sm"
+                      minHeight="80px"
                     />
                     <div className="flex items-center justify-end gap-2">
                       <Button variant="ghost" size="sm" onClick={() => { setAddingSubtask(false); setSubtaskDraft({ title: "", description: "" }); }}>

@@ -22,7 +22,8 @@ import { TemplatesView } from "@/components/kanban/views/TemplatesView";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { stripHtml } from "@/lib/rich-text";
 import { DatePicker } from "@/components/date-picker";
 import {
   Popover,
@@ -453,7 +454,7 @@ export function KanbanPage({
       columnId: newCardColumnId || addingCardColumnId || columns[0]?.id || "",
       title,
       dueDate: newCardDueDate || undefined,
-      description: newCardDescription.trim() || undefined,
+      description: (stripHtml(newCardDescription).trim() ? newCardDescription.trim() : undefined),
     });
     setNewCardDraft("");
     setNewCardDueDate("");
@@ -1013,12 +1014,11 @@ export function KanbanPage({
                         placeholder="Título da tarefa"
                         className="h-9 text-sm"
                       />
-                      <Textarea
-                        value={newCardDescription}
-                        onChange={(e) => setNewCardDescription(e.target.value)}
+                      <RichTextEditor
+                        defaultValue={newCardDescription}
+                        onChange={setNewCardDescription}
                         placeholder="Descrição (opcional)"
-                        rows={2}
-                        className="resize-none text-sm"
+                        minHeight="80px"
                       />
                       <div className="flex items-center gap-2">
                         <DatePicker

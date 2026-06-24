@@ -15,6 +15,9 @@ import { ScheduleComparison } from "@/components/kanban/shared/ScheduleCompariso
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { RichTextViewer } from "@/components/ui/rich-text-viewer";
+import { stripHtml } from "@/lib/rich-text";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DatePicker } from "@/components/date-picker";
 import { TagSelector } from "@/components/kanban/shared/TagSelector";
@@ -139,6 +142,7 @@ export function TaskDetailModal({
   const [addingChecklist, setAddingChecklist] = useState(false);
   const [checklistDraft, setChecklistDraft] = useState("");
   const [commentDraft, setCommentDraft] = useState("");
+  const [commentEditorKey, setCommentEditorKey] = useState(0);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     subtarefas: true,
     checklist: true,
@@ -238,13 +242,14 @@ export function TaskDetailModal({
 
   function submitComment() {
     const text = commentDraft.trim();
-    if (!text || !currentTask) return;
+    if (!stripHtml(text) || !currentTask) return;
     const comments = [
       ...(currentTask.comments ?? []),
       { id: createId(), author: "Eu", text, createdAt: new Date().toISOString() },
     ];
     updateCurrentTask({ comments });
     setCommentDraft("");
+    setCommentEditorKey((k) => k + 1);
   }
 
   function removeComment(commentId: string) {
@@ -518,13 +523,12 @@ export function TaskDetailModal({
               <div>
                 {editingDescription ? (
                   <div className="space-y-2">
-                    <Textarea
-                      autoFocus
-                      value={descriptionDraft}
-                      onChange={(e) => setDescriptionDraft(e.target.value)}
+                    <RichTextEditor
+                      key={`desc-${view.type === "card" ? card.id : currentTask?.id}-${editingDescription}`}
+                      defaultValue={descriptionDraft}
+                      onChange={setDescriptionDraft}
                       placeholder="Adicionar descrição..."
-                      rows={4}
-                      className="resize-none text-sm"
+                      minHeight="120px"
                     />
                     <div className="flex items-center gap-2">
                       <Button
@@ -557,9 +561,11 @@ export function TaskDetailModal({
                     )}
                   >
                     <Note className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className={cn("leading-relaxed break-words", !displayDescription && "italic")}>
-                      {displayDescription || "Adicionar descrição"}
-                    </span>
+                    <RichTextViewer
+                      value={displayDescription}
+                      placeholder="Adicionar descrição"
+                      className="leading-relaxed"
+                    />
                   </button>
                 )}
               </div>
@@ -936,7 +942,7 @@ export function TaskDetailModal({
                                 {formatDateBR(comment.createdAt)}
                               </span>
                             </div>
-                            <p className="mt-0.5 text-sm leading-relaxed whitespace-pre-wrap break-words">{comment.text}</p>
+                            <RichTextViewer value={comment.text} className="mt-0.5" />
                           </div>
                           <button
                             onClick={() => removeComment(comment.id)}
@@ -946,17 +952,24 @@ export function TaskDetailModal({
                           </button>
                         </div>
                       ))}
-                      <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-background p-2">
-                        <Textarea
-                          value={commentDraft}
-                          onChange={(e) => setCommentDraft(e.target.value)}
+                      <div className="rounded-lg border border-border/60 bg-background p-2">
+                        <RichTextEditor
+                          key={`comment-${currentTask?.id}-${commentEditorKey}`}
+                          defaultValue={commentDraft}
+                          onChange={setCommentDraft}
                           placeholder="Escrever um comentário..."
-                          rows={2}
-                          className="min-h-0 resize-none border-0 bg-transparent text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                          minHeight="80px"
                         />
-                        <Button size="sm" className="shrink-0" onClick={submitComment} disabled={!commentDraft.trim()}>
-                          Enviar
-                        </Button>
+                        <div className="mt-2 flex justify-end">
+                          <Button
+                            size="sm"
+                            className="shrink-0"
+                            onClick={submitComment}
+                            disabled={!stripHtml(commentDraft).trim()}
+                          >
+                            Enviar
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   )}
