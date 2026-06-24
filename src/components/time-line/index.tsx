@@ -151,7 +151,7 @@ export function TimeLine({ form, timelineRows, visible = false }) {
                         ...pdfStyles.timelineColorCell,
                         width: "64px",
                         height: "40px",
-                        backgroundColor: day.color,
+                        backgroundColor: day.isReleaseDay ? COLORS.releaseDay : day.color,
                       };
 
                       const workLabel = day.workBorderColor
@@ -159,7 +159,7 @@ export function TimeLine({ form, timelineRows, visible = false }) {
                         : "";
                       
                       // data-color-cell preserva a cor nos overrides CSS do dark mode
-                      const isColored = day.color !== COLORS.white;
+                      const isColored = (day.isReleaseDay ? COLORS.releaseDay : day.color) !== COLORS.white;
                       const colorAttr = isColored ? { "data-color-cell": "true" } : {};
 
                       if (day.isChg) {

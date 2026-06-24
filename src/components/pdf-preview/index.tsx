@@ -231,7 +231,7 @@ export function PdfPreview({ form, totalDias, calculo, timelineRows, hideTimelin
                     {row.map((day, index) => {
                       const baseStyle = {
                         ...pdfStyles.timelineColorCell,
-                        backgroundColor: day.color,
+                        backgroundColor: day.isReleaseDay ? COLORS.releaseDay : day.color,
                       };
 
                       const workLabel = day.workBorderColor ? ` + Atuação` : "";

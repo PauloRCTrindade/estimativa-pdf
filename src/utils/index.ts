@@ -110,7 +110,13 @@ export function isHoliday(date, holidays) {
 export function isReleaseDay(date, releases = []) {
   return releases.some((release) => {
     const releaseDate = parseDateBR(release);
-    return isValidDate(releaseDate) && isSameDay(date, releaseDate);
+    if (!isValidDate(releaseDate)) return false;
+    // "Domingo da Release": o domingo que antecede a data de release,
+    // ou o próprio domingo quando a release cair em um domingo.
+    if (date.getDay() !== 0) return false;
+    if (isSameDay(date, releaseDate)) return true;
+    const nextDay = addDays(date, 1);
+    return isSameDay(nextDay, releaseDate);
   });
 }
 export function isBlockedDay(date, blockedDays = []) {

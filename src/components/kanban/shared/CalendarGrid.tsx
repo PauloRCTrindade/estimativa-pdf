@@ -97,13 +97,14 @@ export function CalendarGrid({
             {row.map((day, index) => {
               if (!day) return <div key={index} className="h-9 rounded-sm bg-muted/30" />;
 
-              const category = getCalendarCategory(day.tipo);
+              const isReleaseDayFlag = day.isReleaseDay;
+              const category = getCalendarCategory(isReleaseDayFlag ? "domingo da release" : day.tipo);
               const showIcon = category?.key === "producao" || category?.key === "impactado";
               const icon = category?.icon;
-              const hasActivity = Boolean(day.tipo);
+              const hasActivity = Boolean(day.tipo) || isReleaseDayFlag;
 
               const cellStyle: CSSProperties = hasActivity
-                ? { backgroundColor: day.color || "transparent" }
+                ? { backgroundColor: isReleaseDayFlag ? COLORS.releaseDay : (day.color || "transparent") }
                 : {};
 
               if (day.isEsteiraPreProd) {
@@ -123,6 +124,12 @@ export function CalendarGrid({
                 }
               }
 
+              const cellTitle = isReleaseDayFlag
+                ? "Domingo da Release"
+                : day.workBorderColor
+                  ? `${day.tipo || "Dia especial"} + Atuação`
+                  : day.tipo || "Sem atividade";
+
               return (
                 <div
                   key={index}
@@ -135,7 +142,7 @@ export function CalendarGrid({
                       : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
                   )}
                   style={cellStyle}
-                  title={day.workBorderColor ? `${day.tipo || "Dia especial"} + Atuação` : day.tipo || "Sem atividade"}
+                  title={cellTitle}
                 >
                   {showIcon && icon ? <span>{icon}</span> : null}
                 </div>
