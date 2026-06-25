@@ -747,7 +747,8 @@ export default async function handler(req, res) {
     return;
   }
 
-  let slug = req.query.slug || [];
+  const rawSlug = req.query['[...slug]'] || req.query.slug || [];
+  let slug = Array.isArray(rawSlug) ? rawSlug : (rawSlug ? [rawSlug] : []);
   if (typeof slug === 'string') {
     slug = slug.split('/').filter(Boolean);
   } else if (!Array.isArray(slug)) {
