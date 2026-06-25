@@ -52,16 +52,29 @@ Node.js requerido: **22.22.2** (definido em `.nvmrc`).
 │   │   ├── supabase.js         # Cliente Supabase para funções serverless
 │   │   ├── auth.js             # verifyAuth, unauthorized, setCorsHeaders
 │   │   └── case-converter.js   # camelToSnakeObj, snakeToCamelObj
-│   ├── estimativas.js          # GET/POST /api/estimativas
-│   ├── estimativas/[id].js     # GET/PUT/DELETE /api/estimativas/:id
+│   ├── estimativas/
+│   │   ├── index.js            # GET/POST /api/estimativas
+│   │   └── [id].js             # GET/PUT/DELETE /api/estimativas/:id
+│   ├── data-masses/
+│   │   ├── index.js            # GET/POST /api/data-masses
+│   │   └── [id].js             # GET/PUT/DELETE /api/data-masses/:id
+│   ├── data-mass-columns/
+│   │   ├── index.js            # GET/POST /api/data-mass-columns
+│   │   └── [id].js             # GET/PUT/DELETE /api/data-mass-columns/:id
+│   ├── data-mass-tags/
+│   │   ├── index.js            # GET/POST /api/data-mass-tags
+│   │   └── [id].js             # GET/PUT/DELETE /api/data-mass-tags/:id
 │   └── kanban/
 │       ├── board.js            # GET /api/kanban/board
-│       ├── cards.js            # GET/POST /api/kanban/cards
-│       ├── columns.js          # GET/POST /api/kanban/columns
-│       ├── tasks.js            # GET/POST /api/kanban/tasks
-│       ├── cards/[id].js       # PUT/DELETE card
-│       ├── columns/[id].js     # PUT/DELETE column
-│       └── tasks/[id].js       # PUT/DELETE task
+│       ├── cards/
+│       │   ├── index.js        # GET/POST /api/kanban/cards
+│       │   └── [id].js         # GET/PUT/DELETE /api/kanban/cards/:id
+│       ├── columns/
+│       │   ├── index.js        # GET/POST /api/kanban/columns
+│       │   └── [id].js         # GET/PUT/DELETE /api/kanban/columns/:id
+│       └── tasks/
+│           ├── index.js        # GET/POST /api/kanban/tasks
+│           └── [id].js         # GET/PUT/DELETE /api/kanban/tasks/:id
 ├── src/                        # Código-fonte do frontend
 │   ├── components/             # Componentes React
 │   │   ├── ui/                 # Componentes shadcn/ui (Button, Card, Dialog, etc.)
@@ -209,11 +222,11 @@ O frontend trabalha em **camelCase**:
 - `releaseAlvo`, `chgDias`, `esteiraPreProd`, `diasParados`, `criadoEm`, `atualizadoEm`, `columnId`, `estimateId`, `parentId`, `cardId`, `dueDate`.
 
 **Sempre mantenha a conversão nos handlers de API.** As rotas possuem conversores, mas a implementação varia por arquivo:
-- `api/estimativas/[[...slug]].js`: usa `camelToLowercase` (`.toLowerCase()` em todas as chaves) e `lowercaseToCamel` (mapeamento explícito de chaves conhecidas), unindo as operações de collection e item.
+- `api/estimativas/index.js` e `api/estimativas/[id].js`: usam `camelToLowercase` (`.toLowerCase()` em todas as chaves) e `lowercaseToCamel` (mapeamento explícito de chaves conhecidas) nas operações de collection e item.
 - `api/lib/case-converter.js`: exporta `camelToSnakeObj` e `snakeToCamelObj` usados pelas rotas do Kanban (`api/kanban/`).
 - `dev-server.js`: usa `camelToSnakeCase` (conversão real com underscore) para estimativas e `toCamelKanban` (com `kanbanKeyMap`) para Kanban.
 
-- Campos especiais JSONB: `pacotes` (estimativa) e `cronograma_real` (card do Kanban) devem preservar sua estrutura interna em camelCase — **nunca converter recursivamente**. O handler de cards (`api/kanban/cards/[[...slug]].js`) e `dev-server.js` extraem esses campos antes de aplicar `camelToSnake` e os reinstalam no payload para preservar as chaves internas.
+- Campos especiais JSONB: `pacotes` (estimativa) e `cronograma_real` (card do Kanban) devem preservar sua estrutura interna em camelCase — **nunca converter recursivamente**. O handler de cards (`api/kanban/cards/index.js` e `api/kanban/cards/[id].js`) e `dev-server.js` extraem esses campos antes de aplicar `camelToSnake` e os reinstalam no payload para preservar as chaves internas.
 
 ### Schema SQL
 O schema completo está em `database.sql`. Ele inclui:
@@ -385,7 +398,7 @@ Novos cálculos de cronograma devem ser adicionados nesse arquivo e reutilizados
 
 ## Dicas para Agentes
 
-- Sempre verifique se a alteração em APIs afeta a conversão lowercase/camelCase. Lembre-se de que a implementação do conversor varia entre `api/estimativas/[[...slug]].js`, `api/lib/case-converter.js` e `dev-server.js`.
+- Sempre verifique se a alteração em APIs afeta a conversão lowercase/camelCase. Lembre-se de que a implementação do conversor varia entre `api/estimativas/`, `api/lib/case-converter.js` e `dev-server.js`.
 - Ao adicionar novos campos no banco, atualize `database.sql`, os conversores em `api/` e os tipos em `src/types/index.ts`.
 - Novos componentes de UI devem preferir componentes de `src/components/ui/`. Use `cn()` para mesclar classes.
 - Para PDF, mantenha cores em HEX e estilos inline quando necessário.

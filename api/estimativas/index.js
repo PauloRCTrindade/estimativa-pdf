@@ -1,0 +1,122 @@
+import { supabase } from '../lib/supabase.js';
+import { setCorsHeaders, verifyAuth, unauthorized } from '../lib/auth.js';
+
+// Convert camelCase to lowercase (table schema uses lowercase columns)
+function camelToLowercase(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+
+  const converted = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const lowerKey = key.toLowerCase();
+    // pacotes is stored as JSONB and must preserve its internal camelCase structure
+    if (key === 'pacotes') {
+      converted[lowerKey] = value;
+      continue;
+    }
+    if (Array.isArray(value)) {
+      converted[lowerKey] = value.map((item) =>
+        typeof item === 'object' ? camelToLowercase(item) : item
+      );
+    } else if (typeof value === 'object' && value !== null) {
+      converted[lowerKey] = camelToLowercase(value);
+    } else {
+      converted[lowerKey] = value;
+    }
+  }
+  return converted;
+}
+
+// Convert lowercase to camelCase (for API response)
+function lowercaseToCamel(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+
+  const keyMap = {
+    releasealvo: 'releaseAlvo',
+    chgdias: 'chgDias',
+    esteirapreprod: 'esteiraPreProd',
+    diasparados: 'diasParados',
+    criadoem: 'criadoEm',
+    atualizadoem: 'atualizadoEm',
+  };
+
+  const converted = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const camelKey = keyMap[key] || key;
+    // pacotes is stored as JSONB with its internal camelCase already preserved
+    if (key === 'pacotes') {
+      converted[camelKey] = value;
+      continue;
+    }
+    if (Array.isArray(value)) {
+      converted[camelKey] = value.map((item) =>
+        typeof item === 'object' ? lowercaseToCamel(item) : item
+      );
+    } else if (typeof value === 'object' && value !== null) {
+      converted[camelKey] = lowercaseToCamel(value);
+    } else {
+      converted[camelKey] = value;
+    }
+  }
+  return converted;
+}
+
+export default async function handler(req, res) {
+  setCorsHeaders(res, req);
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  try {
+    if (req.method === 'GET') {
+      const { arquiteto, titulo } = req.query;
+
+      let query = supabase.from('estimativas').select('*');
+
+      if (arquiteto && arquiteto.trim()) {
+        query = query.ilike('arquiteto', `%${arquiteto}%`);
+      }
+
+      if (titulo && titulo.trim()) {
+        query = query.ilike('titulo', `%${titulo}%`);
+      }
+
+      const { data, error } = await query.order('criadoem', { ascending: false });
+
+      if (error) {
+        console.error('GET error:', error);
+        return res.status(400).json({ error: error.message });
+      }
+
+      const converted = (data || []).map(lowercaseToCamel);
+      return res.status(200).json(converted);
+    }
+
+    if (req.method === 'POST') {
+      const user = await verifyAuth(req);
+      if (!user) return unauthorized(res);
+
+      const convertedBody = camelToLowercase(req.body);
+
+      const { data, error } = await supabase
+        .from('estimativas')
+        .insert([convertedBody])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('POST error:', error);
+        return res.status(400).json({ error: error.message });
+      }
+
+      const converted = lowercaseToCamel(data);
+      return res.status(201).json(converted);
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
+  } catch (error) {
+    console.error('Server error:', error);
+    return res.status(500).json({ error: error.message || 'Server error' });
+  }
+}
