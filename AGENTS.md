@@ -48,33 +48,12 @@ Node.js requerido: **22.22.2** (definido em `.nvmrc`).
 
 ```
 ├── api/                        # Vercel Serverless Functions (backend em produção)
-│   ├── lib/
-│   │   ├── supabase.js         # Cliente Supabase para funções serverless
-│   │   ├── auth.js             # verifyAuth, unauthorized, setCorsHeaders
-│   │   └── case-converter.js   # camelToSnakeObj, snakeToCamelObj
-│   ├── estimativas/
-│   │   ├── index.js            # GET/POST /api/estimativas
-│   │   └── [id].js             # GET/PUT/DELETE /api/estimativas/:id
-│   ├── data-masses/
-│   │   ├── index.js            # GET/POST /api/data-masses
-│   │   └── [id].js             # GET/PUT/DELETE /api/data-masses/:id
-│   ├── data-mass-columns/
-│   │   ├── index.js            # GET/POST /api/data-mass-columns
-│   │   └── [id].js             # GET/PUT/DELETE /api/data-mass-columns/:id
-│   ├── data-mass-tags/
-│   │   ├── index.js            # GET/POST /api/data-mass-tags
-│   │   └── [id].js             # GET/PUT/DELETE /api/data-mass-tags/:id
-│   └── kanban/
-│       ├── board.js            # GET /api/kanban/board
-│       ├── cards/
-│       │   ├── index.js        # GET/POST /api/kanban/cards
-│       │   └── [id].js         # GET/PUT/DELETE /api/kanban/cards/:id
-│       ├── columns/
-│       │   ├── index.js        # GET/POST /api/kanban/columns
-│       │   └── [id].js         # GET/PUT/DELETE /api/kanban/columns/:id
-│       └── tasks/
-│           ├── index.js        # GET/POST /api/kanban/tasks
-│           └── [id].js         # GET/PUT/DELETE /api/kanban/tasks/:id
+│   ├── [[...slug]].js          # Roteador central: /api/estimativas, /api/data-masses,
+│   │                           # /api/data-mass-columns, /api/data-mass-tags, /api/kanban/*
+│   └── lib/
+│       ├── supabase.js         # Cliente Supabase para funções serverless
+│       ├── auth.js             # verifyAuth, unauthorized, setCorsHeaders
+│       └── case-converter.js   # camelToSnakeObj, snakeToCamelObj
 ├── src/                        # Código-fonte do frontend
 │   ├── components/             # Componentes React
 │   │   ├── ui/                 # Componentes shadcn/ui (Button, Card, Dialog, etc.)
@@ -222,11 +201,11 @@ O frontend trabalha em **camelCase**:
 - `releaseAlvo`, `chgDias`, `esteiraPreProd`, `diasParados`, `criadoEm`, `atualizadoEm`, `columnId`, `estimateId`, `parentId`, `cardId`, `dueDate`.
 
 **Sempre mantenha a conversão nos handlers de API.** As rotas possuem conversores, mas a implementação varia por arquivo:
-- `api/estimativas/index.js` e `api/estimativas/[id].js`: usam `camelToLowercase` (`.toLowerCase()` em todas as chaves) e `lowercaseToCamel` (mapeamento explícito de chaves conhecidas) nas operações de collection e item.
+- `api/[[...slug]].js` (roteador central): usa `estimativaCamelToLowercase` (`.toLowerCase()` em todas as chaves) e `estimativaLowercaseToCamel` (mapeamento explícito de chaves conhecidas) nas operações de `estimativas`.
 - `api/lib/case-converter.js`: exporta `camelToSnakeObj` e `snakeToCamelObj` usados pelas rotas do Kanban (`api/kanban/`).
 - `dev-server.js`: usa `camelToSnakeCase` (conversão real com underscore) para estimativas e `toCamelKanban` (com `kanbanKeyMap`) para Kanban.
 
-- Campos especiais JSONB: `pacotes` (estimativa) e `cronograma_real` (card do Kanban) devem preservar sua estrutura interna em camelCase — **nunca converter recursivamente**. O handler de cards (`api/kanban/cards/index.js` e `api/kanban/cards/[id].js`) e `dev-server.js` extraem esses campos antes de aplicar `camelToSnake` e os reinstalam no payload para preservar as chaves internas.
+- Campos especiais JSONB: `pacotes` (estimativa) e `cronograma_real` (card do Kanban) devem preservar sua estrutura interna em camelCase — **nunca converter recursivamente**. O handler de cards dentro do roteador central (`api/[[...slug]].js`) e `dev-server.js` extraem `cronogramaReal` antes de aplicar `camelToSnake` e o reinstalam no payload para preservar as chaves internas.
 
 ### Schema SQL
 O schema completo está em `database.sql`. Ele inclui:
