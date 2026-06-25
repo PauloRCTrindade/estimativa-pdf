@@ -307,14 +307,27 @@ async function handleKanbanTasks(req, res, slug) {
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
+function extractSlug(req) {
+  const rawSlug = req.query.slug || req.query['[...slug]'] || [];
+  let slug = Array.isArray(rawSlug) ? rawSlug : (rawSlug ? [rawSlug] : []);
+  slug = normalizeSlug(slug);
+  if (slug.length > 0) return slug;
+
+  // Fallback: parsear req.url manualmente
+  const url = req.url || '';
+  const path = url.split('?')[0];
+  const segments = path.split('/').filter(Boolean);
+  // Remove os prefixos 'api' e 'kanban'
+  if (segments[0] === 'api') segments.shift();
+  if (segments[0] === 'kanban') segments.shift();
+  return segments;
+}
+
 export default async function handler(req, res) {
   setCorsHeaders(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const rawSlug = req.query.slug || req.query['[...slug]'] || [];
-  let slug = Array.isArray(rawSlug) ? rawSlug : (rawSlug ? [rawSlug] : []);
-  slug = normalizeSlug(slug);
-
+  const slug = extractSlug(req);
   const subResource = slug[0];
   const rest = slug.slice(1);
 
@@ -328,6 +341,6 @@ export default async function handler(req, res) {
     case 'tasks':
       return handleKanbanTasks(req, res, rest);
     default:
-      return res.status(404).json({ error: 'Not found' });
+      return res.status(404).json({ error: 'Not found', debug: { slug, subResource, rest, query: req.query, url: req.url } });
   }
 }

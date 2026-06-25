@@ -13,14 +13,26 @@ function toCamel(obj) {
   return snakeToCamelObj(obj, keyMap);
 }
 
+function extractSlug(req) {
+  const rawSlug = req.query.slug || req.query['[...slug]'] || [];
+  let slug = Array.isArray(rawSlug) ? rawSlug : (rawSlug ? [rawSlug] : []);
+  if (slug.length > 0) return slug;
+
+  const url = req.url || '';
+  const path = url.split('?')[0];
+  const segments = path.split('/').filter(Boolean);
+  if (segments[0] === 'api') segments.shift();
+  if (segments[0] === 'data-masses') segments.shift();
+  return segments;
+}
+
 export default async function handler(req, res) {
   setCorsHeaders(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const rawSlug = req.query.slug || req.query['[...slug]'] || [];
-  const slug = Array.isArray(rawSlug) ? rawSlug : (rawSlug ? [rawSlug] : []);
+  const slug = extractSlug(req);
   const id = slug[0];
-  if (!id || slug.length > 1) return res.status(404).json({ error: 'Not found' });
+  if (!id || slug.length > 1) return res.status(404).json({ error: 'Not found', debug: { slug, query: req.query, url: req.url } });
 
   if (req.method === 'GET') {
     const { data, error } = await supabase
