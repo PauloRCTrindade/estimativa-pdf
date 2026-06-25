@@ -150,6 +150,7 @@ function kanbanTaskLowercaseToCamel(obj) {
 // ============================================================
 
 async function handleEstimativas(req, res, slug) {
+  slug = normalizeSlug(slug);
   const id = slug[0];
   if (slug.length > 1) return res.status(404).json({ error: 'Not found' });
 
@@ -228,6 +229,7 @@ async function handleEstimativas(req, res, slug) {
 }
 
 async function handleDataMasses(req, res, slug) {
+  slug = normalizeSlug(slug);
   const id = slug[0];
   if (slug.length > 1) return res.status(404).json({ error: 'Not found' });
 
@@ -307,6 +309,7 @@ async function handleDataMasses(req, res, slug) {
 }
 
 async function handleDataMassColumns(req, res, slug) {
+  slug = normalizeSlug(slug);
   const id = slug[0];
   if (slug.length > 1) return res.status(404).json({ error: 'Not found' });
 
@@ -380,6 +383,7 @@ async function handleDataMassColumns(req, res, slug) {
 }
 
 async function handleDataMassTags(req, res, slug) {
+  slug = normalizeSlug(slug);
   const id = slug[0];
   if (slug.length > 1) return res.status(404).json({ error: 'Not found' });
 
@@ -478,6 +482,7 @@ async function handleKanbanBoard(req, res) {
 }
 
 async function handleKanbanCards(req, res, slug) {
+  slug = normalizeSlug(slug);
   const id = slug[0];
   if (slug.length > 1) return res.status(404).json({ error: 'Not found' });
 
@@ -560,6 +565,7 @@ async function handleKanbanCards(req, res, slug) {
 }
 
 async function handleKanbanColumns(req, res, slug) {
+  slug = normalizeSlug(slug);
   const id = slug[0];
   if (slug.length > 1) return res.status(404).json({ error: 'Not found' });
 
@@ -633,6 +639,7 @@ async function handleKanbanColumns(req, res, slug) {
 }
 
 async function handleKanbanTasks(req, res, slug) {
+  slug = normalizeSlug(slug);
   const id = slug[0];
   if (slug.length > 1) return res.status(404).json({ error: 'Not found' });
 
@@ -705,6 +712,7 @@ async function handleKanbanTasks(req, res, slug) {
 }
 
 async function handleKanban(req, res, slug) {
+  slug = normalizeSlug(slug);
   const subResource = slug[0];
   const rest = slug.slice(1);
 
@@ -722,6 +730,12 @@ async function handleKanban(req, res, slug) {
   }
 }
 
+function normalizeSlug(slug) {
+  if (typeof slug === 'string') return slug.split('/').filter(Boolean);
+  if (Array.isArray(slug)) return slug;
+  return [];
+}
+
 // ============================================================
 // Main handler
 // ============================================================
@@ -733,9 +747,16 @@ export default async function handler(req, res) {
     return;
   }
 
-  const slug = req.query.slug || [];
+  let slug = req.query.slug || [];
+  if (typeof slug === 'string') {
+    slug = slug.split('/').filter(Boolean);
+  } else if (!Array.isArray(slug)) {
+    slug = [];
+  }
   const resource = slug[0];
   const rest = slug.slice(1);
+
+  console.log('[API Router]', req.method, req.url, { slug, resource, rest, query: req.query });
 
   switch (resource) {
     case 'estimativas':
@@ -749,6 +770,6 @@ export default async function handler(req, res) {
     case 'kanban':
       return handleKanban(req, res, rest);
     default:
-      return res.status(404).json({ error: 'Not found' });
+      return res.status(404).json({ error: 'Not found', debug: { slug, resource, rest, query: req.query } });
   }
 }
