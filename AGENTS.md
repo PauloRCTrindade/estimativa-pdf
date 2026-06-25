@@ -231,6 +231,22 @@ O schema completo está em `database.sql`. Ele inclui:
 - As rotas serverless ficam em `api/` e são acessadas em `/api/*`.
 - **NÃO configure `VITE_API_URL=/api` no Vercel.** Deixe a variável vazia ou não a defina, para evitar URLs duplicadas como `/api/api/estimativas`.
 
+### Limite de Serverless Functions (plano Hobby)
+A Vercel conta **todos os arquivos `.js`/`.ts` dentro de `api/`** como Serverless Functions. O plano Hobby impõe um limite máximo de **12 funções por deploy**. Portanto, **manter o projeto sempre abaixo de 12 Serverless Functions é uma premissa obrigatória** para qualquer alteração de backend.
+
+Regras para respeitar o limite:
+1. **Helpers compartilhados devem ficar em `api/_lib/`** (prefixo `underscore`). A Vercel ignora arquivos/pastas prefixados com `_`, então não entram na contagem. Nunca crie helpers compartilhados diretamente em `api/` ou em subpastas sem `_`.
+2. **Consolide endpoints relacionados** em arquivos catch-all (`[...slug].js` ou `[[...slug]].js`). Por exemplo:
+   - `api/data-masses/index.js` + `api/data-masses/[...slug].js` cobrem collection e item.
+   - `api/kanban/[...slug].js` pode rotear internamente para `/api/kanban/board`, `/api/kanban/columns`, `/api/kanban/cards`, etc.
+3. **Antes de criar um novo arquivo em `api/`**, verifique se o número total de Serverless Functions permanecerá ≤ 12. Se necessário, refatore rotas existentes para usar um roteador central ou catch-all em vez de adicionar mais arquivos.
+4. Se o limite de 12 for atingido, **a solução padrão é consolidar funções**, nunca sugerir upgrade para Pro como única saída sem primeiro tentar reorganizar o código.
+
+Para conferir a contagem atual de funções localmente:
+```bash
+find api -type f -name '*.js' | grep -v '_lib'
+```
+
 ### Endpoints disponíveis
 ```
 GET    /api/estimativas                listar com filtros opcionais (?arquiteto=&titulo=)

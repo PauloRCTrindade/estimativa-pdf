@@ -1,4 +1,4 @@
-import { MagnifyingGlass, Plus, Table, Tag as TagIcon } from "@phosphor-icons/react";
+import { Copy, MagnifyingGlass, Plus, Table, Tag as TagIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ interface DataMassToolbarProps {
   onToggleTagFilter: (tag: string) => void;
   availableTags: DataMassTag[];
   onAddRow: () => void;
+  onCopyMassas: () => void;
   onOpenColumnManager: () => void;
   onOpenTagManager: () => void;
 }
@@ -23,6 +24,7 @@ export function DataMassToolbar({
   onToggleTagFilter,
   availableTags,
   onAddRow,
+  onCopyMassas,
   onOpenColumnManager,
   onOpenTagManager,
 }: DataMassToolbarProps) {
@@ -56,6 +58,15 @@ export function DataMassToolbar({
           >
             <TagIcon className="mr-1.5 h-4 w-4" />
             Tags
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onCopyMassas}
+          >
+            <Copy className="mr-1.5 h-4 w-4" />
+            Copiar massas
           </Button>
           <Button type="button" size="sm" onClick={onAddRow}>
             <Plus className="mr-1.5 h-4 w-4" />

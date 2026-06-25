@@ -185,3 +185,64 @@ export function removeLineFromDataMass(massa: DataMass, lineId: string): DataMas
     lines: remaining.length > 0 ? remaining : [createDataMassLine("")],
   };
 }
+
+// ================================
+// Formatação para cópia
+// ================================
+
+function stripHtml(value: string): string {
+  if (!value) return value;
+
+  if (typeof window === "undefined") {
+    return value
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(value, "text/html");
+  return (doc.body.textContent || "").trim();
+}
+
+export function formatVisibleDataMassesForCopy(massas: FilteredDataMass[]): string {
+  if (massas.length === 0) {
+    return "Nenhuma massa encontrada para os filtros aplicados.";
+  }
+
+  const sortedMassas = [...massas].sort((a, b) => a.cpf.localeCompare(b.cpf));
+
+  const blocks = sortedMassas.map((massa, massaIndex) => {
+    const sortedLines = [...massa.matchedLines].sort((a, b) =>
+      a.numero.localeCompare(b.numero)
+    );
+
+    const linesBlock =
+      sortedLines.length === 0
+        ? "Linha: -"
+        : sortedLines
+            .map((line, index) => {
+              const lineLabel = sortedLines.length === 1 ? "Linha:" : `Linha ${index + 1}:`;
+              const numero = line.numero?.trim() || "-";
+              const tipo = line.tipos.length > 0 ? line.tipos.join(", ") : "-";
+              const observacao = stripHtml(line.observacao || "") || "-";
+
+              return [
+                lineLabel,
+                `- Número: ${numero}`,
+                `- Tipo: ${tipo}`,
+                `- Observação: ${observacao}`,
+              ].join("\n");
+            })
+            .join("\n\n");
+
+    const blockText = [`CPF: ${massa.cpf}`, "", linesBlock].join("\n");
+    const isLast = massaIndex === sortedMassas.length - 1;
+
+    return isLast ? blockText : `${blockText}\n\n------------------------------`;
+  });
+
+  const header = "MASSAS DE DADOS\n" + "=".repeat(30);
+
+  return [header, "", ...blocks].join("\n\n");
+}

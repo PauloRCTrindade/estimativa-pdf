@@ -1,12 +1,14 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Database, Plus, Trash } from "@phosphor-icons/react";
+import { Copy, Database, Plus, Trash } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { DataMassToolbar } from "@/components/data-masses/DataMassToolbar";
@@ -15,7 +17,7 @@ import { ColumnManager } from "@/components/data-masses/ColumnManager";
 import { TagManager } from "@/components/data-masses/TagManager";
 import { TagSelector } from "@/components/data-masses/TagSelector";
 import { useDataMasses } from "@/hooks/useDataMasses";
-import { createDataMassLine } from "@/components/data-masses/utils";
+import { createDataMassLine, formatVisibleDataMassesForCopy } from "@/components/data-masses/utils";
 import type { DataMass, DataMassColumn, DataMassTag, DataMassLine } from "@/types";
 
 function isLineEmpty(line: DataMassLine): boolean {
@@ -54,6 +56,9 @@ export function DataMassesPage() {
   const [newMassLines, setNewMassLines] = useState<DataMassLine[]>([createDataMassLine()]);
   const [newMassError, setNewMassError] = useState<string | null>(null);
 
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+
   useEffect(() => {
     carregarTudo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -63,6 +68,13 @@ export function DataMassesPage() {
     () => filtrarMassas(massas, searchTerm, selectedTags),
     [massas, searchTerm, selectedTags, filtrarMassas]
   );
+
+  const copyText = useMemo(
+    () => formatVisibleDataMassesForCopy(filteredMassas),
+    [filteredMassas]
+  );
+
+  const [editableCopyText, setEditableCopyText] = useState(copyText);
 
   const customColumns = useMemo(
     () => colunas.filter((c) => !c.required),
@@ -183,6 +195,22 @@ export function DataMassesPage() {
     );
   }, []);
 
+  const handleOpenCopyModal = useCallback(() => {
+    setCopyFeedback(null);
+    setEditableCopyText(copyText);
+    setCopyModalOpen(true);
+  }, [copyText]);
+
+  const handleCopyText = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(editableCopyText);
+      setCopyFeedback("Texto copiado com sucesso");
+    } catch (err) {
+      console.error("Erro ao copiar:", err);
+      setCopyFeedback("Falha ao copiar. Selecione e copie manualmente.");
+    }
+  }, [editableCopyText]);
+
   return (
     <div className="flex h-full flex-col gap-4 p-4 sm:p-6">
       <div className="flex items-center gap-2">
@@ -197,6 +225,7 @@ export function DataMassesPage() {
         onToggleTagFilter={toggleTagFilter}
         availableTags={tags}
         onAddRow={handleAddRow}
+        onCopyMassas={handleOpenCopyModal}
         onOpenColumnManager={() => setColumnManagerOpen(true)}
         onOpenTagManager={() => setTagManagerOpen(true)}
       />
@@ -238,6 +267,41 @@ export function DataMassesPage() {
         tags={tags}
         onDeleteTag={handleDeleteTag}
       />
+
+      <Dialog open={copyModalOpen} onOpenChange={setCopyModalOpen}>
+        <DialogContent
+          overlayClassName="bg-black/30 backdrop-blur-none"
+          className="flex max-h-[80vh] w-full max-w-[min(900px,90vw)] flex-col overflow-hidden p-0"
+        >
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <DialogTitle>Copiar massas</DialogTitle>
+            <DialogDescription>
+              Revise o conteúdo abaixo antes de copiar
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-6 py-4">
+            <Textarea
+              value={editableCopyText}
+              onChange={(e) => setEditableCopyText(e.target.value)}
+              className="min-h-[400px] w-full flex-1 resize-none font-mono text-sm whitespace-pre"
+            />
+            {copyFeedback && (
+              <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
+                {copyFeedback}
+              </div>
+            )}
+          </div>
+          <DialogFooter className="mx-0 mb-0 border-t bg-muted/50 px-6 py-4 sm:justify-end">
+            <Button variant="outline" onClick={() => setCopyModalOpen(false)}>
+              Fechar
+            </Button>
+            <Button onClick={handleCopyText}>
+              <Copy className="mr-1.5 h-4 w-4" />
+              Copiar texto
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={newMassModalOpen} onOpenChange={setNewMassModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
