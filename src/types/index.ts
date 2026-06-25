@@ -130,12 +130,18 @@ export type Estimativa = {
   atualizadoEm?: string;
 };
 
+export interface DataMassLine {
+  id: string;
+  numero: string;
+  tipos: string[];
+  observacao?: string;
+  customFields?: Record<string, string>;
+}
+
 export interface DataMass {
   id: string;
   cpf: string;
-  linha: string;
-  observacao?: string;
-  tipos: string[];
+  lines: DataMassLine[];
   customFields: Record<string, string>;
   createdAt: string;
   updatedAt: string;

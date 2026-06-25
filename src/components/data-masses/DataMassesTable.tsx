@@ -1,11 +1,13 @@
-import { DataMassRow } from "./DataMassRow";
-import type { DataMass, DataMassColumn, DataMassTag } from "@/types";
+import { DataMassRowGroup } from "./DataMassRowGroup";
+import type { DataMassColumn, DataMassTag, FilteredDataMass } from "./types";
 
 interface DataMassesTableProps {
-  massas: DataMass[];
+  massas: FilteredDataMass[];
   customColumns: DataMassColumn[];
   availableTags: DataMassTag[];
-  onSaveMassa: (id: string, data: Partial<DataMass>) => void;
+  searchTerm: string;
+  selectedTags: string[];
+  onSaveMassa: (id: string, data: Partial<FilteredDataMass>) => void;
   onDeleteMassa: (id: string) => void;
   onCreateTag: (tag: Omit<DataMassTag, "id">) => Promise<DataMassTag | undefined>;
 }
@@ -14,6 +16,8 @@ export function DataMassesTable({
   massas,
   customColumns,
   availableTags,
+  searchTerm,
+  selectedTags,
   onSaveMassa,
   onDeleteMassa,
   onCreateTag,
@@ -59,11 +63,13 @@ export function DataMassesTable({
               </tr>
             ) : (
               massas.map((massa) => (
-                <DataMassRow
+                <DataMassRowGroup
                   key={massa.id}
                   massa={massa}
                   customColumns={customColumns}
                   availableTags={availableTags}
+                  searchTerm={searchTerm}
+                  selectedTags={selectedTags}
                   onSave={onSaveMassa}
                   onDelete={onDeleteMassa}
                   onCreateTag={onCreateTag}

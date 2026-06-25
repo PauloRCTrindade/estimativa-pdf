@@ -1,6 +1,14 @@
 import { useState, useCallback } from 'react';
-import type { DataMass, DataMassColumn, DataMassTag } from '../types';
+import type { DataMass, DataMassColumn, DataMassLine, DataMassTag } from '../types';
 import { useAuth } from './useAuth';
+import {
+  filterDataMasses,
+  normalizeDataMasses,
+  createDataMassLine,
+  addLineToDataMass,
+  removeLineFromDataMass,
+  updateLineInDataMass,
+} from '../components/data-masses/utils';
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -20,6 +28,8 @@ import {
   atualizarTag,
   deletarTag,
 } from '../services/dataMassApi';
+
+export type FilteredDataMass = DataMass & { matchedLines: DataMassLine[] };
 
 export function useDataMasses() {
   const { getToken } = useAuth();
@@ -51,7 +61,7 @@ export function useDataMasses() {
         listarColunas(token || undefined),
         listarTags(token || undefined),
       ]);
-      setMassas(massasData);
+      setMassas(normalizeDataMasses(massasData));
       setColunas(colunasData);
       setTags(tagsData);
     } catch (err: unknown) {
@@ -73,7 +83,7 @@ export function useDataMasses() {
     try {
       const token = await getTokenSafe();
       const nova = await criarMassa(massa, token || undefined);
-      setMassas(prev => [nova, ...prev]);
+      setMassas(prev => [normalizeDataMasses([nova])[0], ...prev]);
       return nova;
     } catch (err: unknown) {
       const mensagem = getErrorMessage(err) || 'Erro ao criar massa';
@@ -90,7 +100,7 @@ export function useDataMasses() {
     try {
       const token = await getTokenSafe();
       const atualizada = await atualizarMassa(id, massa, token || undefined);
-      setMassas(prev => prev.map(m => m.id === id ? atualizada : m));
+      setMassas(prev => prev.map(m => m.id === id ? normalizeDataMasses([atualizada])[0] : m));
       return atualizada;
     } catch (err: unknown) {
       const mensagem = getErrorMessage(err) || 'Erro ao atualizar massa';
@@ -116,6 +126,37 @@ export function useDataMasses() {
       setLoading(false);
     }
   }, [getTokenSafe]);
+
+  // ================================
+  // Linhas
+  // ================================
+
+  const adicionarLinha = useCallback(async (massaId: string, line?: DataMassLine) => {
+    setMassas(prev =>
+      prev.map(m => (m.id === massaId ? addLineToDataMass(m, line) : m))
+    );
+  }, []);
+
+  const removerLinha = useCallback(async (massaId: string, lineId: string) => {
+    setMassas(prev =>
+      prev.map(m => (m.id === massaId ? removeLineFromDataMass(m, lineId) : m))
+    );
+  }, []);
+
+  const atualizarLinhaLocal = useCallback((massaId: string, lineId: string, changes: Partial<DataMassLine>) => {
+    setMassas(prev =>
+      prev.map(m => (m.id === massaId ? updateLineInDataMass(m, lineId, changes) : m))
+    );
+  }, []);
+
+  const salvarLinha = useCallback(async (massaId: string, lineId: string) => {
+    const massa = massas.find(m => m.id === massaId);
+    if (!massa) return;
+    const line = massa.lines.find(l => l.id === lineId);
+    if (!line) return;
+
+    await atualizar(massaId, { lines: massa.lines });
+  }, [massas, atualizar]);
 
   // ================================
   // Colunas personalizadas
@@ -233,21 +274,8 @@ export function useDataMasses() {
     massas: DataMass[],
     searchTerm: string,
     selectedTags: string[]
-  ) => {
-    const termo = searchTerm.trim().toLowerCase();
-    return massas.filter((massa) => {
-      const matchSearch = !termo || [
-        massa.cpf,
-        massa.linha,
-        massa.observacao,
-        massa.customFields?.projeto,
-        massa.customFields?.bug,
-      ].some((valor) => (valor || '').toLowerCase().includes(termo));
-
-      const matchTags = selectedTags.length === 0 || selectedTags.every((tag) => massa.tipos.includes(tag));
-
-      return matchSearch && matchTags;
-    });
+  ): FilteredDataMass[] => {
+    return filterDataMasses(massas, searchTerm, selectedTags);
   }, []);
 
   return {
@@ -260,6 +288,10 @@ export function useDataMasses() {
     criar,
     atualizar,
     deletar,
+    adicionarLinha,
+    removerLinha,
+    atualizarLinhaLocal,
+    salvarLinha,
     criarColunaMassa,
     atualizarColunaMassa,
     deletarColunaMassa,
@@ -267,5 +299,6 @@ export function useDataMasses() {
     atualizarTagMassa,
     deletarTagMassa,
     filtrarMassas,
+    createDataMassLine,
   };
 }

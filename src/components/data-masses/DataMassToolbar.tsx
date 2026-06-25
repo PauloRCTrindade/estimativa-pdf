@@ -32,7 +32,7 @@ export function DataMassToolbar({
         <div className="relative flex-1">
           <MagnifyingGlass className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar por CPF, linha, projeto, bug ou observação..."
+            placeholder="Buscar por CPF, linha, tag ou observação..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
             className="h-9 pl-9 text-sm"

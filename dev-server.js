@@ -95,6 +95,58 @@ async function safeEstimativaUpdate(id, body) {
   }
 }
 
+// Tenta inserir/atualizar em data_masses removendo automaticamente campos que não existem no schema
+async function safeDataMassInsert(body) {
+  let attemptBody = { ...body };
+  
+  while (true) {
+    const { data, error } = await supabase
+      .from('data_masses')
+      .insert([attemptBody])
+      .select()
+      .single();
+    
+    if (!error) return { data, error: null };
+    
+    const match = error.message.match(/Could not find the '([^']+)' column/);
+    if (match) {
+      const col = match[1];
+      if (attemptBody.hasOwnProperty(col)) {
+        delete attemptBody[col];
+        continue;
+      }
+    }
+    
+    return { data, error };
+  }
+}
+
+async function safeDataMassUpdate(id, body) {
+  let attemptBody = { ...body };
+  
+  while (true) {
+    const { data, error } = await supabase
+      .from('data_masses')
+      .update(attemptBody)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (!error) return { data, error: null };
+    
+    const match = error.message.match(/Could not find the '([^']+)' column/);
+    if (match) {
+      const col = match[1];
+      if (attemptBody.hasOwnProperty(col)) {
+        delete attemptBody[col];
+        continue;
+      }
+    }
+    
+    return { data, error };
+  }
+}
+
 // Conversor de lowercase para camelCase (resposta ao cliente)
 function lowercaseToCamel(obj) {
   if (!obj || typeof obj !== 'object') return obj;
@@ -477,38 +529,193 @@ function toCamelDataMassTag(obj) {
   return converted;
 }
 
+// ================================
+// HELPERS PARA DATA MASSES (novo formato lines)
+// ================================
+
+function generateDataMassId() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
+function createDataMassLine(numero = '', tipos = [], observacao = '', customFields = {}) {
+  return {
+    id: generateDataMassId(),
+    numero,
+    tipos,
+    observacao,
+    customFields,
+  };
+}
+
+function isLegacyDataMassRow(row) {
+  const lines = row.lines;
+  return !lines || !Array.isArray(lines) || lines.length === 0;
+}
+
+function rowToDataMass(row) {
+  let lines = [];
+
+  if (row.lines && Array.isArray(row.lines) && row.lines.length > 0) {
+    lines = row.lines.map((line) => ({
+      id: line.id || generateDataMassId(),
+      numero: line.numero || '',
+      tipos: Array.isArray(line.tipos) ? line.tipos : [],
+      observacao: line.observacao || '',
+      customFields: line.customFields || {},
+    }));
+  } else if (row.linha) {
+    lines = [createDataMassLine(row.linha, row.tipos || [], row.observacao || '', row.custom_fields || {})];
+  }
+
+  if (lines.length === 0) {
+    lines = [createDataMassLine()];
+  }
+
+  return {
+    id: row.id,
+    cpf: row.cpf || '',
+    lines,
+    customFields: row.custom_fields || {},
+    createdAt: row.criado_em,
+    updatedAt: row.atualizado_em,
+  };
+}
+
+function normalizeDataMassRow(row) {
+  const dataMass = rowToDataMass(row);
+  return toCamelDataMass({
+    ...dataMass,
+    custom_fields: dataMass.customFields,
+    criado_em: dataMass.createdAt,
+    atualizado_em: dataMass.updatedAt,
+  });
+}
+
+function buildLegacyFields(lines = []) {
+  const first = lines[0] || {};
+  return {
+    linha: first.numero || '',
+    observacao: first.observacao || '',
+    tipos: Array.isArray(first.tipos) ? first.tipos : [],
+  };
+}
+
+async function migrateLegacyDataMassRows() {
+  const { data: rows, error } = await supabase
+    .from('data_masses')
+    .select('*')
+    .order('criado_em', { ascending: false });
+
+  if (error || !rows || rows.length === 0) return { rows: [], error };
+
+  const legacyRows = rows.filter(isLegacyDataMassRow);
+  if (legacyRows.length === 0) return { rows, error: null };
+
+  const grouped = new Map();
+  for (const row of legacyRows) {
+    const cpf = row.cpf || '';
+    if (!grouped.has(cpf)) grouped.set(cpf, []);
+    grouped.get(cpf).push(row);
+  }
+
+  for (const [cpf, group] of grouped.entries()) {
+    group.sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em));
+    const [target, ...duplicates] = group;
+
+    const lines = group
+      .slice()
+      .reverse()
+      .map((row) =>
+        createDataMassLine(
+          row.linha || '',
+          Array.isArray(row.tipos) ? row.tipos : [],
+          row.observacao || '',
+          row.custom_fields || {}
+        )
+      );
+
+    const { error: updateError } = await supabase
+      .from('data_masses')
+      .update({
+        lines,
+        linha: lines[0]?.numero || '',
+        observacao: lines[0]?.observacao || '',
+        tipos: lines[0]?.tipos || [],
+      })
+      .eq('id', target.id);
+
+    if (updateError) {
+      console.error(`Erro ao migrar CPF ${cpf}:`, updateError.message);
+      continue;
+    }
+
+    if (duplicates.length > 0) {
+      const ids = duplicates.map((d) => d.id);
+      const { error: deleteError } = await supabase
+        .from('data_masses')
+        .delete()
+        .in('id', ids);
+
+      if (deleteError) {
+        console.error(`Erro ao deletar duplicados do CPF ${cpf}:`, deleteError.message);
+      }
+    }
+  }
+
+  const { data: refreshedRows, error: refreshError } = await supabase
+    .from('data_masses')
+    .select('*')
+    .order('criado_em', { ascending: false });
+
+  return { rows: refreshedRows || [], error: refreshError };
+}
+
 // Masses
 app.get('/api/data-masses', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('data_masses').select('*').order('criado_em', { ascending: false });
+    const { rows, error } = await migrateLegacyDataMassRows();
     if (error) throw error;
-    res.json((data || []).map(toCamelDataMass));
+    res.json((rows || []).map(normalizeDataMassRow));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/data-masses', async (req, res) => {
   try {
-    const { customFields, ...restBody } = req.body || {};
+    const { lines, customFields, ...restBody } = req.body || {};
     const convertedBody = camelToSnakeCase(restBody);
+    if (lines !== undefined) {
+      convertedBody.lines = lines;
+      const legacyFields = buildLegacyFields(lines);
+      convertedBody.linha = legacyFields.linha;
+      convertedBody.observacao = legacyFields.observacao;
+      convertedBody.tipos = legacyFields.tipos;
+    }
     if (customFields !== undefined) {
       convertedBody.custom_fields = customFields;
     }
-    const { data, error } = await supabase.from('data_masses').insert(convertedBody).select().single();
+    const { data, error } = await safeDataMassInsert(convertedBody);
     if (error) throw error;
-    res.status(201).json(toCamelDataMass(data));
+    res.status(201).json(normalizeDataMassRow(data));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/data-masses/:id', async (req, res) => {
   try {
-    const { customFields, ...restBody } = req.body || {};
+    const { lines, customFields, ...restBody } = req.body || {};
     const convertedBody = camelToSnakeCase(restBody);
+    if (lines !== undefined) {
+      convertedBody.lines = lines;
+      const legacyFields = buildLegacyFields(lines);
+      convertedBody.linha = legacyFields.linha;
+      convertedBody.observacao = legacyFields.observacao;
+      convertedBody.tipos = legacyFields.tipos;
+    }
     if (customFields !== undefined) {
       convertedBody.custom_fields = customFields;
     }
-    const { data, error } = await supabase.from('data_masses').update(convertedBody).eq('id', req.params.id).select().single();
+    const { data, error } = await safeDataMassUpdate(req.params.id, convertedBody);
     if (error) throw error;
-    res.json(toCamelDataMass(data));
+    res.json(normalizeDataMassRow(data));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

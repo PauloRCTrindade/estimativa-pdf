@@ -1,11 +1,30 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Database } from "@phosphor-icons/react";
+import { Database, Plus, Trash } from "@phosphor-icons/react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { DataMassToolbar } from "@/components/data-masses/DataMassToolbar";
 import { DataMassesTable } from "@/components/data-masses/DataMassesTable";
 import { ColumnManager } from "@/components/data-masses/ColumnManager";
 import { TagManager } from "@/components/data-masses/TagManager";
+import { TagSelector } from "@/components/data-masses/TagSelector";
 import { useDataMasses } from "@/hooks/useDataMasses";
-import type { DataMass, DataMassColumn, DataMassTag } from "@/types";
+import { createDataMassLine } from "@/components/data-masses/utils";
+import type { DataMass, DataMassColumn, DataMassTag, DataMassLine } from "@/types";
+
+function isLineEmpty(line: DataMassLine): boolean {
+  return (
+    !line.numero.trim() &&
+    line.tipos.length === 0 &&
+    !line.observacao?.trim()
+  );
+}
 
 export function DataMassesPage() {
   const {
@@ -30,6 +49,11 @@ export function DataMassesPage() {
   const [columnManagerOpen, setColumnManagerOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
 
+  const [newMassModalOpen, setNewMassModalOpen] = useState(false);
+  const [newMassCpf, setNewMassCpf] = useState("");
+  const [newMassLines, setNewMassLines] = useState<DataMassLine[]>([createDataMassLine()]);
+  const [newMassError, setNewMassError] = useState<string | null>(null);
+
   useEffect(() => {
     carregarTudo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -45,15 +69,61 @@ export function DataMassesPage() {
     [colunas]
   );
 
+  const resetNewMassForm = useCallback(() => {
+    setNewMassCpf("");
+    setNewMassLines([createDataMassLine()]);
+    setNewMassError(null);
+  }, []);
+
   const handleAddRow = useCallback(async () => {
-    await criar({
-      cpf: "",
-      linha: "",
-      observacao: "",
-      tipos: [],
-      customFields: {},
+    resetNewMassForm();
+    setNewMassModalOpen(true);
+  }, [resetNewMassForm]);
+
+  const handleAddModalLine = useCallback(() => {
+    setNewMassLines((prev) => [...prev, createDataMassLine()]);
+  }, []);
+
+  const handleRemoveModalLine = useCallback((lineId: string) => {
+    setNewMassLines((prev) => {
+      const remaining = prev.filter((line) => line.id !== lineId);
+      return remaining.length > 0 ? remaining : [createDataMassLine()];
     });
-  }, [criar]);
+  }, []);
+
+  const handleUpdateModalLine = useCallback((lineId: string, changes: Partial<DataMassLine>) => {
+    setNewMassLines((prev) =>
+      prev.map((line) => (line.id === lineId ? { ...line, ...changes } : line))
+    );
+  }, []);
+
+  const handleCreateMass = useCallback(async () => {
+    setNewMassError(null);
+
+    const cpf = newMassCpf.trim();
+    if (!cpf) {
+      setNewMassError("O CPF é obrigatório.");
+      return;
+    }
+
+    const filledLines = newMassLines.filter((line) => !isLineEmpty(line));
+    if (filledLines.length === 0) {
+      setNewMassError("Preencha pelo menos uma linha para salvar.");
+      return;
+    }
+
+    try {
+      await criar({
+        cpf,
+        lines: filledLines,
+        customFields: {},
+      });
+      setNewMassModalOpen(false);
+      resetNewMassForm();
+    } catch (err) {
+      console.error("Erro ao criar massa:", err);
+    }
+  }, [criar, newMassCpf, newMassLines, resetNewMassForm]);
 
   const handleSaveMassa = useCallback(
     async (id: string, data: Partial<DataMass>) => {
@@ -68,7 +138,7 @@ export function DataMassesPage() {
 
   const handleDeleteMassa = useCallback(
     async (id: string) => {
-      if (confirm("Tem certeza que deseja excluir esta massa?")) {
+      if (confirm("Tem certeza que deseja excluir este CPF e todas as suas linhas?")) {
         await deletar(id);
       }
     },
@@ -146,6 +216,8 @@ export function DataMassesPage() {
           massas={filteredMassas}
           customColumns={customColumns}
           availableTags={tags}
+          searchTerm={searchTerm}
+          selectedTags={selectedTags}
           onSaveMassa={handleSaveMassa}
           onDeleteMassa={handleDeleteMassa}
           onCreateTag={handleCreateTag}
@@ -166,6 +238,105 @@ export function DataMassesPage() {
         tags={tags}
         onDeleteTag={handleDeleteTag}
       />
+
+      <Dialog open={newMassModalOpen} onOpenChange={setNewMassModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Nova massa de dados</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-5 py-2">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">CPF</label>
+              <Input
+                value={newMassCpf}
+                onChange={(e) => setNewMassCpf(e.target.value)}
+                placeholder="Digite o CPF"
+              />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <label className="text-xs font-medium text-muted-foreground">Linhas da massa</label>
+
+              {newMassLines.map((line, index) => (
+                <div
+                  key={line.id}
+                  className="rounded-lg border border-border/60 bg-accent/20 p-3"
+                >
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Linha {index + 1}
+                    </span>
+                    {newMassLines.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => handleRemoveModalLine(line.id)}
+                        title="Remover linha"
+                      >
+                        <Trash className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2.5">
+                    <Input
+                      value={line.numero}
+                      onChange={(e) =>
+                        handleUpdateModalLine(line.id, { numero: e.target.value })
+                      }
+                      placeholder="Digite a linha"
+                    />
+                    <TagSelector
+                      availableTags={tags}
+                      selectedTags={line.tipos}
+                      onChange={(tipos) => handleUpdateModalLine(line.id, { tipos })}
+                      onCreateTag={handleCreateTag}
+                    />
+                    <Input
+                      value={line.observacao || ""}
+                      onChange={(e) =>
+                        handleUpdateModalLine(line.id, { observacao: e.target.value })
+                      }
+                      placeholder="Digite a observação da linha"
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-fit"
+                onClick={handleAddModalLine}
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                Adicionar linha
+              </Button>
+            </div>
+
+            {newMassError && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {newMassError}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setNewMassModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCreateMass}
+              disabled={!newMassCpf.trim() || newMassLines.every(isLineEmpty)}
+            >
+              Salvar massa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

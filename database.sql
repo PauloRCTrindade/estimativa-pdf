@@ -193,7 +193,9 @@ CREATE POLICY "Allow all" ON kanban_tasks FOR ALL USING (true) WITH CHECK (true)
 CREATE TABLE IF NOT EXISTS data_masses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   cpf TEXT NOT NULL,
-  linha TEXT NOT NULL,
+  lines JSONB DEFAULT '[]',
+  -- Campos legados mantidos para compatibilidade com migração
+  linha TEXT,
   observacao TEXT,
   tipos TEXT[] DEFAULT '{}',
   custom_fields JSONB DEFAULT '{}',
@@ -204,6 +206,7 @@ CREATE TABLE IF NOT EXISTS data_masses (
 CREATE INDEX IF NOT EXISTS idx_data_masses_cpf ON data_masses(cpf);
 CREATE INDEX IF NOT EXISTS idx_data_masses_linha ON data_masses(linha);
 CREATE INDEX IF NOT EXISTS idx_data_masses_tipos ON data_masses USING GIN(tipos);
+CREATE INDEX IF NOT EXISTS idx_data_masses_lines ON data_masses USING GIN(lines);
 
 CREATE TRIGGER trigger_update_data_masses
 BEFORE UPDATE ON data_masses
