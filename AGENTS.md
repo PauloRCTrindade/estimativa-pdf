@@ -315,7 +315,7 @@ Para associar estimativas a um usuário no futuro, adicione `user_id` à tabela 
 ## Deploy
 
 O deploy padrão é na **Vercel**:
-- `vercel.json` define `buildCommand`, `devCommand`, `outputDirectory: "dist"` e rewrite de `/api/(.*)` para `/api/$1`.
+- `vercel.json` define `buildCommand`, `devCommand` e `outputDirectory: "dist"`. O roteamento `/api/*` é feito automaticamente pelas Serverless Functions da pasta `api/`, sem rewrites manuais.
 - O build gera a pasta `dist/`.
 - As variáveis de ambiente do Supabase devem estar configuradas no dashboard da Vercel.
 
