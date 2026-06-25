@@ -1,5 +1,5 @@
-import { supabase } from '../lib/supabase.js';
-import { setCorsHeaders, verifyAuth, unauthorized } from '../lib/auth.js';
+import { supabase } from '../_lib/supabase.js';
+import { setCorsHeaders, verifyAuth, unauthorized } from '../_lib/auth.js';
 
 function estimativaLowercaseToCamel(obj) {
   if (!obj || typeof obj !== 'object') return obj;

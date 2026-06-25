@@ -41,7 +41,7 @@ Complete este checklist para ter o backend 100% funcional:
 ## 🟦 5. Arquivos Criados
 - [x] `/api/estimativas.ts` - Endpoints GET/POST
 - [x] `/api/estimativas/[id].ts` - Endpoints GET/PUT/DELETE
-- [x] `/api/lib/supabase.ts` - Configuração Supabase
+- [x] `/api/_lib/supabase.js` - Configuração Supabase
 - [x] `/src/services/api.ts` - Funções de API
 - [x] `/src/hooks/useEstimativas.ts` - Hook React
 - [x] `/database.sql` - Schema do banco

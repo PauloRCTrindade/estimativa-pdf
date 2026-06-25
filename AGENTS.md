@@ -202,7 +202,7 @@ O frontend trabalha em **camelCase**:
 
 **Sempre mantenha a conversão nos handlers de API.** As rotas possuem conversores, mas a implementação varia por arquivo:
 - `api/[[...slug]].js` (roteador central): usa `estimativaCamelToLowercase` (`.toLowerCase()` em todas as chaves) e `estimativaLowercaseToCamel` (mapeamento explícito de chaves conhecidas) nas operações de `estimativas`.
-- `api/lib/case-converter.js`: exporta `camelToSnakeObj` e `snakeToCamelObj` usados pelas rotas do Kanban (`api/kanban/`).
+- `api/_lib/case-converter.js`: exporta `camelToSnakeObj` e `snakeToCamelObj` usados pelas rotas do Kanban (`api/kanban/`).
 - `dev-server.js`: usa `camelToSnakeCase` (conversão real com underscore) para estimativas e `toCamelKanban` (com `kanbanKeyMap`) para Kanban.
 
 - Campos especiais JSONB: `pacotes` (estimativa) e `cronograma_real` (card do Kanban) devem preservar sua estrutura interna em camelCase — **nunca converter recursivamente**. O handler de cards dentro do roteador central (`api/[[...slug]].js`) e `dev-server.js` extraem `cronogramaReal` antes de aplicar `camelToSnake` e o reinstalam no payload para preservar as chaves internas.
@@ -328,7 +328,7 @@ VITE_SUPABASE_ANON_KEY
 - A `SUPABASE_ANON_KEY` e `VITE_SUPABASE_ANON_KEY` são seguras para o frontend.
 - Tokens JWT de autenticação são gerenciados pelo Supabase e armazenados automaticamente.
 - O `dev-server.js` lê variáveis de ambiente (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) e não possui credenciais hardcoded. Sempre prefira variáveis de ambiente.
-- O CORS está configurado tanto no `dev-server.js` quanto em `api/lib/auth.js`, permitindo origins locais e `process.env.FRONTEND_URL`/`VERCEL_URL` em produção.
+- O CORS está configurado tanto no `dev-server.js` quanto em `api/_lib/auth.js`, permitindo origins locais e `process.env.FRONTEND_URL`/`VERCEL_URL` em produção.
 - **Nunca commite arquivos `.env`, `.env.local` ou `.env.production`** — eles contêm credenciais e já estão no `.gitignore`.
 
 ---
@@ -377,7 +377,7 @@ Novos cálculos de cronograma devem ser adicionados nesse arquivo e reutilizados
 
 ## Dicas para Agentes
 
-- Sempre verifique se a alteração em APIs afeta a conversão lowercase/camelCase. Lembre-se de que a implementação do conversor varia entre `api/estimativas/`, `api/lib/case-converter.js` e `dev-server.js`.
+- Sempre verifique se a alteração em APIs afeta a conversão lowercase/camelCase. Lembre-se de que a implementação do conversor varia entre `api/estimativas/`, `api/_lib/case-converter.js` e `dev-server.js`.
 - Ao adicionar novos campos no banco, atualize `database.sql`, os conversores em `api/` e os tipos em `src/types/index.ts`.
 - Novos componentes de UI devem preferir componentes de `src/components/ui/`. Use `cn()` para mesclar classes.
 - Para PDF, mantenha cores em HEX e estilos inline quando necessário.

@@ -1,6 +1,6 @@
-import { supabase } from '../lib/supabase.js';
-import { setCorsHeaders, verifyAuth, unauthorized } from '../lib/auth.js';
-import { camelToSnakeObj, snakeToCamelObj } from '../lib/case-converter.js';
+import { supabase } from '../_lib/supabase.js';
+import { setCorsHeaders, verifyAuth, unauthorized } from '../_lib/auth.js';
+import { camelToSnakeObj, snakeToCamelObj } from '../_lib/case-converter.js';
 
 const keyMap = {
   criado_em: 'createdAt',
