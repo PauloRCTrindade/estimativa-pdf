@@ -20,8 +20,8 @@ function normalizeSlug(slug) {
 }
 
 function extractSlug(req) {
-  // Optional catch-all da Vercel: req.query['[...slug]']
-  const rawSlug = req.query['[...slug]'] || req.query.slug || [];
+  // Catch-all da Vercel: req.query.slug ou req.query['[...slug]']
+  const rawSlug = req.query.slug || req.query['[...slug]'] || [];
   let slug = Array.isArray(rawSlug) ? rawSlug : rawSlug ? [rawSlug] : [];
   slug = normalizeSlug(slug);
   if (slug.length > 0) return slug;
