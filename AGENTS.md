@@ -50,10 +50,11 @@ Node.js requerido: **22.22.2** (definido em `.nvmrc`).
 ├── api/                        # Vercel Serverless Functions (backend em produção)
 │   ├── [[...slug]].js          # Roteador central: /api/estimativas, /api/data-masses,
 │   │                           # /api/data-mass-columns, /api/data-mass-tags, /api/kanban/*
-│   └── lib/
+│   └── _lib/
 │       ├── supabase.js         # Cliente Supabase para funções serverless
 │       ├── auth.js             # verifyAuth, unauthorized, setCorsHeaders
-│       └── case-converter.js   # camelToSnakeObj, snakeToCamelObj
+│       ├── case-converter.js   # camelToSnakeObj, snakeToCamelObj
+│       └── dataMassHelpers.js  # Helpers para data-masses
 ├── src/                        # Código-fonte do frontend
 │   ├── components/             # Componentes React
 │   │   ├── ui/                 # Componentes shadcn/ui (Button, Card, Dialog, etc.)
@@ -202,7 +203,7 @@ O frontend trabalha em **camelCase**:
 
 **Sempre mantenha a conversão nos handlers de API.** As rotas possuem conversores, mas a implementação varia por arquivo:
 - `api/[[...slug]].js` (roteador central): usa `estimativaCamelToLowercase` (`.toLowerCase()` em todas as chaves) e `estimativaLowercaseToCamel` (mapeamento explícito de chaves conhecidas) nas operações de `estimativas`.
-- `api/_lib/case-converter.js`: exporta `camelToSnakeObj` e `snakeToCamelObj` usados pelas rotas do Kanban (`api/kanban/`).
+- `api/[[...slug]].js`: roteador central que usa `api/_lib/case-converter.js` para conversão de chaves em todas as rotas.
 - `dev-server.js`: usa `camelToSnakeCase` (conversão real com underscore) para estimativas e `toCamelKanban` (com `kanbanKeyMap`) para Kanban.
 
 - Campos especiais JSONB: `pacotes` (estimativa) e `cronograma_real` (card do Kanban) devem preservar sua estrutura interna em camelCase — **nunca converter recursivamente**. O handler de cards dentro do roteador central (`api/[[...slug]].js`) e `dev-server.js` extraem `cronogramaReal` antes de aplicar `camelToSnake` e o reinstalam no payload para preservar as chaves internas.
@@ -234,13 +235,13 @@ O schema completo está em `database.sql`. Ele inclui:
 ### Limite de Serverless Functions (plano Hobby)
 A Vercel conta **todos os arquivos `.js`/`.ts` dentro de `api/`** como Serverless Functions. O plano Hobby impõe um limite máximo de **12 funções por deploy**. Portanto, **manter o projeto sempre abaixo de 12 Serverless Functions é uma premissa obrigatória** para qualquer alteração de backend.
 
+O projeto usa **um único roteador central** em `api/[[...slug]].js` que trata todos os endpoints (`/api/estimativas`, `/api/data-masses`, `/api/data-mass-columns`, `/api/data-mass-tags`, `/api/kanban/*`). Isso conta como **1 Serverless Function** e deixa folga no limite do plano Hobby.
+
 Regras para respeitar o limite:
 1. **Helpers compartilhados devem ficar em `api/_lib/`** (prefixo `underscore`). A Vercel ignora arquivos/pastas prefixados com `_`, então não entram na contagem. Nunca crie helpers compartilhados diretamente em `api/` ou em subpastas sem `_`.
-2. **Consolide endpoints relacionados** em arquivos catch-all (`[...slug].js` ou `[[...slug]].js`). Por exemplo:
-   - `api/data-masses/index.js` + `api/data-masses/[...slug].js` cobrem collection e item.
-   - `api/kanban/[...slug].js` pode rotear internamente para `/api/kanban/board`, `/api/kanban/columns`, `/api/kanban/cards`, etc.
-3. **Antes de criar um novo arquivo em `api/`**, verifique se o número total de Serverless Functions permanecerá ≤ 12. Se necessário, refatore rotas existentes para usar um roteador central ou catch-all em vez de adicionar mais arquivos.
-4. Se o limite de 12 for atingido, **a solução padrão é consolidar funções**, nunca sugerir upgrade para Pro como única saída sem primeiro tentar reorganizar o código.
+2. **Não crie subpastas com arquivos `.js` diretamente em `api/`** (como `api/estimativas/` ou `api/kanban/`). Subpastas com arquivos `.js` geram funções adicionais e podem quebrar o roteamento catch-all do roteador central.
+3. **Antes de criar um novo arquivo em `api/`**, verifique se ele será contado como Serverless Function. Se necessário, adicione a rota dentro de `api/[[...slug]].js` em vez de criar um novo arquivo.
+4. Se o limite de 12 for atingido, **a solução padrão é consolidar funções no roteador central**, nunca sugerir upgrade para Pro como única saída sem primeiro tentar reorganizar o código.
 
 Para conferir a contagem atual de funções localmente:
 ```bash
@@ -393,7 +394,7 @@ Novos cálculos de cronograma devem ser adicionados nesse arquivo e reutilizados
 
 ## Dicas para Agentes
 
-- Sempre verifique se a alteração em APIs afeta a conversão lowercase/camelCase. Lembre-se de que a implementação do conversor varia entre `api/estimativas/`, `api/_lib/case-converter.js` e `dev-server.js`.
+- Sempre verifique se a alteração em APIs afeta a conversão lowercase/camelCase. O roteador central `api/[[...slug]].js` usa `api/_lib/case-converter.js` e helpers específicos por domínio; `dev-server.js` possui seus próprios conversores.
 - Ao adicionar novos campos no banco, atualize `database.sql`, os conversores em `api/` e os tipos em `src/types/index.ts`.
 - Novos componentes de UI devem preferir componentes de `src/components/ui/`. Use `cn()` para mesclar classes.
 - Para PDF, mantenha cores em HEX e estilos inline quando necessário.
