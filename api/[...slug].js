@@ -20,10 +20,11 @@ function normalizeSlug(slug) {
 }
 
 function extractSlug(req) {
-  // Catch-all da Vercel: req.query.slug ou req.query['[...slug]']
-  const rawSlug = req.query.slug || req.query['[...slug]'] || [];
-  let slug = Array.isArray(rawSlug) ? rawSlug : rawSlug ? [rawSlug] : [];
-  slug = normalizeSlug(slug);
+  // Catch-all da Vercel: req.query.slug (array) ou req.query['[...slug]'].
+  // Quando usamos rewrite com ?slug=:path, vem como string.
+  const rawSlug = req.query.slug || req.query['[...slug]'] || '';
+  const slugString = Array.isArray(rawSlug) ? rawSlug.join('/') : rawSlug;
+  const slug = normalizeSlug(slugString);
   if (slug.length > 0) return slug;
 
   // Fallback manual caso a Vercel não popule query.slug
